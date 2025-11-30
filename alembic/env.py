@@ -17,16 +17,21 @@ from api.core.config import settings
 from api.core.database import Base
 
 # Automatically import all models
-src_path = Path(__file__).parent.parent / "api" / "src"
-for path in src_path.rglob("*.py"):
-    if path.name != "__init__.py":
-        module_path = str(path.relative_to(Path(__file__).parent.parent)).replace(
-            os.sep, "."
-        )[:-3]
-        try:
-            importlib.import_module(module_path)
-        except Exception as e:
-            print(f"Failed to import {module_path}: {e}")
+api_path = Path(__file__).parent.parent / "api"
+# Only import from domain directories (users, heroes, etc.), not from core, utils, or main.py
+excluded_dirs = {"core", "utils", "__pycache__"}
+for path in api_path.rglob("*.py"):
+    if path.name != "__init__.py" and path.name != "main.py":
+        # Check if path is in an excluded directory
+        parts = path.relative_to(Path(__file__).parent.parent).parts
+        if len(parts) > 1 and parts[1] not in excluded_dirs:
+            module_path = str(path.relative_to(Path(__file__).parent.parent)).replace(
+                os.sep, "."
+            )[:-3]
+            try:
+                importlib.import_module(module_path)
+            except Exception as e:
+                print(f"Failed to import {module_path}: {e}")
 
 # this is the Alembic Config object
 config = context.config

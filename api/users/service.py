@@ -6,9 +6,9 @@ from api.core.config import settings
 from api.core.exceptions import UnauthorizedException
 from api.core.logging import get_logger
 from api.core.security import create_access_token, verify_password
-from api.src.users.models import User
-from api.src.users.repository import UserRepository
-from api.src.users.schemas import LoginData, Token, UserCreate
+from api.users.models import User
+from api.users.repository import UserRepository
+from api.users.schemas import LoginData, Token, UserCreate
 
 logger = get_logger(__name__)
 

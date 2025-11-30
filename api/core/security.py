@@ -54,7 +54,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
     # Import here to avoid circular imports
     from api.core.database import get_session
-    from api.src.users.service import UserService
+    from api.users.service import UserService
 
     async for session in get_session():
         user = await UserService(session).get_user(int(user_id))

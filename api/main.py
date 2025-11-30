@@ -2,8 +2,7 @@ from fastapi import FastAPI
 
 from api.core.config import settings
 from api.core.logging import get_logger, setup_logging
-from api.src.heroes.routes import router as heroes_router
-from api.src.users.routes import router as auth_router
+from api.users.routes import router as auth_router
 from api.utils.migrations import run_migrations
 
 # Set up logging configuration
@@ -22,7 +21,6 @@ app = FastAPI(
 
 # Include routers
 app.include_router(auth_router)
-app.include_router(heroes_router)
 
 
 @app.get("/health")
