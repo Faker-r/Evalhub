@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 
+from api.auth.routes import router as auth_router
 from api.core.config import settings
 from api.core.logging import get_logger, setup_logging
-from api.users.routes import router as auth_router
+from api.datasets.routes import router as datasets_router
+from api.evaluations.routes import router as evaluations_router
+from api.guidelines.routes import router as guidelines_router
+from api.users.routes import router as users_router
 from api.utils.migrations import run_migrations
 
 # Set up logging configuration
@@ -21,6 +25,10 @@ app = FastAPI(
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(datasets_router)
+app.include_router(guidelines_router)
+app.include_router(evaluations_router)
 
 
 @app.get("/health")
@@ -32,4 +40,4 @@ async def health_check():
 async def root():
     """Root endpoint."""
     logger.debug("Root endpoint called")
-    return {"message": "Welcome to Hero API!"}
+    return {"message": "Welcome to Evalhub!"}

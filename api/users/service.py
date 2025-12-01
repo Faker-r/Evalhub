@@ -1,14 +1,11 @@
-from datetime import timedelta
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.core.config import settings
-from api.core.exceptions import UnauthorizedException
+from api.core.exceptions import NotFoundException
 from api.core.logging import get_logger
-from api.core.security import create_access_token, verify_password
+from api.core.s3 import S3Storage
 from api.users.models import User
 from api.users.repository import UserRepository
-from api.users.schemas import LoginData, Token, UserCreate
+from api.users.schemas import ApiKeyCreate
 
 logger = get_logger(__name__)
 
@@ -19,31 +16,65 @@ class UserService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.repository = UserRepository(session)
-
-    async def create_user(self, user_data: UserCreate) -> User:
-        """Create a new user."""
-        return await self.repository.create(user_data)
-
-    async def authenticate(self, login_data: LoginData) -> Token:
-        """Authenticate user and return token."""
-        # Get user
-        user = await self.repository.get_by_email(login_data.email)
-
-        # Verify credentials
-        if not user or not verify_password(
-            login_data.password, str(user.hashed_password)
-        ):
-            raise UnauthorizedException(detail="Incorrect email or password")
-
-        # Create access token
-        access_token = create_access_token(
-            data={"sub": str(user.id)},
-            expires_delta=timedelta(minutes=settings.JWT_EXPIRATION),
-        )
-
-        logger.info(f"User authenticated: {user.email}")
-        return Token(access_token=access_token)
+        self.s3 = S3Storage()
 
     async def get_user(self, user_id: int) -> User:
         """Get user by ID."""
         return await self.repository.get_by_id(user_id)
+
+    # ==================== API Key Methods ====================
+
+    def create_api_key(self, user_id: int, api_key_data: ApiKeyCreate) -> None:
+        """Store an API key for a user.
+
+        Args:
+            user_id: User ID
+            api_key_data: API key creation data
+        """
+        self.s3.upload_api_key(user_id, api_key_data.provider, api_key_data.api_key)
+        logger.info(f"Stored API key for user {user_id}, provider {api_key_data.provider}")
+
+    def get_api_key(self, user_id: int, provider: str) -> str:
+        """Get an API key for a user (internal use only).
+
+        Args:
+            user_id: User ID
+            provider: Provider name
+
+        Returns:
+            str: The API key
+
+        Raises:
+            NotFoundException: If the API key doesn't exist
+        """
+        try:
+            return self.s3.download_api_key(user_id, provider)
+        except FileNotFoundError:
+            raise NotFoundException(f"API key not found for provider: {provider}")
+
+    def list_api_keys(self, user_id: int) -> list[str]:
+        """List all API key providers for a user.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            list[str]: List of provider names
+        """
+        return self.s3.list_user_api_keys(user_id)
+
+    def delete_api_key(self, user_id: int, provider: str) -> None:
+        """Delete an API key for a user.
+
+        Args:
+            user_id: User ID
+            provider: Provider name
+
+        Raises:
+            NotFoundException: If the API key doesn't exist
+        """
+        if not self.s3.api_key_exists(user_id, provider):
+            raise NotFoundException(f"API key not found for provider: {provider}")
+
+        self.s3.delete_api_key(user_id, provider)
+        logger.info(f"Deleted API key for user {user_id}, provider {provider}")

@@ -1,34 +1,32 @@
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 
-class UserBase(BaseModel):
-    """Base user schema."""
-
-    email: EmailStr
-
-
-class UserCreate(UserBase):
-    """User creation schema."""
-
-    password: str
-
-
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     """User response schema."""
 
     model_config = ConfigDict(from_attributes=True)
+
     id: int
-
-
-class Token(BaseModel):
-    """Token schema."""
-
-    access_token: str
-    token_type: str = "bearer"
-
-
-class LoginData(BaseModel):
-    """Login data schema."""
-
     email: EmailStr
-    password: str
+
+
+# ==================== API Key Schemas ====================
+
+
+class ApiKeyCreate(BaseModel):
+    """API key creation schema."""
+
+    provider: str
+    api_key: str
+
+
+class ApiKeyResponse(BaseModel):
+    """API key response schema (without the actual key)."""
+
+    provider: str
+
+
+class ApiKeyListResponse(BaseModel):
+    """Response schema for listing API keys."""
+
+    api_key_providers: list[ApiKeyResponse]

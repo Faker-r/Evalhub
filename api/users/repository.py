@@ -1,11 +1,11 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.auth.schemas import UserCreate
 from api.core.exceptions import AlreadyExistsException, NotFoundException
 from api.core.logging import get_logger
 from api.core.security import get_password_hash
 from api.users.models import User
-from api.users.schemas import UserCreate
 
 logger = get_logger(__name__)
 
