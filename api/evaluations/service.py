@@ -1,4 +1,6 @@
+import asyncio
 import json
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from fastapi import HTTPException, status
@@ -14,6 +16,9 @@ from api.guidelines.models import Guideline
 from api.guidelines.service import GuidelineService
 
 logger = get_logger(__name__)
+
+# Threadpool configuration for parallel API calls
+MAX_WORKERS = 20
 
 # Default API bases for providers
 DEFAULT_API_BASES = {
@@ -140,89 +145,146 @@ class EvaluationService:
     # ==================== Sample Processing ====================
 
     async def _process_all_samples(self, ctx: EvaluationContext) -> None:
-        """
-        Process all samples in the dataset.
-        #TODO: Change this to use threadpool rather than sequential. Way too slow this way
-        """
-        for idx, sample in enumerate(ctx.samples):
-            await self._process_single_sample(ctx, str(idx), sample)
+        """Process all samples in parallel using a threadpool."""
+        loop = asyncio.get_event_loop()
 
-    async def _process_single_sample(
-        self, ctx: EvaluationContext, sample_id: str, sample: dict
-    ) -> None:
-        """Process a single sample: generate completion and judge it."""
+        # Extract guideline data for thread-safe access (ORM objects aren't thread-safe)
+        guidelines_data = [
+            {"name": g.name, "prompt": g.prompt, "max_score": g.max_score}
+            for g in ctx.guidelines
+        ]
+
+        # Process samples in parallel
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            tasks = [
+                loop.run_in_executor(
+                    executor,
+                    self._process_single_sample_sync,
+                    ctx.completion_client,
+                    ctx.judge_client,
+                    ctx.request.completion_model,
+                    ctx.request.judge_model,
+                    guidelines_data,
+                    str(idx),
+                    sample,
+                )
+                for idx, sample in enumerate(ctx.samples)
+            ]
+
+            results = await asyncio.gather(*tasks)
+
+        # Write all results to database (must be done in async context)
+        await self._write_sample_results(ctx, results)
+
+    def _process_single_sample_sync(
+        self,
+        completion_client: OpenAI,
+        judge_client: OpenAI,
+        completion_model: str,
+        judge_model: str,
+        guidelines_data: list[dict],
+        sample_id: str,
+        sample: dict,
+    ) -> dict:
+        """Process a single sample synchronously (runs in threadpool).
+
+        Returns a dict with all data needed for DB writes.
+        """
         input_text = sample.get("input", "")
+        result = {
+            "sample_id": sample_id,
+            "input_text": input_text,
+            "completion": None,
+            "judge_results": [],
+            "error": None,
+        }
 
         try:
             # Generate completion
             completion = self._generate_completion(
-                ctx.completion_client, ctx.request.completion_model, input_text
+                completion_client, completion_model, input_text
             )
-
-            # Log sampling event
-            await self._log_sampling_event(ctx, sample_id, input_text, completion)
+            result["completion"] = completion
 
             # Judge with each guideline
-            for guideline in ctx.guidelines:
-                await self._judge_and_log(ctx, sample_id, guideline, completion)
+            for guideline in guidelines_data:
+                score, judge_response, error = self._judge_completion(
+                    judge_client,
+                    judge_model,
+                    guideline["prompt"],
+                    guideline["max_score"],
+                    completion,
+                )
+
+                result["judge_results"].append({
+                    "guideline_name": guideline["name"],
+                    "score": score,
+                    "judge_response": judge_response,
+                    "error": error,
+                    "prompt": self._build_judge_prompt(
+                        guideline["prompt"], guideline["max_score"], completion
+                    ),
+                })
 
         except Exception as e:
             logger.error(f"Error processing sample {sample_id}: {e}")
+            result["error"] = str(e)
+
+        return result
+
+    async def _write_sample_results(
+        self, ctx: EvaluationContext, results: list[dict]
+    ) -> None:
+        """Write all sample results to the database and update context scores."""
+        for result in results:
+            sample_id = result["sample_id"]
+
+            if result["error"]:
+                # Sample-level error (e.g., completion failed)
+                await self.repository.create_event(
+                    trace_id=ctx.trace.id,
+                    event_type="error",
+                    sample_id=sample_id,
+                    data={"error": result["error"]},
+                )
+                continue
+
+            # Log sampling event
             await self.repository.create_event(
                 trace_id=ctx.trace.id,
-                event_type="error",
+                event_type="sampling",
                 sample_id=sample_id,
-                data={"error": str(e)},
+                data={
+                    "input": result["input_text"],
+                    "completion": result["completion"],
+                    "model": ctx.request.completion_model,
+                },
             )
 
-    async def _log_sampling_event(
-        self, ctx: EvaluationContext, sample_id: str, input_text: str, completion: str
-    ) -> None:
-        """Log a sampling event to the trace."""
-        await self.repository.create_event(
-            trace_id=ctx.trace.id,
-            event_type="sampling",
-            sample_id=sample_id,
-            data={
-                "input": input_text,
-                "completion": completion,
-                "model": ctx.request.completion_model,
-            },
-        )
+            # Log judge events and update scores
+            for judge_result in result["judge_results"]:
+                guideline_name = judge_result["guideline_name"]
 
-    async def _judge_and_log(
-        self, ctx: EvaluationContext, sample_id: str, guideline: Guideline, completion: str
-    ) -> None:
-        """Judge a completion and log the result."""
-        score, judge_response, error = self._judge_completion(
-            ctx.judge_client,
-            ctx.request.judge_model,
-            guideline.prompt,
-            guideline.max_score,
-            completion,
-        )
+                event_data = {
+                    "prompt": judge_result["prompt"],
+                    "response": judge_result["judge_response"],
+                }
 
-        # Build event data
-        event_data = {
-            "prompt": self._build_judge_prompt(guideline.prompt, guideline.max_score, completion),
-            "response": judge_response,
-        }
+                if judge_result["error"]:
+                    event_data["error"] = judge_result["error"]
+                    ctx.failed_per_guideline[guideline_name] += 1
+                    ctx.scores_per_guideline[guideline_name].append(None)
+                else:
+                    event_data["score"] = judge_result["score"]
+                    ctx.scores_per_guideline[guideline_name].append(judge_result["score"])
 
-        if error:
-            event_data["error"] = error
-            ctx.failed_per_guideline[guideline.name] += 1
-            ctx.scores_per_guideline[guideline.name].append(None)
-        else:
-            event_data["score"] = score
-            ctx.scores_per_guideline[guideline.name].append(score)
-
-        await self.repository.create_event(
-            trace_id=ctx.trace.id,
-            event_type="judge",
-            sample_id=sample_id,
-            guideline_name=guideline.name,
-            data=event_data,
-        )
+                await self.repository.create_event(
+                    trace_id=ctx.trace.id,
+                    event_type="judge",
+                    sample_id=sample_id,
+                    guideline_name=guideline_name,
+                    data=event_data,
+                )
 
     # ==================== Finalization ====================
 
@@ -384,7 +446,9 @@ Reasoning:"""
             lines.append(json.dumps(line_data))
 
         content = "\n".join(lines)
-        filename = f"{ctx.trace.id}_{ctx.request.completion_model}-{ctx.request.dataset_name}"
+        # Sanitize model name to avoid creating nested S3 "folders" (slashes become dashes)
+        safe_model_name = ctx.request.completion_model.replace("/", "-")
+        filename = f"{ctx.trace.id}_{safe_model_name}-{ctx.request.dataset_name}"
         self.s3.upload_trace(filename, content)
 
     # ==================== Public Query Methods ====================
