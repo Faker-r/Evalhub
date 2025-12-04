@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-v --cov=api --cov-report=term-missing"
+addopts = "-v --cov=backend --cov-report=term-missing"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 

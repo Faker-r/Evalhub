@@ -13,11 +13,11 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from api.core.config import settings
-from api.core.database import Base
+from backend.core.config import settings
+from backend.core.database import Base
 
 # Automatically import all models
-api_path = Path(__file__).parent.parent / "api"
+api_path = Path(__file__).parent.parent / "backend"
 # Only import from domain directories (users, heroes, etc.), not from core, utils, or main.py
 excluded_dirs = {"core", "utils", "__pycache__"}
 for path in api_path.rglob("*.py"):
