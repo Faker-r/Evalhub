@@ -62,8 +62,12 @@ jobs:
       run: uv run pytest tests
       env:
         DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5432/test_db"
-        JWT_SECRET: "test_secret_key"
-        JWT_ALGORITHM: "HS256"
+        SUPABASE_URL: "https://test.supabase.co"
+        SUPABASE_PUBLISHABLE_KEY: "test_publishable_key"
+        SUPABASE_SECRET_KEY: "test_secret_key"
+        SUPABASE_JWT_SECRET: "test_jwt_secret"
+        AWS_ACCESS_KEY_ID: "test_aws_key"
+        AWS_SECRET_ACCESS_KEY: "test_aws_secret"
 
     services:
       postgres:

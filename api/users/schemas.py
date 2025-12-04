@@ -1,12 +1,12 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+"""User schemas."""
+
+from pydantic import BaseModel, EmailStr
 
 
 class UserResponse(BaseModel):
     """User response schema."""
 
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
+    id: str  # Supabase UUID
     email: EmailStr
 
 

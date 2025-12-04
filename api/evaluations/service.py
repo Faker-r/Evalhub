@@ -28,7 +28,8 @@ DEFAULT_API_BASES = {
 class EvaluationContext:
     """Context object to hold evaluation state."""
 
-    client: OpenAI
+    completion_client: OpenAI
+    judge_client: OpenAI
     request: EvaluationRequest
     samples: list[dict]
     guidelines: list[Guideline]
@@ -40,7 +41,7 @@ class EvaluationContext:
 class EvaluationService:
     """Service for running evaluations."""
 
-    def __init__(self, session: AsyncSession, user_id: int):
+    def __init__(self, session: AsyncSession, user_id: str):
         self.session = session
         self.user_id = user_id
         self.repository = EvaluationRepository(session)
@@ -66,13 +67,16 @@ class EvaluationService:
     # ==================== Setup Phase ====================
 
     async def _setup_evaluation(self, request: EvaluationRequest) -> EvaluationContext:
-        """Set up evaluation context with client, data, and guidelines."""
-        client = self._create_client(request)
+        """Set up evaluation context with clients, data, and guidelines."""
+        completion_client = self._create_client(request.model_provider, request.api_base)
+        judge_client = self._create_client(request.judge_model_provider, request.judge_api_base)
+
         samples = self._load_dataset(request.dataset_name)
         guidelines = await self._load_guidelines(request.guideline_names)
 
         return EvaluationContext(
-            client=client,
+            completion_client=completion_client,
+            judge_client=judge_client,
             request=request,
             samples=samples,
             guidelines=guidelines,
@@ -80,21 +84,19 @@ class EvaluationService:
             failed_per_guideline={g.name: 0 for g in guidelines},
         )
 
-    def _create_client(self, request: EvaluationRequest) -> OpenAI:
-        """Create OpenAI client with user's API key."""
+    def _create_client(self, provider: str, api_base: str | None) -> OpenAI:
+        """Create OpenAI client with user's API key for a given provider."""
         try:
-            api_key = self.s3.download_api_key(self.user_id, request.model_provider)
+            api_key = self.s3.download_api_key(self.user_id, provider)
         except FileNotFoundError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"No API key found for provider: {request.model_provider}",
+                detail=f"No API key found for provider: {provider}",
             )
 
-        api_base = request.api_base or DEFAULT_API_BASES.get(
-            request.model_provider, DEFAULT_API_BASES["openai"]
-        )
+        base_url = api_base or DEFAULT_API_BASES.get(provider, DEFAULT_API_BASES["openai"])
 
-        return OpenAI(api_key=api_key, base_url=api_base)
+        return OpenAI(api_key=api_key, base_url=base_url)
 
     def _load_dataset(self, dataset_name: str) -> list[dict]:
         """Load and parse dataset from S3."""
@@ -154,7 +156,7 @@ class EvaluationService:
         try:
             # Generate completion
             completion = self._generate_completion(
-                ctx.client, ctx.request.completion_model, input_text
+                ctx.completion_client, ctx.request.completion_model, input_text
             )
 
             # Log sampling event
@@ -193,7 +195,7 @@ class EvaluationService:
     ) -> None:
         """Judge a completion and log the result."""
         score, judge_response, error = self._judge_completion(
-            ctx.client,
+            ctx.judge_client,
             ctx.request.judge_model,
             guideline.prompt,
             guideline.max_score,
@@ -241,7 +243,7 @@ class EvaluationService:
         )
 
         # Upload trace to S3
-        await self._upload_trace_jsonl(ctx.trace.id)
+        await self._upload_trace_jsonl(ctx)
 
         return self._build_response(ctx, summary)
 
@@ -364,9 +366,9 @@ Reasoning:"""
 
         return summary
 
-    async def _upload_trace_jsonl(self, trace_id: int) -> None:
+    async def _upload_trace_jsonl(self, ctx: EvaluationContext) -> None:
         """Upload trace events as JSONL to S3."""
-        events = await self.repository.get_events_by_trace(trace_id)
+        events = await self.repository.get_events_by_trace(ctx.trace.id)
 
         lines = []
         for event in events:
@@ -382,7 +384,8 @@ Reasoning:"""
             lines.append(json.dumps(line_data))
 
         content = "\n".join(lines)
-        self.s3.upload_trace(trace_id, content)
+        filename = f"{ctx.trace.id}_{ctx.request.completion_model}-{ctx.request.dataset_name}"
+        self.s3.upload_trace(filename, content)
 
     # ==================== Public Query Methods ====================
 

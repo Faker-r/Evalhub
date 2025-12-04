@@ -8,10 +8,11 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     DEBUG: bool = False
 
-    # JWT Settings
-    JWT_SECRET: str  # Change in production
-    JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRATION: int = 180  # minutes
+    # Supabase Settings
+    SUPABASE_URL: str
+    SUPABASE_PUBLISHABLE_KEY: str  # Replaces legacy "anon" key
+    SUPABASE_SECRET_KEY: str  # Replaces legacy "service_role" key
+    SUPABASE_JWT_SECRET: str
 
     # AWS S3 Settings
     AWS_ACCESS_KEY_ID: str

@@ -27,3 +27,10 @@ class ForbiddenException(HTTPException):
 
     def __init__(self, detail: str = "Access forbidden"):
         super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
+class BadRequestException(HTTPException):
+    """Base exception for bad request errors."""
+
+    def __init__(self, detail: str = "Bad request"):
+        super().__init__(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)

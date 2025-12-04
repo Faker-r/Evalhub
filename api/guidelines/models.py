@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Integer, String, Text
 
 from api.core.database import Base
 
@@ -13,3 +15,4 @@ class Guideline(Base):
     prompt = Column(Text, nullable=False)
     category = Column(String, nullable=False)
     max_score = Column(Integer, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

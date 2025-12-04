@@ -20,7 +20,7 @@ class EvaluationRepository:
 
     async def create_trace(
         self,
-        user_id: int,
+        user_id: str,
         dataset_name: str,
         guideline_names: list[str],
         completion_model: str,
@@ -70,7 +70,7 @@ class EvaluationRepository:
 
         return trace
 
-    async def get_traces_by_user(self, user_id: int) -> list[Trace]:
+    async def get_traces_by_user(self, user_id: str) -> list[Trace]:
         """Get all traces for a user."""
         query = select(Trace).where(Trace.user_id == user_id).order_by(Trace.id.desc())
         result = await self.session.execute(query)

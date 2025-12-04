@@ -9,9 +9,11 @@ class EvaluationRequest(BaseModel):
     dataset_name: str
     guideline_names: list[str]
     completion_model: str
-    model_provider: str = "openai"
-    api_base: str | None = None  # Optional, defaults to provider's default
-    judge_model: str = "gpt-3.5-turbo"
+    model_provider: str
+    api_base: str | None = None
+    judge_model: str
+    judge_model_provider: str
+    judge_api_base: str | None = None
 
 
 class ScoreDistribution(BaseModel):
@@ -45,7 +47,7 @@ class TraceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    user_id: int
+    user_id: str  # Supabase UUID
     dataset_name: str
     guideline_names: list[str]
     completion_model: str

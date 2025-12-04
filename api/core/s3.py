@@ -121,11 +121,11 @@ class S3Storage:
 
     # ==================== API Key Methods ====================
 
-    def upload_api_key(self, user_id: int, provider: str, api_key: str) -> None:
+    def upload_api_key(self, user_id: str, provider: str, api_key: str) -> None:
         """Upload an API key to S3.
 
         Args:
-            user_id: User ID who owns the key
+            user_id: User ID who owns the key (Supabase UUID)
             provider: Provider name (e.g., 'openai', 'anthropic')
             api_key: The API key value
         """
@@ -143,11 +143,11 @@ class S3Storage:
             logger.error(f"Failed to upload API key to S3: {e}")
             raise
 
-    def download_api_key(self, user_id: int, provider: str) -> str:
+    def download_api_key(self, user_id: str, provider: str) -> str:
         """Download an API key from S3.
 
         Args:
-            user_id: User ID who owns the key
+            user_id: User ID who owns the key (Supabase UUID)
             provider: Provider name (e.g., 'openai', 'anthropic')
 
         Returns:
@@ -169,11 +169,11 @@ class S3Storage:
             logger.error(f"Failed to download API key from S3: {e}")
             raise
 
-    def delete_api_key(self, user_id: int, provider: str) -> None:
+    def delete_api_key(self, user_id: str, provider: str) -> None:
         """Delete an API key from S3.
 
         Args:
-            user_id: User ID who owns the key
+            user_id: User ID who owns the key (Supabase UUID)
             provider: Provider name (e.g., 'openai', 'anthropic')
         """
         key = f"{API_KEYS_PREFIX}/{user_id}/{provider}.txt"
@@ -185,11 +185,11 @@ class S3Storage:
             logger.error(f"Failed to delete API key from S3: {e}")
             raise
 
-    def api_key_exists(self, user_id: int, provider: str) -> bool:
+    def api_key_exists(self, user_id: str, provider: str) -> bool:
         """Check if an API key exists in S3.
 
         Args:
-            user_id: User ID who owns the key
+            user_id: User ID who owns the key (Supabase UUID)
             provider: Provider name (e.g., 'openai', 'anthropic')
 
         Returns:
@@ -203,11 +203,11 @@ class S3Storage:
         except ClientError:
             return False
 
-    def list_user_api_keys(self, user_id: int) -> list[str]:
+    def list_user_api_keys(self, user_id: str) -> list[str]:
         """List all API key providers for a user.
 
         Args:
-            user_id: User ID
+            user_id: User ID (Supabase UUID)
 
         Returns:
             list[str]: List of provider names
@@ -229,14 +229,14 @@ class S3Storage:
 
     # ==================== Trace Methods ====================
 
-    def upload_trace(self, trace_id: int, content: str) -> None:
+    def upload_trace(self, filename: str, content: str) -> None:
         """Upload a trace JSONL file to S3.
 
         Args:
-            trace_id: Trace ID
+            filename: Trace filename (without .jsonl extension)
             content: JSONL content as string
         """
-        key = f"{TRACES_PREFIX}/{trace_id}.jsonl"
+        key = f"{TRACES_PREFIX}/{filename}.jsonl"
 
         try:
             self.client.put_object(
@@ -250,11 +250,11 @@ class S3Storage:
             logger.error(f"Failed to upload trace to S3: {e}")
             raise
 
-    def download_trace(self, trace_id: int) -> str:
+    def download_trace(self, filename: str) -> str:
         """Download a trace JSONL file from S3.
 
         Args:
-            trace_id: Trace ID
+            filename: Trace filename (without .jsonl extension)
 
         Returns:
             str: JSONL content
@@ -262,7 +262,7 @@ class S3Storage:
         Raises:
             FileNotFoundError: If the trace doesn't exist
         """
-        key = f"{TRACES_PREFIX}/{trace_id}.jsonl"
+        key = f"{TRACES_PREFIX}/{filename}.jsonl"
 
         try:
             response = self.client.get_object(Bucket=self.bucket, Key=key)
@@ -271,6 +271,6 @@ class S3Storage:
             return content
         except ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchKey":
-                raise FileNotFoundError(f"Trace not found in S3: {trace_id}")
+                raise FileNotFoundError(f"Trace not found in S3: {filename}")
             logger.error(f"Failed to download trace from S3: {e}")
             raise

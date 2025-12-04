@@ -1,13 +1,19 @@
-from sqlalchemy import Column, Integer, String
+"""User models.
 
-from api.core.database import Base
+Note: User authentication is handled by Supabase Auth.
+This file is kept for potential future use (e.g., user profiles table).
+"""
 
-
-class User(Base):
-    """User model."""
-
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+# If you need to store additional user data beyond what Supabase Auth provides,
+# you can create a profiles table that references the Supabase user UUID:
+#
+# from sqlalchemy import Column, String
+# from api.core.database import Base
+#
+# class Profile(Base):
+#     """User profile model - extends Supabase Auth user."""
+#     __tablename__ = "profiles"
+#
+#     id = Column(String, primary_key=True)  # Supabase user UUID
+#     display_name = Column(String, nullable=True)
+#     avatar_url = Column(String, nullable=True)

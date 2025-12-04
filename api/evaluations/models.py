@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 
 from api.core.database import Base
@@ -12,7 +12,7 @@ class Trace(Base):
     __tablename__ = "traces"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String, nullable=False)  # Supabase UUID
     dataset_name = Column(String, nullable=False)
     guideline_names = Column(JSONB, nullable=False)  # ["humor_likert", "clarity"]
     completion_model = Column(String, nullable=False)

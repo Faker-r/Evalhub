@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.database import get_session
 from api.core.logging import get_logger
-from api.core.security import get_current_user
+from api.core.security import CurrentUser, get_current_user
 from api.evaluations.schemas import (
     EvaluationRequest,
     EvaluationResponse,
@@ -11,7 +11,6 @@ from api.evaluations.schemas import (
     TraceResponse,
 )
 from api.evaluations.service import EvaluationService
-from api.users.models import User
 
 logger = get_logger(__name__)
 
@@ -22,7 +21,7 @@ router = APIRouter(prefix="/evaluations", tags=["evaluations"])
 async def run_evaluation(
     request: EvaluationRequest,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ) -> EvaluationResponse:
     """Run an evaluation on a dataset with given guidelines.
 
@@ -41,7 +40,7 @@ async def run_evaluation(
 @router.get("/traces", response_model=TraceListResponse)
 async def get_traces(
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ) -> TraceListResponse:
     """Get all evaluation traces for the current user."""
     logger.debug(f"Getting traces for user {current_user.email}")
@@ -53,7 +52,7 @@ async def get_traces(
 async def get_trace(
     trace_id: int,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
 ) -> TraceResponse:
     """Get a specific evaluation trace."""
     logger.debug(f"Getting trace {trace_id} for user {current_user.email}")

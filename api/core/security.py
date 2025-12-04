@@ -1,63 +1,99 @@
-from datetime import datetime, timedelta
+"""Security utilities for Supabase JWT verification."""
 
+from dataclasses import dataclass
+from functools import lru_cache
+
+import httpx
+import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient
 
 from api.core.config import settings
+from api.core.logging import get_logger
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+logger = get_logger(__name__)
 
-# OAuth2 scheme for token authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+# Use HTTPBearer for Supabase JWT tokens
+security = HTTPBearer()
 
 
-def get_password_hash(password: str) -> str:
-    """Generate password hash."""
-    return pwd_context.hash(password)
+@dataclass
+class CurrentUser:
+    """Represents the current authenticated user from Supabase."""
+
+    id: str  # Supabase user UUID
+    email: str
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    """Create JWT access token."""
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (
-        expires_delta or timedelta(minutes=settings.JWT_EXPIRATION)
-    )
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+@lru_cache()
+def get_jwks_client() -> PyJWKClient:
+    """Get a cached JWKS client for Supabase.
+    
+    Supabase exposes public keys at: {SUPABASE_URL}/auth/v1/.well-known/jwks.json
+    """
+    jwks_url = f"{settings.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+    return PyJWKClient(jwks_url)
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Dependency to get current authenticated user."""
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> CurrentUser:
+    """Dependency to get current authenticated user from Supabase JWT.
+
+    Verifies the JWT token using Supabase's public keys (JWKS).
+
+    Args:
+        credentials: Bearer token from Authorization header
+
+    Returns:
+        CurrentUser: The authenticated user's info
+
+    Raises:
+        HTTPException: If token is invalid or expired
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid authentication credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    token = credentials.credentials
+
     try:
+        # Get the signing key from Supabase JWKS
+        jwks_client = get_jwks_client()
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+        # Decode and verify the JWT using the public key
         payload = jwt.decode(
-            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
+            token,
+            signing_key.key,
+            algorithms=["RS256", "ES256"],  # Supabase uses RS256 or ES256
+            options={"verify_aud": False},
         )
+
+        # Extract user info from the JWT payload
         user_id: str = payload.get("sub")
+        email: str = payload.get("email")
+
         if user_id is None:
+            logger.error("JWT payload missing 'sub' field")
             raise credentials_exception
-    except JWTError:
+
+        logger.debug(f"Authenticated user: {email} ({user_id})")
+        return CurrentUser(id=user_id, email=email or "")
+
+    except jwt.ExpiredSignatureError:
+        logger.warning("JWT token expired")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.InvalidTokenError as e:
+        logger.error(f"JWT validation error: {e}")
         raise credentials_exception
-
-    # Import here to avoid circular imports
-    from api.core.database import get_session
-    from api.users.service import UserService
-
-    async for session in get_session():
-        user = await UserService(session).get_user(int(user_id))
-        if user is None:
-            raise credentials_exception
-        return user
+    except Exception as e:
+        logger.error(f"Unexpected error during JWT validation: {e}")
+        raise credentials_exception
