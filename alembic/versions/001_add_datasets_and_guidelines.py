@@ -1,3 +1,4 @@
+from typing import Optional, Sequence, Tuple, Union
 """add datasets and guidelines tables
 
 Revision ID: 001_add_datasets_guidelines
@@ -14,9 +15,9 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "001_add_datasets_guidelines"
-down_revision: str | None = "ef2910566747"
-branch_labels: str | Sequence[str] | None = None
-depends_on: str | Sequence[str] | None = None
+down_revision: Optional[str] = "ef2910566747"
+branch_labels: Optional[Union[str, Sequence[str]]] = None
+depends_on: Optional[Union[str, Sequence[str]]] = None
 
 
 def upgrade() -> None:

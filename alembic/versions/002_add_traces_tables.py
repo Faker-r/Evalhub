@@ -1,3 +1,4 @@
+from typing import Optional, Sequence, Tuple, Union
 """add traces and trace_events tables
 
 Revision ID: 002_add_traces
@@ -15,9 +16,9 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "002_add_traces"
-down_revision: str | None = "001_add_datasets_guidelines"
-branch_labels: str | Sequence[str] | None = None
-depends_on: str | Sequence[str] | None = None
+down_revision: Optional[str] = "001_add_datasets_guidelines"
+branch_labels: Optional[Union[str, Sequence[str]]] = None
+depends_on: Optional[Union[str, Sequence[str]]] = None
 
 
 def upgrade() -> None:

@@ -1,18 +1,29 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Hexagon, Menu, X } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Hexagon, Menu, X, User, Settings, LogOut, Key } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { LoginModal } from "@/components/login-modal";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
 
   const navItems = [
     { label: "Leaderboard", href: "/" },
-    { label: "Datasets", href: "/datasets" }, // These could just be placeholders or link to home sections
+    { label: "Datasets", href: "/datasets" },
     { label: "Guidelines", href: "/guidelines" },
     { label: "Compare Models", href: "/compare" },
   ];
@@ -48,19 +59,66 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              className="font-medium"
-              onClick={() => setIsLoginOpen(true)}
-            >
-              Log In
-            </Button>
-            <Button 
-              className="bg-black hover:bg-zinc-800 text-white font-medium rounded-md px-6"
-              onClick={() => window.location.href = '/submit'}
-            >
-              Get Started
-            </Button>
+            {isAuthenticated ? (
+              <>
+                <Button
+                  variant="ghost"
+                  className="font-medium"
+                  onClick={() => (window.location.href = "/submit")}
+                >
+                  Submit Evaluation
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                      <Avatar className="h-9 w-9">
+                        <AvatarFallback className="bg-mint-500 text-white">
+                          {user?.email.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium">My Account</p>
+                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => (window.location.href = "/profile")}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Profile & API Keys</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => (window.location.href = "/results")}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>My Evaluations</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  className="font-medium"
+                  onClick={() => setIsLoginOpen(true)}
+                >
+                  Log In
+                </Button>
+                <Button
+                  className="bg-black hover:bg-zinc-800 text-white font-medium rounded-md px-6"
+                  onClick={() => setIsLoginOpen(true)}
+                >
+                  Get Started
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -86,8 +144,54 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
             <div className="flex flex-col gap-2 pt-4 border-t border-border">
-              <Button variant="ghost" className="justify-start" onClick={() => setIsLoginOpen(true)}>Log In</Button>
-              <Button className="bg-black text-white justify-start w-full" onClick={() => { setIsMobileMenuOpen(false); window.location.href = '/submit'; }}>Get Started</Button>
+              {isAuthenticated ? (
+                <>
+                  <div className="px-2 py-2 text-sm text-muted-foreground">
+                    {user?.email}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    className="justify-start"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      window.location.href = "/profile";
+                    }}
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Profile & API Keys
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="justify-start"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      logout();
+                    }}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    className="justify-start"
+                    onClick={() => setIsLoginOpen(true)}
+                  >
+                    Log In
+                  </Button>
+                  <Button
+                    className="bg-black text-white justify-start w-full"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setIsLoginOpen(true);
+                    }}
+                  >
+                    Get Started
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}

@@ -2,150 +2,258 @@ import Layout from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, Download, Share2 } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-
-const SAMPLE_TRACES = [
-  {
-    id: "trace-001",
-    prompt: "Explain quantum entanglement to a 5-year-old.",
-    model_response: "Quantum entanglement is like having two magic dice. Even if you take them to opposite sides of the universe, when you roll a 6 on one, the other one will instantly show a 6 too! They are connected in a spooky way.",
-    judge_reasoning: "The explanation is accurate but simple. The metaphor is appropriate for the target audience. No hallucinations.",
-    score: 5,
-    status: "pass"
-  },
-  {
-    id: "trace-002",
-    prompt: "Write a Python function to calculate Fibonacci sequence.",
-    model_response: "def fib(n):\n  if n <= 1: return n\n  else: return fib(n-1) + fib(n-2)",
-    judge_reasoning: "Correct implementation using recursion. However, it's inefficient for large N. Ideally should suggest memoization.",
-    score: 4,
-    status: "pass"
-  },
-  {
-    id: "trace-003",
-    prompt: "What is the capital of France?",
-    model_response: "The capital of France is Paris.",
-    judge_reasoning: "Factually correct.",
-    score: 5,
-    status: "pass"
-  }
-];
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Download, RefreshCw, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Results() {
+  const { isAuthenticated } = useAuth();
+
+  // Fetch traces/evaluations
+  const { data: tracesData, isLoading, refetch } = useQuery({
+    queryKey: ["traces"],
+    queryFn: () => apiClient.getTraces(),
+    enabled: isAuthenticated,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
+  });
+
+  const traces = tracesData?.traces || [];
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "completed":
+        return (
+          <Badge className="bg-green-50 text-green-700 border-green-200">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Completed
+          </Badge>
+        );
+      case "running":
+        return (
+          <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+            Running
+          </Badge>
+        );
+      case "failed":
+        return (
+          <Badge className="bg-red-50 text-red-700 border-red-200">
+            <XCircle className="w-3 h-3 mr-1" />
+            Failed
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-gray-50 text-gray-700 border-gray-200">
+            <Clock className="w-3 h-3 mr-1" />
+            Pending
+          </Badge>
+        );
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+          <CheckCircle className="w-16 h-16 text-muted-foreground mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Please login to view results</h2>
+          <p className="text-muted-foreground">You need to be authenticated to access this page.</p>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Completed</Badge>
-              <span className="text-sm text-muted-foreground">ID: eval_8f29a1b</span>
-            </div>
-            <h1 className="text-3xl font-display font-bold">Evaluation Results: GPT-4o vs Custom</h1>
+            <h1 className="text-4xl font-display font-bold mb-2">Evaluation Results</h1>
+            <p className="text-muted-foreground">View your evaluation history and results</p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline" className="gap-2">
-              <Share2 className="w-4 h-4" />
-              Share
-            </Button>
-            <Button className="bg-black text-white gap-2">
-              <Download className="w-4 h-4" />
-              Export Traces
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => refetch()}
+            disabled={isLoading}
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <Card className="bg-zinc-50/50">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
             <CardContent className="pt-6">
-              <div className="text-sm text-muted-foreground mb-1">Overall Score</div>
-              <div className="text-4xl font-display font-bold text-mint-600">92.4%</div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Evaluations</p>
+                  <p className="text-3xl font-bold">{traces.length}</p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-muted-foreground" />
+              </div>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-50/50">
+          <Card>
             <CardContent className="pt-6">
-              <div className="text-sm text-muted-foreground mb-1">Total Samples</div>
-              <div className="text-4xl font-display font-bold text-black">1,250</div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Completed</p>
+                  <p className="text-3xl font-bold text-green-600">
+                    {traces.filter((t) => t.status === "completed").length}
+                  </p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-50/50">
+          <Card>
             <CardContent className="pt-6">
-              <div className="text-sm text-muted-foreground mb-1">Avg Latency</div>
-              <div className="text-4xl font-display font-bold text-black">450ms</div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Running</p>
+                  <p className="text-3xl font-bold text-blue-600">
+                    {traces.filter((t) => t.status === "running").length}
+                  </p>
+                </div>
+                <Loader2 className="w-8 h-8 text-blue-600" />
+              </div>
             </CardContent>
           </Card>
-          <Card className="bg-zinc-50/50">
+          <Card>
             <CardContent className="pt-6">
-              <div className="text-sm text-muted-foreground mb-1">Cost</div>
-              <div className="text-4xl font-display font-bold text-black">$4.20</div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Failed</p>
+                  <p className="text-3xl font-bold text-red-600">
+                    {traces.filter((t) => t.status === "failed").length}
+                  </p>
+                </div>
+                <XCircle className="w-8 h-8 text-red-600" />
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Trace Viewer */}
-        <Card className="border-border">
-          <CardHeader className="border-b border-border bg-zinc-50/30">
-            <CardTitle>Trace Viewer</CardTitle>
+        {/* Results Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Evaluation History</CardTitle>
           </CardHeader>
-          <div className="divide-y divide-border">
-            {SAMPLE_TRACES.map((trace) => (
-              <TraceRow key={trace.id} trace={trace} />
-            ))}
-          </div>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                Loading evaluations...
+              </div>
+            ) : traces.length === 0 ? (
+              <div className="text-center py-8">
+                <CheckCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground mb-4">No evaluations yet</p>
+                <p className="text-sm text-muted-foreground">
+                  Submit your first evaluation to see results here
+                </p>
+                <Button
+                  className="mt-4"
+                  onClick={() => (window.location.href = "/submit")}
+                >
+                  Create Evaluation
+                </Button>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Dataset</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead>Guidelines</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {traces.map((trace) => (
+                    <TableRow key={trace.id}>
+                      <TableCell className="font-mono text-sm">#{trace.id}</TableCell>
+                      <TableCell className="font-medium">{trace.dataset_name}</TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div className="font-medium">{trace.completion_model}</div>
+                          <div className="text-muted-foreground text-xs">
+                            {trace.model_provider}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {trace.guideline_names.slice(0, 2).map((name) => (
+                            <Badge key={name} variant="secondary" className="text-xs">
+                              {name}
+                            </Badge>
+                          ))}
+                          {trace.guideline_names.length > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{trace.guideline_names.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(trace.status)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(trace.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        {trace.status === "completed" && trace.summary && (
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                alert(
+                                  `Scores:\n${JSON.stringify(trace.summary, null, 2)}`
+                                )
+                              }
+                            >
+                              View Scores
+                            </Button>
+                          </div>
+                        )}
+                        {trace.status === "running" && (
+                          <span className="text-sm text-muted-foreground">
+                            In progress...
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
         </Card>
+
+        {/* Info Box */}
+        {traces.some((t) => t.status === "running") && (
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-900">
+              <strong>🔄 Auto-refreshing:</strong> This page automatically refreshes
+              every 5 seconds to show the latest evaluation status.
+            </p>
+          </div>
+        )}
       </div>
     </Layout>
-  );
-}
-
-function TraceRow({ trace }: { trace: any }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="bg-white transition-colors hover:bg-zinc-50/50">
-      <div className="flex items-center p-4 gap-4">
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="p-0 w-6 h-6 h-auto hover:bg-transparent">
-            {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </Button>
-        </CollapsibleTrigger>
-        
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-          <div className="md:col-span-2 font-mono text-xs text-muted-foreground">{trace.id}</div>
-          <div className="md:col-span-8 text-sm font-medium truncate">{trace.prompt}</div>
-          <div className="md:col-span-2 text-right">
-             <Badge className={cn(
-               "font-mono",
-               trace.score >= 4 ? "bg-mint-100 text-mint-800 hover:bg-mint-200" : "bg-yellow-100 text-yellow-800"
-             )}>
-               Score: {trace.score}/5
-             </Badge>
-          </div>
-        </div>
-      </div>
-
-      <CollapsibleContent>
-        <div className="px-12 pb-6 pt-2 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Model Output</div>
-              <div className="p-4 bg-zinc-50 rounded-md border border-border text-sm font-mono whitespace-pre-wrap">
-                {trace.model_response}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Judge Reasoning</div>
-              <div className="p-4 bg-blue-50/50 rounded-md border border-blue-100 text-sm text-blue-900">
-                {trace.judge_reasoning}
-              </div>
-            </div>
-          </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
   );
 }
