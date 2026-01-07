@@ -1,0 +1,4 @@
+model_parameters:
+    model_name: "baseten/deepseek-ai/DeepSeek-V3.2"
+    base_url: "https://inference.baseten.co/v1"
+    api_key: "xZNTZWoR.tRioZLKoPp5kPbIu65PzyuseCQED9VkM"

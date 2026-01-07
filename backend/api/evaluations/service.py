@@ -200,7 +200,6 @@ class EvaluationService:
         }
 
         try:
-            breakpoint()
             # Generate completion
             completion = self._generate_completion(
                 completion_client, completion_model, input_text
