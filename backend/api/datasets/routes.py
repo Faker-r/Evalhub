@@ -32,9 +32,7 @@ async def add_dataset(
 @router.get("", response_model=DatasetListResponse)
 async def get_datasets(
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
 ) -> DatasetListResponse:
     """Get all datasets."""
-    logger.debug(f"Getting all datasets for user {current_user.email}")
     datasets = await DatasetService(session).get_all_datasets()
     return DatasetListResponse(datasets=datasets)

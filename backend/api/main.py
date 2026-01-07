@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 
 from api.auth.routes import router as auth_router
 from api.core.config import settings
@@ -22,16 +22,22 @@ app = FastAPI(
     debug=settings.DEBUG,
 )
 
-# Include routers
-app.include_router(auth_router)
-app.include_router(users_router)
-app.include_router(datasets_router)
-app.include_router(guidelines_router)
-app.include_router(evaluations_router)
-app.include_router(leaderboard_router)
+# Create API router with /api prefix
+api_router = APIRouter(prefix="/api")
+
+# Include routers under /api prefix
+api_router.include_router(auth_router)
+api_router.include_router(users_router)
+api_router.include_router(datasets_router)
+api_router.include_router(guidelines_router)
+api_router.include_router(evaluations_router)
+api_router.include_router(leaderboard_router)
+
+# Include the API router in the main app
+app.include_router(api_router)
 
 
-@app.get("/health")
+@api_router.get("/health")
 async def health_check():
     return {"status": "ok"}
 

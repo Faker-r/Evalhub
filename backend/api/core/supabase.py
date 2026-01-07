@@ -15,5 +15,3 @@ supabase: Client = create_client(
 def get_supabase_client() -> Client:
     """Get the Supabase client instance."""
     return supabase
-
-
