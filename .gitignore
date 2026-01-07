@@ -14,8 +14,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
+# Exception: frontend source lib directory should be tracked
+!frontend/src/lib/
 parts/
 sdist/
 var/

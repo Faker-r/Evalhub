@@ -33,8 +33,8 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const headers: HeadersInit = {
-      ...options.headers,
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string>),
     };
 
     // Add auth token if available
@@ -80,19 +80,16 @@ class ApiClient {
   }
 
   async login(email: string, password: string) {
-    const formData = new URLSearchParams();
-    formData.append('username', email);
-    formData.append('password', password);
-
     const response = await this.request<{
       access_token: string;
+      refresh_token: string;
       token_type: string;
+      expires_in: number;
+      user_id: string;
+      email: string;
     }>('/auth/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData,
+      body: JSON.stringify({ email, password }),
     });
 
     this.setToken(response.access_token);
@@ -202,7 +199,9 @@ class ApiClient {
     completion_model: string;
     model_provider: string;
     judge_model: string;
+    judge_model_provider: string;
     api_base?: string;
+    judge_api_base?: string;
   }) {
     return this.request('/evaluations', {
       method: 'POST',

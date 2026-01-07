@@ -30,6 +30,7 @@ export default function Submit() {
   const [completionModel, setCompletionModel] = useState("gpt-3.5-turbo");
   const [judgeModel, setJudgeModel] = useState("gpt-3.5-turbo");
   const [modelProvider, setModelProvider] = useState("openai");
+  const [judgeProvider, setJudgeProvider] = useState("openai");
 
   // Fetch datasets
   const { data: datasetsData } = useQuery({
@@ -65,6 +66,7 @@ export default function Submit() {
         completion_model: completionModel,
         model_provider: modelProvider,
         judge_model: judgeModel,
+        judge_model_provider: judgeProvider,
       }),
     onSuccess: () => {
       toast({
@@ -264,34 +266,53 @@ export default function Submit() {
                 )}
 
                 {currentStep === 3 && (
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <Label>Model Provider</Label>
-                      <Select value={modelProvider} onValueChange={setModelProvider}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="openai">OpenAI</SelectItem>
-                          <SelectItem value="anthropic">Anthropic</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Judge Section - Left */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Judge Provider</Label>
+                        <Select value={judgeProvider} onValueChange={setJudgeProvider}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="openai">OpenAI</SelectItem>
+                            <SelectItem value="anthropic">Anthropic</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Judge Model</Label>
+                        <Input
+                          value={judgeModel}
+                          onChange={(e) => setJudgeModel(e.target.value)}
+                          placeholder="e.g., gpt-4"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Completion Model</Label>
-                      <Input
-                        value={completionModel}
-                        onChange={(e) => setCompletionModel(e.target.value)}
-                        placeholder="e.g., gpt-3.5-turbo"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Judge Model</Label>
-                      <Input
-                        value={judgeModel}
-                        onChange={(e) => setJudgeModel(e.target.value)}
-                        placeholder="e.g., gpt-4"
-                      />
+
+                    {/* Completion Model Section - Right */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Model Provider</Label>
+                        <Select value={modelProvider} onValueChange={setModelProvider}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="openai">OpenAI</SelectItem>
+                            <SelectItem value="anthropic">Anthropic</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Completion Model</Label>
+                        <Input
+                          value={completionModel}
+                          onChange={(e) => setCompletionModel(e.target.value)}
+                          placeholder="e.g., gpt-3.5-turbo"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -320,7 +341,11 @@ export default function Submit() {
                           <span className="font-medium">{judgeModel}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Provider:</span>
+                          <span className="text-muted-foreground">Judge Provider:</span>
+                          <span className="font-medium">{judgeProvider}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Completion Provider:</span>
                           <span className="font-medium">{modelProvider}</span>
                         </div>
                       </div>

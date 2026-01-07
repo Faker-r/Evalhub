@@ -7,7 +7,11 @@ from api.core.config import settings
 database_url = settings.DATABASE_URL
 
 # Configure SSL for asyncpg (Supabase requires SSL)
-connect_args = {"ssl": "require"}
+# Disable prepared statement cache for pgbouncer compatibility
+connect_args = {
+    "ssl": "require",
+    "statement_cache_size": 0,  # Required for pgbouncer compatibility
+}
 
 # Create async engine
 engine = create_async_engine(
