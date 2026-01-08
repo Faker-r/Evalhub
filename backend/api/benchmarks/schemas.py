@@ -13,6 +13,7 @@ class BenchmarkResponse(BaseModel):
     task_name: str
     dataset_name: str
     hf_repo: str
+    description: Optional[str] = None
     author: Optional[str] = None
     downloads: Optional[int] = None
     tags: Optional[list[str]] = None
