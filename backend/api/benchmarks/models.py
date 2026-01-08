@@ -15,6 +15,7 @@ class Benchmark(Base):
     task_name = Column(String, unique=True, nullable=False)
     dataset_name = Column(String, nullable=False)
     hf_repo = Column(String, nullable=False)
+    description = Column(String, nullable=True)
     author = Column(String, nullable=True)
     downloads = Column(Integer, nullable=True)
     tags = Column(JSONB, nullable=True)

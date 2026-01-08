@@ -90,6 +90,8 @@ def get_dataset_info(hf_repo: str, token: Optional[str] = None) -> dict:
             "gated": getattr(repo_info, "gated", None),
             "downloads": getattr(repo_info, "downloads", None),
             "tags": getattr(repo_info, "tags", []),
+            "description": getattr(repo_info, "description", None),
+            "card_data": getattr(repo_info, "card_data", None),
             "siblings": (
                 [sibling.rfilename for sibling in repo_info.siblings]
                 if hasattr(repo_info, "siblings")
@@ -296,12 +298,24 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
             else:
                 gated = False
             
+            # Get HuggingFace tags (includes language:XX tags and benchmark type tags)
+            hf_tags = repo_info.get("tags", [])
+            
+            # Get description from HuggingFace or card data
+            description = repo_info.get("description")
+            if not description and repo_info.get("card_data"):
+                # Try to extract description from card_data if available
+                card_data = repo_info.get("card_data")
+                if isinstance(card_data, dict):
+                    description = card_data.get("description") or card_data.get("summary")
+            
             benchmark_data = {
                 "dataset_name": task_config.name or task_name,
                 "hf_repo": hf_repo,
+                "description": description,
                 "author": repo_info.get("author"),
                 "downloads": repo_info.get("downloads"),
-                "tags": repo_info.get("tags", []),
+                "tags": hf_tags,
                 "estimated_input_tokens": estimated_tokens,
                 "repo_type": repo_info.get("type"),
                 "created_at_hf": created_at_hf.replace(tzinfo=None) if created_at_hf else None,
