@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     AWS_REGION: str = "us-east-2"
     S3_BUCKET_NAME: str = "evalhub-bucket"
 
+    # HuggingFace Settings
+    HF_TOKEN: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
