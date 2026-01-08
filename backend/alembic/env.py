@@ -72,8 +72,15 @@ async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context."""
 
+    # Configure SSL and pgbouncer compatibility for Supabase
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.connect_args"] = {
+        "ssl": "require",
+        "statement_cache_size": 0,  # Required for pgbouncer compatibility
+    }
+
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, FastAPI
 
 from api.auth.routes import router as auth_router
+from api.benchmarks.routes import router as benchmarks_router
 from api.core.config import settings
 from api.core.logging import get_logger, setup_logging
 from api.datasets.routes import router as datasets_router
@@ -32,6 +33,7 @@ api_router.include_router(datasets_router)
 api_router.include_router(guidelines_router)
 api_router.include_router(evaluations_router)
 api_router.include_router(leaderboard_router)
+api_router.include_router(benchmarks_router)
 
 # Include the API router in the main app
 app.include_router(api_router)
