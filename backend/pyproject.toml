@@ -28,7 +28,6 @@ dependencies = [
     "PyJWT[crypto]>=2.8.0",
     "psycopg2-binary>=2.9.11,<3.0.0",
     "huggingface-hub>=0.20.0",
-    "lighteval>=0.13.0",
     "transformers>=4.36.0",
     "datasets>=2.16.0",
 ]
