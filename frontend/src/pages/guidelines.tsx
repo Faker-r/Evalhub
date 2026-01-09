@@ -26,7 +26,8 @@ export default function Guidelines() {
     name: "",
     prompt: "",
     category: "",
-    max_score: 10,
+    scoring_scale: "numeric" as "boolean" | "custom_category" | "numeric" | "percentage",
+    scoring_scale_config: { min_value: 0, max_value: 10 } as any,
   });
 
   // Fetch guidelines
@@ -44,7 +45,13 @@ export default function Guidelines() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guidelines'] });
       setCreateModalOpen(false);
-      setCreateData({ name: "", prompt: "", category: "", max_score: 10 });
+      setCreateData({ 
+        name: "", 
+        prompt: "", 
+        category: "", 
+        scoring_scale: "numeric", 
+        scoring_scale_config: { min_value: 0, max_value: 10 } 
+      });
       toast({
         title: "Success",
         description: "Guideline created successfully",
@@ -77,8 +84,43 @@ export default function Guidelines() {
       });
       return;
     }
+
+    if (createData.scoring_scale === "custom_category" && (!createData.scoring_scale_config.categories || createData.scoring_scale_config.categories.length === 0)) {
+      toast({
+        title: "Error",
+        description: "Custom category scale requires at least one category",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (createData.scoring_scale === "numeric" && (createData.scoring_scale_config.min_value >= createData.scoring_scale_config.max_value)) {
+      toast({
+        title: "Error",
+        description: "Max value must be greater than min value",
+        variant: "destructive",
+      });
+      return;
+    }
     
     createMutation.mutate(createData);
+  };
+
+  const handleScoringScaleChange = (value: string) => {
+    const scale = value as "boolean" | "custom_category" | "numeric" | "percentage";
+    let config: any = {};
+    
+    if (scale === "boolean") {
+      config = {};
+    } else if (scale === "custom_category") {
+      config = { categories: [] };
+    } else if (scale === "numeric") {
+      config = { min_value: 0, max_value: 10 };
+    } else if (scale === "percentage") {
+      config = {};
+    }
+    
+    setCreateData({ ...createData, scoring_scale: scale, scoring_scale_config: config });
   };
 
   // Filter guidelines
@@ -165,21 +207,75 @@ export default function Guidelines() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="max_score">Max Score</Label>
-                    <Input
-                      id="max_score"
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={createData.max_score}
-                      onChange={(e) =>
-                        setCreateData({
-                          ...createData,
-                          max_score: parseInt(e.target.value) || 10,
-                        })
-                      }
-                    />
+                    <Label htmlFor="scoring_scale">Scoring Scale</Label>
+                    <Select value={createData.scoring_scale} onValueChange={handleScoringScaleChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="boolean">Boolean (True/False)</SelectItem>
+                        <SelectItem value="numeric">Numeric (Min-Max)</SelectItem>
+                        <SelectItem value="percentage">Percentage (0-100%)</SelectItem>
+                        <SelectItem value="custom_category">Custom Categories</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                  {createData.scoring_scale === "numeric" && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="min_value">Min Value</Label>
+                        <Input
+                          id="min_value"
+                          type="number"
+                          value={createData.scoring_scale_config.min_value}
+                          onChange={(e) =>
+                            setCreateData({
+                              ...createData,
+                              scoring_scale_config: {
+                                ...createData.scoring_scale_config,
+                                min_value: parseInt(e.target.value) || 0,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="max_value">Max Value</Label>
+                        <Input
+                          id="max_value"
+                          type="number"
+                          value={createData.scoring_scale_config.max_value}
+                          onChange={(e) =>
+                            setCreateData({
+                              ...createData,
+                              scoring_scale_config: {
+                                ...createData.scoring_scale_config,
+                                max_value: parseInt(e.target.value) || 10,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {createData.scoring_scale === "custom_category" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="categories">Categories (comma-separated)</Label>
+                      <Input
+                        id="categories"
+                        placeholder="e.g., Poor, Fair, Good, Excellent"
+                        value={createData.scoring_scale_config.categories?.join(", ") || ""}
+                        onChange={(e) =>
+                          setCreateData({
+                            ...createData,
+                            scoring_scale_config: {
+                              categories: e.target.value.split(",").map(c => c.trim()).filter(c => c),
+                            },
+                          })
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button
@@ -228,14 +324,9 @@ export default function Guidelines() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Avg Max Score</p>
+                  <p className="text-sm text-muted-foreground">Numeric Scales</p>
                   <p className="text-3xl font-bold">
-                    {guidelines.length > 0
-                      ? Math.round(
-                          guidelines.reduce((sum, g) => sum + g.max_score, 0) /
-                            guidelines.length
-                        )
-                      : 0}
+                    {guidelines.filter(g => g.scoring_scale === "numeric").length}
                   </p>
                 </div>
                 <Plus className="w-8 h-8 text-muted-foreground" />
@@ -293,7 +384,8 @@ export default function Guidelines() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>Max Score</TableHead>
+                    <TableHead>Scoring Scale</TableHead>
+                    <TableHead>Scale Config</TableHead>
                     <TableHead>Prompt Preview</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -304,7 +396,22 @@ export default function Guidelines() {
                       <TableCell>
                         <Badge variant="secondary">{guideline.category}</Badge>
                       </TableCell>
-                      <TableCell>{guideline.max_score}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {guideline.scoring_scale === "boolean" && "Boolean"}
+                          {guideline.scoring_scale === "numeric" && "Numeric"}
+                          {guideline.scoring_scale === "percentage" && "Percentage"}
+                          {guideline.scoring_scale === "custom_category" && "Custom"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {guideline.scoring_scale === "numeric" && 
+                          `${guideline.scoring_scale_config.min_value}-${guideline.scoring_scale_config.max_value}`}
+                        {guideline.scoring_scale === "custom_category" && 
+                          guideline.scoring_scale_config.categories?.slice(0, 2).join(", ") + 
+                          (guideline.scoring_scale_config.categories?.length > 2 ? "..." : "")}
+                        {(guideline.scoring_scale === "boolean" || guideline.scoring_scale === "percentage") && "-"}
+                      </TableCell>
                       <TableCell className="text-muted-foreground text-sm max-w-md truncate">
                         {guideline.prompt}
                       </TableCell>

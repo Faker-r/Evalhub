@@ -42,7 +42,7 @@ class LeaderboardService:
             if trace.guideline_names:
                 all_guideline_names.update(trace.guideline_names)
 
-        # Fetch guideline max_scores
+        # Fetch guidelines
         guidelines = await self.repository.get_guidelines_by_names(
             list(all_guideline_names)
         )
@@ -87,7 +87,7 @@ class LeaderboardService:
             mean = score_info.get("mean", 0.0)
             failed = score_info.get("failed", 0)
 
-            # Get max_score from guidelines table
+            # Get guideline from database
             guideline = guidelines.get(guideline_name)
             if not guideline:
                 logger.warning(
@@ -95,7 +95,8 @@ class LeaderboardService:
                 )
                 continue
 
-            max_score = guideline.max_score
+            # Calculate max_score based on scoring scale
+            max_score = self._get_max_score(guideline)
             normalized = mean / max_score if max_score > 0 else 0.0
 
             guideline_scores.append(
@@ -129,3 +130,14 @@ class LeaderboardService:
             created_at=trace.created_at,
         )
 
+    def _get_max_score(self, guideline) -> int:
+        """Get max score from guideline based on scoring scale."""
+        if guideline.scoring_scale == "boolean":
+            return 1
+        elif guideline.scoring_scale == "numeric":
+            return guideline.scoring_scale_config.get("max_value", 10)
+        elif guideline.scoring_scale == "percentage":
+            return 100
+        elif guideline.scoring_scale == "custom_category":
+            return len(guideline.scoring_scale_config.get("categories", [])) - 1 if guideline.scoring_scale_config.get("categories") else 1
+        return 1
