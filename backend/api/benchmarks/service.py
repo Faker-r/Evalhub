@@ -78,16 +78,16 @@ class BenchmarkService:
         benchmark = await self.repository.get_by_id(benchmark_id)
         return BenchmarkResponse.model_validate(benchmark)
 
-    async def get_benchmark_by_task_name(self, task_name: str) -> Optional[BenchmarkResponse]:
-        """Get benchmark by task name.
+    async def get_benchmark_by_dataset_name(self, dataset_name: str) -> Optional[BenchmarkResponse]:
+        """Get benchmark by dataset name.
 
         Args:
-            task_name: Task name
+            dataset_name: Dataset name
 
         Returns:
             BenchmarkResponse | None: Found benchmark or None
         """
-        benchmark = await self.repository.get_by_task_name(task_name)
+        benchmark = await self.repository.get_by_dataset_name(dataset_name)
         if benchmark:
             return BenchmarkResponse.model_validate(benchmark)
         return None

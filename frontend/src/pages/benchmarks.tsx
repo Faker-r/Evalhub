@@ -335,7 +335,7 @@ export default function Benchmarks() {
                         <CardHeader className="pb-3 break-words space-y-3">
                           <div className="flex items-start justify-between gap-2">
                             <CardTitle className="text-lg font-bold flex items-center gap-2 break-words overflow-hidden leading-tight">
-                              <span className="break-words">{benchmark.task_name}</span>
+                              <span className="break-words">{benchmark.dataset_name}</span>
                             </CardTitle>
                           </div>
                           
@@ -457,10 +457,17 @@ export default function Benchmarks() {
                             {/* Run using Lighteval button */}
                             <div className="pt-2 border-t">
                                 <p className="text-[10px] text-muted-foreground uppercase font-semibold mb-2">RUN USING LIGHTEVAL:</p>
-                                <div className="bg-mint-50 rounded-md p-2 border border-mint-100 w-fit max-w-[90%]">
-                                    <code className="text-xs text-mint-700 font-mono break-all block">
-                                        {benchmark.task_name}
-                                    </code>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(benchmark.tasks && benchmark.tasks.length > 0 
+                                    ? benchmark.tasks 
+                                    : []
+                                  ).map((task: string, idx: number) => (
+                                    <div key={idx} className="bg-mint-50 rounded-md px-2 py-1 border border-mint-100 w-fit">
+                                      <code className="text-xs text-mint-700 font-mono break-all">
+                                        {task}
+                                      </code>
+                                    </div>
+                                  ))}
                                 </div>
                             </div>
                         </div>

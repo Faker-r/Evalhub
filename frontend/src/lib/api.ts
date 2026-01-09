@@ -279,7 +279,7 @@ class ApiClient {
     return this.request<{
       benchmarks: {
         id: number;
-        task_name: string;
+        tasks: string[] | null;
         dataset_name: string;
         hf_repo: string;
         description: string | null;
@@ -305,7 +305,7 @@ class ApiClient {
   async getBenchmark(benchmarkId: number) {
     return this.request<{
       id: number;
-      task_name: string;
+      tasks: string[] | null;
       dataset_name: string;
       hf_repo: string;
       description: string | null;

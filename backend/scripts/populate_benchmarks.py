@@ -22,6 +22,7 @@ import asyncio
 import re
 from datetime import datetime
 from typing import Optional
+from collections import defaultdict
 
 from huggingface_hub import HfApi
 from huggingface_hub.utils import HfHubHTTPError
@@ -254,9 +255,13 @@ def estimate_input_tokens(hf_repo: str, max_samples: int = 50, timeout: int = 10
 async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[str] = None):
     """
     Populate the benchmarks table with lighteval tasks.
+    
+    Tasks are grouped by their HuggingFace repository, so multiple task variants
+    (e.g., gpqa:diamond, gpqa:extended) are stored as a single benchmark entry
+    with all tasks in the tasks array.
 
     Args:
-        limit: Optional limit on number of tasks to process
+        limit: Optional limit on number of repositories to process
         hf_token: Optional HuggingFace API token
     """
     logger.info("Loading lighteval tasks...")
@@ -273,29 +278,34 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
 
     logger.info(f"Found {len(generative_tasks)} generative tasks out of {len(all_tasks)} total tasks")
 
+    # Group tasks by repository
+    repo_to_tasks = defaultdict(list)
+    for task_name, task_config in generative_tasks.items():
+        repo_to_tasks[task_config.hf_repo].append((task_name, task_config))
+    
+    logger.info(f"Grouped into {len(repo_to_tasks)} unique repositories")
+
     # Get download counts for each unique repo to sort by popularity
     logger.info("Fetching download counts to prioritize popular datasets...")
     repo_downloads = {}
-    unique_repos = {task_config.hf_repo for task_config in generative_tasks.values()}
     
-    for repo in unique_repos:
+    for repo in repo_to_tasks.keys():
         dataset_info = get_dataset_info(repo, hf_token)
         downloads = dataset_info.get("repo_info", {}).get("downloads", 0) if not dataset_info.get("error") else 0
         repo_downloads[repo] = downloads or 0  # Treat None as 0
     
-    # Sort tasks by their repo's download count (descending)
-    sorted_tasks = sorted(
-        generative_tasks.items(),
-        key=lambda item: repo_downloads.get(item[1].hf_repo, 0),
+    # Sort repositories by download count (descending)
+    sorted_repos = sorted(
+        repo_to_tasks.items(),
+        key=lambda item: repo_downloads.get(item[0], 0),
         reverse=True
     )
-    generative_tasks = dict(sorted_tasks)
     
-    logger.info(f"Sorted tasks by download count (most popular first)")
+    logger.info(f"Sorted repositories by download count (most popular first)")
 
     if limit:
-        generative_tasks = dict(list(generative_tasks.items())[:limit])
-        logger.info(f"Limited to {limit} tasks")
+        sorted_repos = sorted_repos[:limit]
+        logger.info(f"Limited to {limit} repositories")
 
     # Create async engine and session
     engine = create_async_engine(
@@ -309,19 +319,23 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
     # Track success/failure stats
     success_count = 0
     failure_count = 0
-    failed_tasks = []
+    failed_repos = []
 
-    for i, (task_name, task_config) in enumerate(generative_tasks.items(), 1):
-        logger.info(f"Processing {i}/{len(generative_tasks)}: {task_name}")
+    for i, (hf_repo, tasks) in enumerate(sorted_repos, 1):
+        # Use the first task as the primary task
+        primary_task_name, primary_task_config = tasks[0]
+        
+        # Collect all task names for this repo (sorted alphabetically)
+        all_task_names = sorted([task_name for task_name, _ in tasks])
+        
+        logger.info(f"Processing {i}/{len(sorted_repos)}: {hf_repo} ({len(tasks)} tasks: {', '.join(all_task_names)})")
 
         try:
-            hf_repo = task_config.hf_repo
-
-            # Get dataset info from HF
+            # Get dataset info from HF (once per repo, not per task)
             dataset_info = get_dataset_info(hf_repo, hf_token)
 
             if dataset_info.get("error"):
-                logger.warning(f"Error fetching info for {task_name}: {dataset_info['error']}")
+                logger.warning(f"Error fetching info for {hf_repo}: {dataset_info['error']}")
                 repo_info = {}
             else:
                 repo_info = dataset_info.get("repo_info", {})
@@ -363,15 +377,18 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
             description = clean_description(raw_description)
 
             # Infer additional tags from task name/description
-            inferred_tags = infer_tags_from_task_info(task_name or hf_repo, description)
+            inferred_tags = infer_tags_from_task_info(primary_task_name or hf_repo, description)
             if inferred_tags:
-                logger.debug(f"Inferred tags for {task_name}: {inferred_tags}")
+                logger.debug(f"Inferred tags for {hf_repo}: {inferred_tags}")
                 for tag in inferred_tags:
                     if tag not in hf_tags:
                         hf_tags.append(tag)
             
+            
+            dataset_name = hf_repo.split('/')[-1] if '/' in hf_repo else hf_repo
+            
             benchmark_data = {
-                "dataset_name": task_config.name or task_name,
+                "dataset_name": dataset_name,  # Use repo name as title
                 "hf_repo": hf_repo,
                 "description": description,
                 "author": repo_info.get("author"),
@@ -383,22 +400,24 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
                 "private": repo_info.get("private"),
                 "gated": gated,
                 "files": repo_info.get("siblings", []),
+                "tasks": all_task_names,  # Store all task names
                 "created_at": datetime.now(),
                 "updated_at": datetime.now(),
             }
 
-            # Create a new session for each task to avoid rollback cascade
+            # Create a new session for each repo to avoid rollback cascade
             async with async_session() as session:
                 repository = BenchmarkRepository(session)
-                await repository.upsert(task_name, benchmark_data)
+                # Use dataset name for upsert
+                await repository.upsert(dataset_name, benchmark_data)
             
-            logger.info(f"Successfully processed {task_name}")
+            logger.info(f"Successfully processed {hf_repo}")
             success_count += 1
 
         except Exception as e:
-            logger.error(f"Error processing {task_name}: {e}")
+            logger.error(f"Error processing {hf_repo}: {e}")
             failure_count += 1
-            failed_tasks.append(task_name)
+            failed_repos.append(hf_repo)
             continue
 
     await engine.dispose()
@@ -409,11 +428,12 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
     logger.info(f"Total processed: {success_count + failure_count}")
     logger.info(f"Successful: {success_count}")
     logger.info(f"Failed: {failure_count}")
-    if failed_tasks:
-        logger.info(f"Failed tasks: {', '.join(failed_tasks[:10])}")
-        if len(failed_tasks) > 10:
-            logger.info(f"... and {len(failed_tasks) - 10} more")
+    if failed_repos:
+        logger.info(f"Failed repos: {', '.join(failed_repos[:10])}")
+        if len(failed_repos) > 10:
+            logger.info(f"... and {len(failed_repos) - 10} more")
     logger.info("=" * 60)
+
 
 
 def main():

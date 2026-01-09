@@ -31,7 +31,7 @@ class BenchmarkRepository:
         await self.session.commit()
         await self.session.refresh(benchmark)
 
-        logger.info(f"Created benchmark: {benchmark.task_name} (id={benchmark.id})")
+        logger.info(f"Created benchmark: {benchmark.dataset_name} (id={benchmark.id})")
         return benchmark
 
     async def update(self, benchmark_id: int, update_data: dict) -> Benchmark:
@@ -54,7 +54,7 @@ class BenchmarkRepository:
         await self.session.commit()
         await self.session.refresh(benchmark)
 
-        logger.info(f"Updated benchmark: {benchmark.task_name} (id={benchmark.id})")
+        logger.info(f"Updated benchmark: {benchmark.dataset_name} (id={benchmark.id})")
         return benchmark
 
     async def get_all(
@@ -145,7 +145,7 @@ class BenchmarkRepository:
         total = total_result.scalar()
 
         # Apply sorting
-        sort_column = getattr(Benchmark, sort_by, Benchmark.task_name)
+        sort_column = getattr(Benchmark, sort_by, Benchmark.dataset_name)
         if sort_order == "desc":
             query = query.order_by(sort_column.desc())
         else:
@@ -181,32 +181,32 @@ class BenchmarkRepository:
 
         return benchmark
 
-    async def get_by_task_name(self, task_name: str) -> Benchmark | None:
-        """Get benchmark by task name.
+    async def get_by_dataset_name(self, dataset_name: str) -> Benchmark | None:
+        """Get benchmark by dataset name.
 
         Args:
-            task_name: Task name
+            dataset_name: Dataset name
 
         Returns:
             Benchmark | None: Found benchmark or None
         """
-        query = select(Benchmark).where(Benchmark.task_name == task_name)
+        query = select(Benchmark).where(Benchmark.dataset_name == dataset_name)
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
-    async def upsert(self, task_name: str, benchmark_data: dict) -> Benchmark:
-        """Create or update a benchmark by task name.
+    async def upsert(self, dataset_name: str, benchmark_data: dict) -> Benchmark:
+        """Create or update a benchmark by dataset name.
 
         Args:
-            task_name: Task name
+            dataset_name: Dataset name
             benchmark_data: Dictionary containing benchmark data
 
         Returns:
             Benchmark: Created or updated benchmark
         """
-        existing = await self.get_by_task_name(task_name)
+        existing = await self.get_by_dataset_name(dataset_name)
         if existing:
             return await self.update(existing.id, benchmark_data)
         else:
-            benchmark_data["task_name"] = task_name
+            benchmark_data["dataset_name"] = dataset_name
             return await self.create(benchmark_data)
