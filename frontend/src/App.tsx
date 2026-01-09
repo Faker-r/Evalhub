@@ -12,6 +12,7 @@ import Results from "@/pages/results";
 import Datasets from "@/pages/datasets";
 import Guidelines from "@/pages/guidelines";
 import Profile from "@/pages/profile";
+import Benchmarks from "@/pages/benchmarks";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/results" component={Results} />
       <Route path="/datasets" component={Datasets} />
       <Route path="/guidelines" component={Guidelines} />
+      <Route path="/benchmarks" component={Benchmarks} />
       <Route path="/profile" component={Profile} />
       {/* Fallback to 404 */}
       <Route component={NotFound} />

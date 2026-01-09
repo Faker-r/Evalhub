@@ -254,6 +254,75 @@ class ApiClient {
     }>(`/leaderboard?dataset_name=${encodeURIComponent(datasetName)}`);
   }
 
+  // Benchmark endpoints
+  async getBenchmarks(params?: {
+    page?: number;
+    page_size?: number;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
+    tags?: string[];
+    author?: string;
+    search?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+    if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
+    if (params?.tags) {
+        params.tags.forEach(tag => queryParams.append('tag', tag));
+    }
+    if (params?.author) queryParams.append('author', params.author);
+    if (params?.search) queryParams.append('search', params.search);
+
+    const query = queryParams.toString();
+    return this.request<{
+      benchmarks: {
+        id: number;
+        task_name: string;
+        dataset_name: string;
+        hf_repo: string;
+        description: string | null;
+        author: string | null;
+        downloads: number | null;
+        tags: string[] | null;
+        estimated_input_tokens: number | null;
+        repo_type: string | null;
+        created_at_hf: string | null;
+        private: boolean | null;
+        gated: boolean | null;
+        files: string[] | null;
+        created_at: string;
+        updated_at: string;
+      }[];
+      total: number;
+      page: number;
+      page_size: number;
+      total_pages: number;
+    }>(`/benchmarks${query ? '?' + query : ''}`);
+  }
+
+  async getBenchmark(benchmarkId: number) {
+    return this.request<{
+      id: number;
+      task_name: string;
+      dataset_name: string;
+      hf_repo: string;
+      description: string | null;
+      author: string | null;
+      downloads: number | null;
+      tags: string[] | null;
+      estimated_input_tokens: number | null;
+      repo_type: string | null;
+      created_at_hf: string | null;
+      private: boolean | null;
+      gated: boolean | null;
+      files: string[] | null;
+      created_at: string;
+      updated_at: string;
+    }>(`/benchmarks/${benchmarkId}`);
+  }
+
   // Health check
   async health() {
     return this.request<{ status: string }>('/health');

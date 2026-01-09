@@ -1,11 +1,12 @@
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, String, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.benchmarks.models import Benchmark
 from api.core.exceptions import NotFoundException
 from api.core.logging import get_logger
+from scripts.benchmark_utils import normalize_language_code
 
 logger = get_logger(__name__)
 
@@ -62,7 +63,7 @@ class BenchmarkRepository:
         page_size: int = 50,
         sort_by: str = "task_name",
         sort_order: str = "asc",
-        tag_filter: Optional[str] = None,
+        tag_filter: Optional[list[str]] = None,
         author_filter: Optional[str] = None,
         search_query: Optional[str] = None,
     ) -> tuple[list[Benchmark], int]:
@@ -73,7 +74,7 @@ class BenchmarkRepository:
             page_size: Number of items per page
             sort_by: Field to sort by
             sort_order: Sort order ('asc' or 'desc')
-            tag_filter: Filter by tag
+            tag_filter: Filter by tags (AND logic)
             author_filter: Filter by author
             search_query: Search in task_name, dataset_name, or hf_repo
 
@@ -84,21 +85,62 @@ class BenchmarkRepository:
 
         # Apply filters
         if tag_filter:
-            query = query.where(Benchmark.tags.contains([tag_filter]))
+            for tag in tag_filter:
+                query = query.where(Benchmark.tags.contains([tag]))
         
         if author_filter:
             query = query.where(Benchmark.author == author_filter)
         
         if search_query:
-            search_pattern = f"%{search_query}%"
+            # Check if search query matches a language name and convert to language code
+            search_lower = search_query.lower().strip()
+            normalized_code = normalize_language_code(search_lower)
+            
+            if normalized_code:
+                # Search for the language code in tags
+                search_pattern = f"%language:{normalized_code}%"
+            else:
+                # Regular search pattern
+                search_pattern = f"%{search_query}%"
+            
             query = query.where(
                 (Benchmark.task_name.ilike(search_pattern)) |
                 (Benchmark.dataset_name.ilike(search_pattern)) |
-                (Benchmark.hf_repo.ilike(search_pattern))
+                (Benchmark.hf_repo.ilike(search_pattern)) |
+                (cast(Benchmark.tags, String).ilike(search_pattern))
             )
 
+        # Build count query with same filters for efficiency
+        count_query = select(func.count(Benchmark.id))
+        
+        # Apply same filters as main query
+        if tag_filter:
+            for tag in tag_filter:
+                count_query = count_query.where(Benchmark.tags.contains([tag]))
+        
+        if author_filter:
+            count_query = count_query.where(Benchmark.author == author_filter)
+        
+        if search_query:
+            # Check if search query matches a language name and convert to language code
+            search_lower = search_query.lower().strip()
+            normalized_code = normalize_language_code(search_lower)
+            
+            if normalized_code:
+                # Search for the language code in tags
+                search_pattern = f"%language:{normalized_code}%"
+            else:
+                # Regular search pattern
+                search_pattern = f"%{search_query}%"
+            
+            count_query = count_query.where(
+                (Benchmark.task_name.ilike(search_pattern)) |
+                (Benchmark.dataset_name.ilike(search_pattern)) |
+                (Benchmark.hf_repo.ilike(search_pattern)) |
+                (cast(Benchmark.tags, String).ilike(search_pattern))
+            )
+        
         # Get total count
-        count_query = select(func.count()).select_from(query.subquery())
         total_result = await self.session.execute(count_query)
         total = total_result.scalar()
 

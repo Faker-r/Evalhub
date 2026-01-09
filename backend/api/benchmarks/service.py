@@ -24,11 +24,15 @@ class BenchmarkService:
         page_size: int = 50,
         sort_by: str = "task_name",
         sort_order: str = "asc",
-        tag_filter: Optional[str] = None,
+        tag_filter: Optional[list[str]] = None,
         author_filter: Optional[str] = None,
         search_query: Optional[str] = None,
     ) -> BenchmarkListResponse:
         """Get all benchmarks with filtering, sorting, and pagination.
+        
+        Note: This service layer currently acts as a pass-through to the repository
+        with response formatting. It's maintained for future business logic additions
+        and to keep a consistent service layer pattern across the application.
 
         Args:
             page: Page number (1-indexed)
