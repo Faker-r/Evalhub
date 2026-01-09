@@ -3,12 +3,13 @@
 from collections import Counter
 from enum import Enum
 from typing import Callable, Type, Literal, Dict, Any
-from lighteval.metrics.utils.llm_as_judge import JudgeLM
+import json
 from pydantic import BaseModel, Field
 from lighteval.models.model_output import ModelResponse
 from lighteval.tasks.requests import Doc, SamplingMethod
-
+from lighteval.metrics.utils.llm_as_judge import JudgeLM
 from lighteval.metrics import Metric
+
 
 class GuidelineScoringScale(Enum):
     """Enum for guideline scoring scales."""
@@ -70,15 +71,16 @@ class PercentageGuidelineScoringScale(GuidelineScoringScaleAbstract):
 class NumericGuidelineScoringScale(GuidelineScoringScaleAbstract):
     """Class for numeric guideline scoring scale."""
 
-    def generate_response_class(
-        self, guideline: dict[str, Any]
-    ) -> Type[BaseModel]:
+    def generate_response_class(self, guideline: dict[str, Any]) -> Type[BaseModel]:
         """Generate a response class for the numeric guideline scoring scale."""
 
         class NumericScoreResponse(BaseModel):
             """Response class for numeric guideline scoring."""
 
-            score: int = Field(ge=guideline["scoring_scale"]["min_score"], le=guideline["scoring_scale"]["max_score"])
+            score: int = Field(
+                ge=guideline["scoring_scale"]["min_score"],
+                le=guideline["scoring_scale"]["max_score"],
+            )
 
         return NumericScoreResponse
 
@@ -105,8 +107,11 @@ class CustomCategoryGuidelineScoringScale(GuidelineScoringScaleAbstract):
         return f"Please choose one of the following options as your score: {', '.join(guideline['scoring_scale']['categories'])}."
 
 
-def generate_get_judge_prompt_function(guideline: dict[str, Any], guideline_scoring_scale: GuidelineScoringScaleAbstract) -> Callable:
+def generate_get_judge_prompt_function(
+    guideline: dict[str, Any], guideline_scoring_scale: GuidelineScoringScaleAbstract
+) -> Callable:
     """Generate a function that returns the judge prompt for the given guideline and guideline scoring scale."""
+
     def fn(question: str, answer: str, gold: str = None, **_kwargs):
         """Generate the judge prompt for the given guideline and guideline scoring scale."""
         score_prompt = guideline_scoring_scale.generate_score_prompt(guideline)
@@ -137,14 +142,14 @@ def generate_get_judge_prompt_function(guideline: dict[str, Any], guideline_scor
     return fn
 
 
-def process_judge_response(response: BaseModel) -> float | int | str:
+def process_judge_response(response: str) -> float | int | str:
     """Process the judge response to extract the score."""
-    breakpoint()
-    return response
+    return json.loads(response)["score"]
 
 
 class GuidelineJudgeMetric(Metric):
     """Metric for guideline scoring."""
+
     def __init__(
         self,
         guideline: Dict[str, Any],
@@ -154,33 +159,44 @@ class GuidelineJudgeMetric(Metric):
     ):
         self.guideline = guideline
         self.guideline_scoring_scale = self._init_guideline_scoring_scale()
-        metric_name = guideline.get("name", "guideline_score")
-        self.short_judge_name = guideline.get("name", "guideline")[:20]
-        super().__init__(
-            metric_name=metric_name,
-            higher_is_better=True if guideline["scoring_scale"]["type"] in (GuidelineScoringScale.NUMERIC, GuidelineScoringScale.PERCENTAGE) else False,
-            category=SamplingMethod.GENERATIVE,
-            sample_level_fn=self.compute,
-            corpus_level_fn=self.aggregate_scores,
+        self.metric_name = guideline.get("name", "guideline_score")
+        self.short_judge_name = "judge_" + guideline.get("name", "guideline")
+        self.category = SamplingMethod.GENERATIVE
+        self.corpus_level_fn = self.aggregate_scores
+        self.sample_level_fn = self.compute
+        self.higher_is_better = (
+            True
+            if guideline["scoring_scale"]["type"]
+            in (GuidelineScoringScale.NUMERIC, GuidelineScoringScale.PERCENTAGE)
+            else False
         )
         self.judge = JudgeLM(
             model=model,
-            templates=generate_get_judge_prompt_function(guideline, self.guideline_scoring_scale),
+            templates=generate_get_judge_prompt_function(
+                guideline, self.guideline_scoring_scale
+            ),
             api_key=api_key,
             url=url,
             process_judge_response=process_judge_response,
-            response_format=self.guideline_scoring_scale.generate_response_class(guideline),
+            response_format=self.guideline_scoring_scale.generate_response_class(
+                guideline
+            ),
             judge_backend="litellm",
         )
-    
+
     def _init_guideline_scoring_scale(self) -> GuidelineScoringScaleAbstract:
         if self.guideline["scoring_scale"]["type"] == GuidelineScoringScale.BOOLEAN:
             return BooleanGuidelineScoringScale()
-        elif self.guideline["scoring_scale"]["type"] == GuidelineScoringScale.PERCENTAGE:
+        elif (
+            self.guideline["scoring_scale"]["type"] == GuidelineScoringScale.PERCENTAGE
+        ):
             return PercentageGuidelineScoringScale()
         elif self.guideline["scoring_scale"]["type"] == GuidelineScoringScale.NUMERIC:
             return NumericGuidelineScoringScale()
-        elif self.guideline["scoring_scale"]["type"] == GuidelineScoringScale.CUSTOM_CATEGORY:
+        elif (
+            self.guideline["scoring_scale"]["type"]
+            == GuidelineScoringScale.CUSTOM_CATEGORY
+        ):
             return CustomCategoryGuidelineScoringScale()
         else:
             raise ValueError(f"Invalid guideline: {self.guideline}")
@@ -205,7 +221,7 @@ class GuidelineJudgeMetric(Metric):
                 self.metric_name: scores[i],
                 f"user_prompt_{self.short_judge_name}": messages[i],
             }
-            
+
             judgement = judgements[i]
             if isinstance(judgement, BaseModel):
                 metric_dict[f"judgement_{self.short_judge_name}"] = {
@@ -213,15 +229,18 @@ class GuidelineJudgeMetric(Metric):
                 }
             else:
                 metric_dict[f"judgement_{self.short_judge_name}"] = judgement
-            
+
             metrics.append(metric_dict)
 
         return metrics
 
     def aggregate_scores(self, scores: list) -> float | dict[str, int]:
         scale_type = self.guideline["scoring_scale"]["type"]
-        
-        if scale_type in (GuidelineScoringScale.CUSTOM_CATEGORY, GuidelineScoringScale.BOOLEAN):
+
+        if scale_type in (
+            GuidelineScoringScale.CUSTOM_CATEGORY,
+            GuidelineScoringScale.BOOLEAN,
+        ):
             return dict(Counter(scores))
         else:
             return sum(scores) / len(scores) if scores else 0.0
