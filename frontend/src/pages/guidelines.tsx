@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Scale, Plus, BookOpen } from "lucide-react";
+import { Scale, Plus, BookOpen, X, Eye } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -22,11 +22,14 @@ export default function Guidelines() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
+  const [viewGuidelineId, setViewGuidelineId] = useState<string | number | null>(null);
   const [createData, setCreateData] = useState({
     name: "",
     prompt: "",
     category: "",
-    max_score: 10,
+    scoring_scale: "numeric" as "boolean" | "custom_category" | "numeric" | "percentage",
+    scoring_scale_config: { min_value: 0, max_value: 10 } as any,
   });
 
   // Fetch guidelines
@@ -44,7 +47,14 @@ export default function Guidelines() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guidelines'] });
       setCreateModalOpen(false);
-      setCreateData({ name: "", prompt: "", category: "", max_score: 10 });
+      setCreateData({ 
+        name: "", 
+        prompt: "", 
+        category: "", 
+        scoring_scale: "numeric", 
+        scoring_scale_config: { min_value: 0, max_value: 10 } 
+      });
+      setNewCategoryInput("");
       toast({
         title: "Success",
         description: "Guideline created successfully",
@@ -69,16 +79,44 @@ export default function Guidelines() {
       return;
     }
     
-    if (!createData.prompt.includes('{completion}')) {
+
+    if (createData.scoring_scale === "custom_category" && (!createData.scoring_scale_config.categories || createData.scoring_scale_config.categories.length === 0)) {
       toast({
         title: "Error",
-        description: "Prompt must contain exactly one {completion} placeholder",
+        description: "Custom category scale requires at least one category",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (createData.scoring_scale === "numeric" && (createData.scoring_scale_config.min_value >= createData.scoring_scale_config.max_value)) {
+      toast({
+        title: "Error",
+        description: "Max value must be greater than min value",
         variant: "destructive",
       });
       return;
     }
     
     createMutation.mutate(createData);
+  };
+
+  const handleScoringScaleChange = (value: string) => {
+    const scale = value as "boolean" | "custom_category" | "numeric" | "percentage";
+    let config: any = {};
+    
+    if (scale === "boolean") {
+      config = {};
+    } else if (scale === "custom_category") {
+      config = { categories: [] };
+    } else if (scale === "numeric") {
+      config = { min_value: 0, max_value: 10 };
+    } else if (scale === "percentage") {
+      config = {};
+    }
+    
+    setCreateData({ ...createData, scoring_scale: scale, scoring_scale_config: config });
+    setNewCategoryInput("");
   };
 
   // Filter guidelines
@@ -139,7 +177,7 @@ export default function Guidelines() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
+                    <Label htmlFor="category">Guideline Category</Label>
                     <Input
                       id="category"
                       placeholder="e.g., accuracy, helpfulness, safety"
@@ -153,33 +191,195 @@ export default function Guidelines() {
                     <Label htmlFor="prompt">Evaluation Prompt</Label>
                     <Textarea
                       id="prompt"
-                      placeholder="Rate the accuracy of {completion} on a scale of 1-10..."
+                      placeholder="You are an impartial evaluator. Compare the model's output to the reference or ground truth. Judge whether the output is factually correct and complete. Ignore style and wording."
                       value={createData.prompt}
                       onChange={(e) =>
                         setCreateData({ ...createData, prompt: e.target.value })
                       }
                       rows={6}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Must include exactly one <code className="bg-muted px-1 py-0.5 rounded">{'{completion}'}</code> placeholder
-                    </p>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="max_score">Max Score</Label>
-                    <Input
-                      id="max_score"
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={createData.max_score}
-                      onChange={(e) =>
-                        setCreateData({
-                          ...createData,
-                          max_score: parseInt(e.target.value) || 10,
-                        })
-                      }
-                    />
+                    <Label htmlFor="scoring_scale">Scoring Scale</Label>
+                    <Select value={createData.scoring_scale} onValueChange={handleScoringScaleChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="boolean">Boolean (True/False)</SelectItem>
+                        <SelectItem value="numeric">Numeric (Min-Max)</SelectItem>
+                        <SelectItem value="percentage">Percentage (0-100%)</SelectItem>
+                        <SelectItem value="custom_category">Custom Categories</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                  {createData.scoring_scale === "numeric" && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="min_value">Min Value</Label>
+                        <Input
+                          id="min_value"
+                          type="number"
+                          value={createData.scoring_scale_config.min_value}
+                          onChange={(e) =>
+                            setCreateData({
+                              ...createData,
+                              scoring_scale_config: {
+                                ...createData.scoring_scale_config,
+                                min_value: parseInt(e.target.value) || 0,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="max_value">Max Value</Label>
+                        <Input
+                          id="max_value"
+                          type="number"
+                          value={createData.scoring_scale_config.max_value}
+                          onChange={(e) =>
+                            setCreateData({
+                              ...createData,
+                              scoring_scale_config: {
+                                ...createData.scoring_scale_config,
+                                max_value: parseInt(e.target.value) || 10,
+                              },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {createData.scoring_scale === "custom_category" && (
+                    <div className="space-y-3">
+                      <Label htmlFor="category-input">Scoring Categories</Label>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Input
+                            id="category-input"
+                            placeholder="Enter category name"
+                            value={newCategoryInput}
+                            onChange={(e) => {
+                              const upperValue = e.target.value.toUpperCase();
+                              if (upperValue.length <= 150) {
+                                setNewCategoryInput(upperValue);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const trimmed = newCategoryInput.trim().toUpperCase();
+                                if (trimmed) {
+                                  if (trimmed.length > 150) {
+                                    toast({
+                                      title: "Category too long",
+                                      description: "Category must be 150 characters or less",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
+                                  const currentCategories = createData.scoring_scale_config.categories || [];
+                                  if (!currentCategories.includes(trimmed)) {
+                                    setCreateData({
+                                      ...createData,
+                                      scoring_scale_config: {
+                                        categories: [...currentCategories, trimmed],
+                                      },
+                                    });
+                                    setNewCategoryInput("");
+                                  } else {
+                                    toast({
+                                      title: "Duplicate category",
+                                      description: "This category already exists",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                }
+                              }
+                            }}
+                            maxLength={150}
+                            className="uppercase"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {newCategoryInput.length}/150 characters
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const trimmed = newCategoryInput.trim().toUpperCase();
+                            if (trimmed) {
+                              if (trimmed.length > 150) {
+                                toast({
+                                  title: "Category too long",
+                                  description: "Category must be 150 characters or less",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              const currentCategories = createData.scoring_scale_config.categories || [];
+                              if (!currentCategories.includes(trimmed)) {
+                                setCreateData({
+                                  ...createData,
+                                  scoring_scale_config: {
+                                    categories: [...currentCategories, trimmed],
+                                  },
+                                });
+                                setNewCategoryInput("");
+                              } else {
+                                toast({
+                                  title: "Duplicate category",
+                                  description: "This category already exists",
+                                  variant: "destructive",
+                                });
+                              }
+                            }
+                          }}
+                          disabled={!newCategoryInput.trim()}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                      {createData.scoring_scale_config.categories && createData.scoring_scale_config.categories.length > 0 && (
+                        <div className="border rounded-md p-3 bg-muted/30 min-h-[60px]">
+                          <div className="flex flex-wrap gap-2">
+                            {createData.scoring_scale_config.categories.map((cat: string, index: number) => (
+                              <Badge 
+                                key={index} 
+                                variant="secondary" 
+                                className="pr-7 py-1.5 text-sm font-medium relative group"
+                              >
+                                {cat}
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-4 w-4 absolute right-0.5 top-1/2 -translate-y-1/2 p-0 hover:bg-destructive/20 rounded-full"
+                                  onClick={() => {
+                                    const currentCategories = createData.scoring_scale_config.categories || [];
+                                    setCreateData({
+                                      ...createData,
+                                      scoring_scale_config: {
+                                        categories: currentCategories.filter((_: string, i: number) => i !== index),
+                                      },
+                                    });
+                                  }}
+                                >
+                                  <X className="h-3 w-3 text-muted-foreground group-hover:text-destructive" />
+                                </Button>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {(!createData.scoring_scale_config.categories || createData.scoring_scale_config.categories.length === 0) && (
+                        <div className="border border-dashed rounded-md p-4 bg-muted/20 text-center text-sm text-muted-foreground">
+                          No categories added yet. Add categories above.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button
@@ -228,14 +428,9 @@ export default function Guidelines() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Avg Max Score</p>
+                  <p className="text-sm text-muted-foreground">Numeric Scales</p>
                   <p className="text-3xl font-bold">
-                    {guidelines.length > 0
-                      ? Math.round(
-                          guidelines.reduce((sum, g) => sum + g.max_score, 0) /
-                            guidelines.length
-                        )
-                      : 0}
+                    {guidelines.filter(g => g.scoring_scale === "numeric").length}
                   </p>
                 </div>
                 <Plus className="w-8 h-8 text-muted-foreground" />
@@ -293,8 +488,10 @@ export default function Guidelines() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>Max Score</TableHead>
+                    <TableHead>Scoring Scale</TableHead>
+                    <TableHead>Scale Config</TableHead>
                     <TableHead>Prompt Preview</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -304,9 +501,35 @@ export default function Guidelines() {
                       <TableCell>
                         <Badge variant="secondary">{guideline.category}</Badge>
                       </TableCell>
-                      <TableCell>{guideline.max_score}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {guideline.scoring_scale === "boolean" && "Boolean"}
+                          {guideline.scoring_scale === "numeric" && "Numeric"}
+                          {guideline.scoring_scale === "percentage" && "Percentage"}
+                          {guideline.scoring_scale === "custom_category" && "Custom"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {guideline.scoring_scale === "numeric" && 
+                          `${guideline.scoring_scale_config.min_value}-${guideline.scoring_scale_config.max_value}`}
+                        {guideline.scoring_scale === "custom_category" && 
+                          guideline.scoring_scale_config.categories?.slice(0, 2).join(", ") + 
+                          (guideline.scoring_scale_config.categories?.length > 2 ? "..." : "")}
+                        {(guideline.scoring_scale === "boolean" || guideline.scoring_scale === "percentage") && "-"}
+                      </TableCell>
                       <TableCell className="text-muted-foreground text-sm max-w-md truncate">
                         {guideline.prompt}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setViewGuidelineId(guideline.id)}
+                          className="gap-2"
+                        >
+                          <Eye className="h-4 w-4" />
+                          View more
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -315,6 +538,94 @@ export default function Guidelines() {
             )}
           </CardContent>
         </Card>
+
+        {/* View Guideline Details Dialog */}
+        {viewGuidelineId && (() => {
+          const guideline = guidelines.find(g => String(g.id) === String(viewGuidelineId));
+          if (!guideline) return null;
+          
+          return (
+            <Dialog open={!!viewGuidelineId} onOpenChange={(open) => !open && setViewGuidelineId(null)}>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl">{guideline.name}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Basic Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <Label className="text-sm font-semibold text-muted-foreground">Guideline Category</Label>
+                        <div className="mt-1">
+                          <Badge variant="secondary">{guideline.category}</Badge>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-semibold text-muted-foreground">Scoring Scale</Label>
+                        <div className="mt-1">
+                          <Badge variant="outline">
+                            {guideline.scoring_scale === "boolean" && "Boolean"}
+                            {guideline.scoring_scale === "numeric" && "Numeric"}
+                            {guideline.scoring_scale === "percentage" && "Percentage"}
+                            {guideline.scoring_scale === "custom_category" && "Custom Categories"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Evaluation Prompt</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm whitespace-pre-wrap">{guideline.prompt}</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Scoring Scale Configuration</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {guideline.scoring_scale === "numeric" && (
+                        <div className="space-y-2">
+                          <div className="flex gap-4">
+                            <div>
+                              <Label className="text-sm font-semibold text-muted-foreground">Min Value</Label>
+                              <p className="text-lg font-semibold mt-1">{guideline.scoring_scale_config.min_value}</p>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-semibold text-muted-foreground">Max Value</Label>
+                              <p className="text-lg font-semibold mt-1">{guideline.scoring_scale_config.max_value}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {guideline.scoring_scale === "custom_category" && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold text-muted-foreground">Scoring Categories</Label>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {guideline.scoring_scale_config.categories?.map((cat: string, index: number) => (
+                              <Badge key={index} variant="secondary" className="text-sm py-1.5">
+                                {cat}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {(guideline.scoring_scale === "boolean" || guideline.scoring_scale === "percentage") && (
+                        <p className="text-sm text-muted-foreground">No additional configuration required</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
       </div>
     </Layout>
   );

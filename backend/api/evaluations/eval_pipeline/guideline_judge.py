@@ -9,15 +9,7 @@ from lighteval.models.model_output import ModelResponse
 from lighteval.tasks.requests import Doc, SamplingMethod
 from lighteval.metrics.utils.llm_as_judge import JudgeLM
 from lighteval.metrics import Metric
-
-
-class GuidelineScoringScale(Enum):
-    """Enum for guideline scoring scales."""
-
-    BOOLEAN = "boolean"
-    CUSTOM_CATEGORY = "custom_category"
-    NUMERIC = "numeric"
-    PERCENTAGE = "percentage"
+from api.guidelines.schemas import GuidelineScoringScale
 
 
 class BooleanScoreResponse(BaseModel):
@@ -78,15 +70,15 @@ class NumericGuidelineScoringScale(GuidelineScoringScaleAbstract):
             """Response class for numeric guideline scoring."""
 
             score: int = Field(
-                ge=guideline["scoring_scale"]["min_score"],
-                le=guideline["scoring_scale"]["max_score"],
+                ge=guideline["scoring_scale_config"]["min_value"],
+                le=guideline["scoring_scale_config"]["max_value"],
             )
 
         return NumericScoreResponse
 
     def generate_score_prompt(self, guideline: dict[str, Any]) -> str:
         """Generate a score prompt for the numeric guideline scoring scale."""
-        return f"Please score the response on a scale of {guideline['scoring_scale']['min_score']} to {guideline['scoring_scale']['max_score']}."
+        return f"Please score the response on a scale of {guideline['scoring_scale_config']['min_value']} to {guideline['scoring_scale_config']['max_value']}."
 
 
 class CustomCategoryGuidelineScoringScale(GuidelineScoringScaleAbstract):
@@ -98,13 +90,13 @@ class CustomCategoryGuidelineScoringScale(GuidelineScoringScaleAbstract):
         class CustomCategoryScoreResponse(BaseModel):
             """Response class for custom category guideline scoring."""
 
-            score: Literal[*guideline["scoring_scale"]["categories"]]
+            score: Literal[*guideline["scoring_scale_config"]["categories"]]
 
         return CustomCategoryScoreResponse
 
     def generate_score_prompt(self, guideline: dict[str, Any]) -> str:
         """Generate a score prompt for the custom category guideline scoring scale."""
-        return f"Please choose one of the following options as your score: {', '.join(guideline['scoring_scale']['categories'])}."
+        return f"Please choose one of the following options as your score: {', '.join(guideline['scoring_scale_config']['categories'])}."
 
 
 def generate_get_judge_prompt_function(
@@ -166,7 +158,7 @@ class GuidelineJudgeMetric(Metric):
         self.sample_level_fn = self.compute
         self.higher_is_better = (
             True
-            if guideline["scoring_scale"]["type"]
+            if guideline["scoring_scale"]
             in (GuidelineScoringScale.NUMERIC, GuidelineScoringScale.PERCENTAGE)
             else False
         )
@@ -185,16 +177,16 @@ class GuidelineJudgeMetric(Metric):
         )
 
     def _init_guideline_scoring_scale(self) -> GuidelineScoringScaleAbstract:
-        if self.guideline["scoring_scale"]["type"] == GuidelineScoringScale.BOOLEAN:
+        if self.guideline["scoring_scale"] == GuidelineScoringScale.BOOLEAN:
             return BooleanGuidelineScoringScale()
         elif (
-            self.guideline["scoring_scale"]["type"] == GuidelineScoringScale.PERCENTAGE
+            self.guideline["scoring_scale"] == GuidelineScoringScale.PERCENTAGE
         ):
             return PercentageGuidelineScoringScale()
-        elif self.guideline["scoring_scale"]["type"] == GuidelineScoringScale.NUMERIC:
+        elif self.guideline["scoring_scale"] == GuidelineScoringScale.NUMERIC:
             return NumericGuidelineScoringScale()
         elif (
-            self.guideline["scoring_scale"]["type"]
+            self.guideline["scoring_scale"]
             == GuidelineScoringScale.CUSTOM_CATEGORY
         ):
             return CustomCategoryGuidelineScoringScale()
@@ -235,7 +227,7 @@ class GuidelineJudgeMetric(Metric):
         return metrics
 
     def aggregate_scores(self, scores: list) -> float | dict[str, int]:
-        scale_type = self.guideline["scoring_scale"]["type"]
+        scale_type = self.guideline["scoring_scale"]
 
         if scale_type in (
             GuidelineScoringScale.CUSTOM_CATEGORY,

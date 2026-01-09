@@ -150,7 +150,12 @@ class EvaluationService:
 
         # Extract guideline data for thread-safe access (ORM objects aren't thread-safe)
         guidelines_data = [
-            {"name": g.name, "prompt": g.prompt, "max_score": g.max_score}
+            {
+                "name": g.name, 
+                "prompt": g.prompt, 
+                "scoring_scale": g.scoring_scale,
+                "scoring_scale_config": g.scoring_scale_config
+            }
             for g in ctx.guidelines
         ]
 
@@ -212,7 +217,8 @@ class EvaluationService:
                     judge_client,
                     judge_model,
                     guideline["prompt"],
-                    guideline["max_score"],
+                    guideline["scoring_scale"],
+                    guideline["scoring_scale_config"],
                     completion,
                 )
 
@@ -222,7 +228,7 @@ class EvaluationService:
                     "judge_response": judge_response,
                     "error": error,
                     "prompt": self._build_judge_prompt(
-                        guideline["prompt"], guideline["max_score"], completion
+                        guideline["prompt"], guideline["scoring_scale"], guideline["scoring_scale_config"], completion
                     ),
                 })
 
@@ -346,7 +352,8 @@ class EvaluationService:
         client: OpenAI,
         judge_model: str,
         guideline_prompt: str,
-        max_score: int,
+        scoring_scale: str,
+        scoring_scale_config: dict,
         completion: str,
     ) -> tuple[int | None, str, str | None]:
         """Judge a completion using the guideline.
@@ -354,7 +361,7 @@ class EvaluationService:
         Returns:
             tuple: (score, response, error) - score is None if parsing failed
         """
-        prompt = self._build_judge_prompt(guideline_prompt, max_score, completion)
+        prompt = self._build_judge_prompt(guideline_prompt, scoring_scale, scoring_scale_config, completion)
 
         response = client.chat.completions.create(
             model=judge_model,
@@ -362,13 +369,26 @@ class EvaluationService:
         )
         response_text = response.choices[0].message.content
 
-        score, error = self._parse_score(response_text, max_score)
+        score, error = self._parse_score(response_text, scoring_scale, scoring_scale_config)
         return score, response_text, error
 
-    def _build_judge_prompt(self, guideline_prompt: str, max_score: int, completion: str) -> str:
+    def _build_judge_prompt(self, guideline_prompt: str, scoring_scale: str, scoring_scale_config: dict, completion: str) -> str:
         """Build the full judge prompt with completion and scoring instructions."""
         prompt = guideline_prompt.replace("{completion}", completion)
-        choices = " or ".join([f'"{i}"' for i in range(1, max_score + 1)])
+        
+        if scoring_scale == "boolean":
+            choices = '"0" or "1"'
+        elif scoring_scale == "numeric":
+            min_val = scoring_scale_config.get("min_value", 0)
+            max_val = scoring_scale_config.get("max_value", 10)
+            choices = " or ".join([f'"{i}"' for i in range(min_val, max_val + 1)])
+        elif scoring_scale == "percentage":
+            choices = "a number from 0 to 100"
+        elif scoring_scale == "custom_category":
+            categories = scoring_scale_config.get("categories", [])
+            choices = " or ".join([f'"{i}"' for i in range(len(categories))])
+        else:
+            choices = '"1"'
 
         prompt += f"""
 
@@ -388,7 +408,7 @@ Reasoning:"""
                 samples.append(json.loads(line))
         return samples
 
-    def _parse_score(self, response: str, max_score: int) -> tuple[int | None, str | None]:
+    def _parse_score(self, response: str, scoring_scale: str, scoring_scale_config: dict) -> tuple[int | None, str | None]:
         """Parse the score from the last line of the judge's response."""
         last_line = response.strip().split("\n")[-1].strip()
 
@@ -397,10 +417,28 @@ Reasoning:"""
         except ValueError:
             return None, f"Last line is not an integer: '{last_line}'"
 
-        if 1 <= score <= max_score:
-            return score, None
-        else:
-            return None, f"Score {score} out of range (1-{max_score})"
+        # Validate score based on scoring scale
+        if scoring_scale == "boolean":
+            if score in [0, 1]:
+                return score, None
+            return None, f"Score {score} out of range (0-1)"
+        elif scoring_scale == "numeric":
+            min_val = scoring_scale_config.get("min_value", 0)
+            max_val = scoring_scale_config.get("max_value", 10)
+            if min_val <= score <= max_val:
+                return score, None
+            return None, f"Score {score} out of range ({min_val}-{max_val})"
+        elif scoring_scale == "percentage":
+            if 0 <= score <= 100:
+                return score, None
+            return None, f"Score {score} out of range (0-100)"
+        elif scoring_scale == "custom_category":
+            categories = scoring_scale_config.get("categories", [])
+            if 0 <= score < len(categories):
+                return score, None
+            return None, f"Score {score} out of range (0-{len(categories)-1})"
+        
+        return None, f"Unknown scoring scale: {scoring_scale}"
 
     def _calculate_summary(
         self,

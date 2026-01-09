@@ -28,7 +28,8 @@ class GuidelineRepository:
             name=guideline_data.name,
             prompt=guideline_data.prompt,
             category=guideline_data.category,
-            max_score=guideline_data.max_score,
+            scoring_scale=guideline_data.scoring_scale.value,
+            scoring_scale_config=guideline_data.scoring_scale_config.model_dump(),
         )
         self.session.add(guideline)
         await self.session.commit()

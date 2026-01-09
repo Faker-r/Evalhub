@@ -166,14 +166,16 @@ class ApiClient {
     name: string;
     prompt: string;
     category: string;
-    max_score: number;
+    scoring_scale: string;
+    scoring_scale_config: any;
   }) {
     return this.request<{
       id: number;
       name: string;
       prompt: string;
       category: string;
-      max_score: number;
+      scoring_scale: string;
+      scoring_scale_config: any;
     }>('/guidelines', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -187,7 +189,8 @@ class ApiClient {
         name: string;
         prompt: string;
         category: string;
-        max_score: number;
+        scoring_scale: string;
+        scoring_scale_config: any;
       }[];
     }>('/guidelines');
   }

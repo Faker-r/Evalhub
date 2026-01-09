@@ -251,7 +251,9 @@ export default function Submit() {
                               <div>
                                 <div className="font-bold">{guideline.name}</div>
                                 <div className="text-sm text-muted-foreground">
-                                  {guideline.category} • Max score: {guideline.max_score}
+                                  {guideline.category} • {guideline.scoring_scale === "numeric" 
+                                    ? `${guideline.scoring_scale_config.min_value}-${guideline.scoring_scale_config.max_value}` 
+                                    : guideline.scoring_scale}
                                 </div>
                               </div>
                               {selectedGuidelines.includes(guideline.name) && (
