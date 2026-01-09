@@ -19,6 +19,7 @@ Usage:
 
 import argparse
 import asyncio
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -31,9 +32,17 @@ from transformers import AutoTokenizer
 from api.benchmarks.repository import BenchmarkRepository
 from api.core.config import settings
 from api.core.logging import get_logger, setup_logging
+from scripts.benchmark_utils import (
+    clean_description,
+    filter_benchmark_tags,
+    infer_tags_from_task_info
+)
 
 setup_logging()
 logger = get_logger(__name__)
+
+# Global args for accessing CLI flags
+args = None
 
 
 def get_dataset_info(hf_repo: str, token: Optional[str] = None) -> dict:
@@ -105,28 +114,59 @@ def get_dataset_info(hf_repo: str, token: Optional[str] = None) -> dict:
     return result
 
 
-def estimate_input_tokens(hf_repo: str, max_samples: int = 100) -> Optional[int]:
+# Global tokenizer cache to avoid reloading
+_tokenizer_cache = None
+
+def get_tokenizer():
+    """Get cached tokenizer instance."""
+    global _tokenizer_cache
+    if _tokenizer_cache is None:
+        from transformers import AutoTokenizer
+        _tokenizer_cache = AutoTokenizer.from_pretrained("gpt2")
+    return _tokenizer_cache
+
+
+def cancel_alarm():
+    """Cancel alarm if on Unix system."""
+    import signal
+    if hasattr(signal, 'SIGALRM'):
+        signal.alarm(0)
+
+
+def estimate_input_tokens(hf_repo: str, max_samples: int = 50, timeout: int = 10) -> Optional[int]:
     """
     Estimate the number of input tokens in a dataset by tokenizing samples.
     
     Handles multiple configs and splits automatically.
+    Optimized for speed with caching and reduced samples.
 
     Args:
         hf_repo: HuggingFace repository identifier
-        max_samples: Maximum number of samples to analyze
+        max_samples: Maximum number of samples to analyze (default: 50, reduced for speed)
+        timeout: Maximum seconds to spend on this dataset (default: 10)
 
     Returns:
         Optional[int]: Average number of tokens per sample, or None if estimation fails
     """
     try:
+        import signal
         from datasets import load_dataset, get_dataset_config_names
+        
+        # Set up timeout handler
+        def timeout_handler(signum, frame):
+            raise TimeoutError(f"Token estimation timed out after {timeout}s")
+        
+        # Only set alarm on Unix systems
+        if hasattr(signal, 'SIGALRM'):
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(timeout)
         
         dataset = None
         config_used = None
         split_used = None
         
-        # Try different splits in order of preference
-        splits_to_try = ["train", "test", "validation", "dev"]
+        # Try different splits in order of preference (reduced to speed up)
+        splits_to_try = ["test", "validation"]  # Skip train (usually largest)
         
         # First, try without config
         for split in splits_to_try:
@@ -159,10 +199,11 @@ def estimate_input_tokens(hf_repo: str, max_samples: int = 100) -> Optional[int]
         # If still no dataset, give up
         if dataset is None:
             logger.warning(f"Could not load dataset {hf_repo}: tried all splits and configs")
+            cancel_alarm()
             return None
 
-        # Use a standard tokenizer (GPT-2 as a common baseline)
-        tokenizer = AutoTokenizer.from_pretrained("gpt2")
+        # Use cached tokenizer
+        tokenizer = get_tokenizer()
 
         token_counts = []
         for i, sample in enumerate(dataset):
@@ -185,6 +226,9 @@ def estimate_input_tokens(hf_repo: str, max_samples: int = 100) -> Optional[int]
                 tokens = tokenizer.encode(text)
                 token_counts.append(len(tokens))
 
+        # Cancel alarm
+        cancel_alarm()
+
         if token_counts:
             avg_tokens = sum(token_counts) // len(token_counts)
             config_info = f" (config: {config_used})" if config_used else ""
@@ -197,8 +241,13 @@ def estimate_input_tokens(hf_repo: str, max_samples: int = 100) -> Optional[int]
             logger.warning(f"Could not estimate tokens for {hf_repo}: no text content found")
             return None
 
+    except TimeoutError as e:
+        logger.warning(f"Token estimation timeout for {hf_repo}: {e}")
+        cancel_alarm()
+        return None
     except Exception as e:
         logger.warning(f"Failed to estimate tokens for {hf_repo}: {e}")
+        cancel_alarm()
         return None
 
 
@@ -277,8 +326,8 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
             else:
                 repo_info = dataset_info.get("repo_info", {})
 
-            # Estimate input tokens
-            estimated_tokens = estimate_input_tokens(hf_repo)
+            # Estimate input tokens (skip if --skip-tokens flag is set)
+            estimated_tokens = None if (args and args.skip_tokens) else estimate_input_tokens(hf_repo)
 
             # Parse created_at
             created_at_hf = None
@@ -298,16 +347,28 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
             else:
                 gated = False
             
-            # Get HuggingFace tags (includes language:XX tags and benchmark type tags)
-            hf_tags = repo_info.get("tags", [])
+            # Get HuggingFace tags and filter to only benchmark type tags
+            raw_tags = repo_info.get("tags", [])
+            hf_tags = filter_benchmark_tags(raw_tags)
             
-            # Get description from HuggingFace or card data
-            description = repo_info.get("description")
-            if not description and repo_info.get("card_data"):
+            # Get description from HuggingFace or card data and clean it
+            raw_description = repo_info.get("description")
+            if not raw_description and repo_info.get("card_data"):
                 # Try to extract description from card_data if available
                 card_data = repo_info.get("card_data")
                 if isinstance(card_data, dict):
-                    description = card_data.get("description") or card_data.get("summary")
+                    raw_description = card_data.get("description") or card_data.get("summary")
+            
+            # Clean the description to remove markdown formatting and extract summary
+            description = clean_description(raw_description)
+
+            # Infer additional tags from task name/description
+            inferred_tags = infer_tags_from_task_info(task_name or hf_repo, description)
+            if inferred_tags:
+                logger.debug(f"Inferred tags for {task_name}: {inferred_tags}")
+                for tag in inferred_tags:
+                    if tag not in hf_tags:
+                        hf_tags.append(tag)
             
             benchmark_data = {
                 "dataset_name": task_config.name or task_name,
@@ -370,7 +431,14 @@ def main():
         default=None,
         help="HuggingFace API token for higher rate limits (overrides HF_TOKEN from .env)",
     )
+    parser.add_argument(
+        "--skip-tokens",
+        action="store_true",
+        help="Skip token estimation for faster processing (tokens will be None)",
+    )
 
+    # Store args globally so estimate_input_tokens can access skip_tokens flag
+    global args
     args = parser.parse_args()
 
     # Use command line token if provided, otherwise use token from .env
@@ -380,6 +448,9 @@ def main():
         logger.info("Using HuggingFace token for authenticated requests (higher rate limits)")
     else:
         logger.info("No HuggingFace token provided - using unauthenticated requests (lower rate limits)")
+    
+    if args.skip_tokens:
+        logger.info("⚡ FAST MODE: Skipping token estimation")
 
     asyncio.run(populate_benchmarks(limit=args.limit, hf_token=hf_token))
 

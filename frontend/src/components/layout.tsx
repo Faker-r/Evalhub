@@ -23,6 +23,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { label: "Leaderboard", href: "/" },
+    { label: "Benchmarks", href: "/benchmarks" },
     { label: "Datasets", href: "/datasets" },
     { label: "Guidelines", href: "/guidelines" },
     { label: "Compare Models", href: "/compare" },
