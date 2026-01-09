@@ -12,7 +12,7 @@ class Benchmark(Base):
     __tablename__ = "benchmarks"
 
     id = Column(Integer, primary_key=True)
-    task_name = Column(String, unique=True, nullable=False)
+    tasks = Column(JSONB, nullable=True)
     dataset_name = Column(String, nullable=False)
     hf_repo = Column(String, nullable=False)
     description = Column(String, nullable=True)

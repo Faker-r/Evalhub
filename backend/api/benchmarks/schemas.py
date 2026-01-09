@@ -10,7 +10,7 @@ class BenchmarkResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    task_name: str
+    tasks: Optional[list[str]] = None
     dataset_name: str
     hf_repo: str
     description: Optional[str] = None
