@@ -179,16 +179,11 @@ class GuidelineJudgeMetric(Metric):
     def _init_guideline_scoring_scale(self) -> GuidelineScoringScaleAbstract:
         if self.guideline["scoring_scale"] == GuidelineScoringScale.BOOLEAN:
             return BooleanGuidelineScoringScale()
-        elif (
-            self.guideline["scoring_scale"] == GuidelineScoringScale.PERCENTAGE
-        ):
+        elif self.guideline["scoring_scale"] == GuidelineScoringScale.PERCENTAGE:
             return PercentageGuidelineScoringScale()
         elif self.guideline["scoring_scale"] == GuidelineScoringScale.NUMERIC:
             return NumericGuidelineScoringScale()
-        elif (
-            self.guideline["scoring_scale"]
-            == GuidelineScoringScale.CUSTOM_CATEGORY
-        ):
+        elif self.guideline["scoring_scale"] == GuidelineScoringScale.CUSTOM_CATEGORY:
             return CustomCategoryGuidelineScoringScale()
         else:
             raise ValueError(f"Invalid guideline: {self.guideline}")

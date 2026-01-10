@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class EvaluationRequest(BaseModel):
@@ -16,11 +16,24 @@ class EvaluationRequest(BaseModel):
     judge_api_base: str | None = None
 
 
-class ScoreDistribution(BaseModel):
-    """Score distribution for a guideline."""
+class CategoricalScoreDistribution(BaseModel):
+    """Score distribution for boolean and categorical guidelines."""
+
+    distribution: dict[str, int]  # {"1": 5, "2": 10, ...}
+    mode: str | None  # The category with most occurrences
+    failed: int = 0
+
+
+class NumericScoreDistribution(BaseModel):
+    """Score distribution for numeric and percentage guidelines."""
 
     mean: float
-    distribution: dict[str, int]  # {"1": 5, "2": 10, ...}
+    std: float
+    min: float
+    max: float
+    p25: float
+    p50: float  # median
+    p75: float
     failed: int = 0
 
 
@@ -37,7 +50,7 @@ class EvaluationResponse(BaseModel):
     completion_model: str
     model_provider: str
     judge_model: str
-    scores: dict[str, ScoreDistribution]
+    scores: dict[str, CategoricalScoreDistribution | NumericScoreDistribution]
     created_at: datetime
 
 
@@ -76,4 +89,3 @@ class TraceEventResponse(BaseModel):
     guideline_name: str | None
     data: dict
     created_at: datetime
-

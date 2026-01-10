@@ -18,7 +18,9 @@ class Trace(Base):
     completion_model = Column(String, nullable=False)
     model_provider = Column(String, nullable=False)
     judge_model = Column(String, nullable=False)
-    status = Column(String, nullable=False, default="running")  # running, completed, failed
+    status = Column(
+        String, nullable=False, default="running"
+    )  # running, completed, failed
     summary = Column(JSONB, nullable=True)  # Final scores summary
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
@@ -35,4 +37,3 @@ class TraceEvent(Base):
     guideline_name = Column(String, nullable=True)  # null for sampling/spec events
     data = Column(JSONB, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-

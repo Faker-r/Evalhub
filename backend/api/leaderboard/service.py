@@ -84,7 +84,6 @@ class LeaderboardService:
                 continue
 
             score_info = scores_data[guideline_name]
-            mean = score_info.get("mean", 0.0)
             failed = score_info.get("failed", 0)
 
             # Get guideline from database
@@ -94,6 +93,21 @@ class LeaderboardService:
                     f"Guideline {guideline_name} not found in database, skipping"
                 )
                 continue
+
+            # Extract mean based on score type
+            score_type = score_info.get("type", "numeric")
+            if score_type == "categorical":
+                # Calculate mean from distribution
+                distribution = score_info.get("distribution", {})
+                if distribution:
+                    total = sum(distribution.values())
+                    weighted_sum = sum(int(k) * v for k, v in distribution.items())
+                    mean = weighted_sum / total if total > 0 else 0.0
+                else:
+                    mean = 0.0
+            else:
+                # Numeric score has mean directly
+                mean = score_info.get("mean", 0.0)
 
             # Calculate max_score based on scoring scale
             max_score = self._get_max_score(guideline)
