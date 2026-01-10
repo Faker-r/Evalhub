@@ -57,4 +57,3 @@ async def get_trace(
     """Get a specific evaluation trace."""
     logger.debug(f"Getting trace {trace_id} for user {current_user.email}")
     return await EvaluationService(session, current_user.id).get_trace(trace_id)
-
