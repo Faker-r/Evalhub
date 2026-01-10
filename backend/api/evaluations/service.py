@@ -1,7 +1,5 @@
-import asyncio
 import json
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from fastapi import HTTPException, status
@@ -44,20 +42,6 @@ DEFAULT_API_BASES = {
     "together": "https://api.together.xyz/v1",
     "anyscale": "https://api.endpoints.anyscale.com/v1",
 }
-
-
-@dataclass
-class EvaluationContext:
-    """Context object to hold evaluation state."""
-
-    completion_client: OpenAI
-    judge_client: OpenAI
-    request: EvaluationRequest
-    samples: list[dict]
-    guidelines: list[Guideline]
-    trace: Trace | None = None
-    scores_per_guideline: dict[str, list[int | None]] = field(default_factory=dict)
-    failed_per_guideline: dict[str, int] = field(default_factory=dict)
 
 
 class EvaluationService:
@@ -468,32 +452,6 @@ class EvaluationService:
             guideline = await self.guideline_service.get_guideline_by_name(name)
             guidelines.append(guideline)
         return guidelines
-
-    # ==================== Trace Initialization ====================
-
-    async def _initialize_trace(self, ctx: EvaluationContext) -> None:
-        """Create trace and spec event in database."""
-        ctx.trace = await self.repository.create_trace(
-            user_id=self.user_id,
-            dataset_name=ctx.request.dataset_name,
-            guideline_names=ctx.request.guideline_names,
-            completion_model=ctx.request.completion_model,
-            model_provider=ctx.request.model_provider,
-            judge_model=ctx.request.judge_model,
-        )
-
-        await self.repository.create_event(
-            trace_id=ctx.trace.id,
-            event_type="spec",
-            data={
-                "dataset_name": ctx.request.dataset_name,
-                "guideline_names": ctx.request.guideline_names,
-                "completion_model": ctx.request.completion_model,
-                "model_provider": ctx.request.model_provider,
-                "judge_model": ctx.request.judge_model,
-                "sample_count": len(ctx.samples),
-            },
-        )
 
     # ==================== Public Query Methods ====================
 
