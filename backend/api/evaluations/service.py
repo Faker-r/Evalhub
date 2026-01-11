@@ -1,9 +1,8 @@
 import json
 import tempfile
-from dataclasses import dataclass, field
+import statistics
 
 from fastapi import HTTPException, status
-from openai import OpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.logging import get_logger
@@ -15,20 +14,23 @@ from api.evaluations.schemas import (
     EvaluationResponse,
     CategoricalScoreDistribution,
     NumericScoreDistribution,
+    TaskEvaluationRequest,
+    TaskEvaluationResponse,
 )
 from api.guidelines.models import Guideline
 from api.guidelines.service import GuidelineService
 from api.guidelines.schemas import GuidelineScoringScale
 from api.evaluations.eval_pipeline.dataset_task import DatasetTask
 from api.evaluations.eval_pipeline.eval_pipeline import (
-    EvaluationPipeline,
-    EvaluationPipelineParameters,
+    CustomTaskEvaluationPipeline,
+    CustomTaskEvaluationPipelineParameters,
 )
 from api.evaluations.eval_pipeline.guideline_judge import GuidelineJudgeMetric
 
 from lighteval.logging.evaluation_tracker import EvaluationTracker
 from lighteval.models.endpoints.litellm_model import LiteLLMModelConfig, LiteLLMClient
 from lighteval.tasks.registry import Registry
+from lighteval.pipeline import ParallelismManager, Pipeline, PipelineParameters
 
 logger = get_logger(__name__)
 
@@ -38,7 +40,7 @@ MAX_WORKERS = 20
 # Default API bases for providers
 DEFAULT_API_BASES = {
     "openai": "https://api.openai.com/v1",
-    "baseten": "https://bridge.baseten.co/v1/direct",
+    "baseten": "https://inference.baseten.co/v1",
     "together": "https://api.together.xyz/v1",
     "anyscale": "https://api.endpoints.anyscale.com/v1",
 }
@@ -67,15 +69,15 @@ class EvaluationService:
 
         try:
             # Run lighteval pipeline
-            results = await self._run_lighteval_pipeline(
+            pipeline_output = self._run_lighteval_pipeline(
                 request, dataset_content, guidelines
             )
 
-            # Write results to database
-            await self._write_lighteval_results(trace, request, results, guidelines)
+            # Write results to database and upload to S3
+            await self._write_results(trace, request, pipeline_output)
 
             # Finalize
-            summary = self._extract_summary(results, guidelines)
+            summary = self._extract_summary(pipeline_output, guidelines)
             trace = await self.repository.update_trace_status(
                 trace.id, "completed", {"scores": summary}
             )
@@ -84,7 +86,42 @@ class EvaluationService:
             await self._upload_trace_jsonl_simple(trace)
 
             return self._build_response_from_summary(
-                trace, request, len(results["samples"]), summary
+                trace, request, pipeline_output["sample_count"], summary
+            )
+
+        except Exception as e:
+            logger.error("Evaluation failed: %s", e)
+            await self.repository.update_trace_status(
+                trace.id, "failed", {"error": str(e)}
+            )
+            raise
+
+    async def run_task_evaluation(
+        self, request: TaskEvaluationRequest
+    ) -> TaskEvaluationResponse:
+        """Run an evaluation on a task using lighteval."""
+
+        # Initialize trace in database
+        trace = await self._create_task_trace(request)
+
+        try:
+            # Run lighteval pipeline
+            pipeline_output = self._run_lighteval_task_pipeline(request)
+
+            # Write results to database and upload to S3
+            await self._write_task_results(trace, request, pipeline_output)
+
+            # Finalize
+            summary = self._extract_task_summary(pipeline_output)
+            trace = await self.repository.update_trace_status(
+                trace.id, "completed", {"scores": summary}
+            )
+
+            # Upload trace to S3
+            await self._upload_trace_jsonl_simple(trace)
+
+            return self._build_task_response_from_summary(
+                trace, request, pipeline_output
             )
 
         except Exception as e:
@@ -111,6 +148,17 @@ class EvaluationService:
             judge_model=request.judge_model,
         )
 
+    async def _create_task_trace(self, request: EvaluationRequest) -> Trace:
+        """Create initial trace in database."""
+        return await self.repository.create_trace(
+            user_id=self.user_id,
+            dataset_name=request.task_name,
+            guideline_names=[],
+            completion_model=request.completion_model,
+            model_provider=request.model_provider,
+            judge_model=request.judge_model,
+        )
+
     def _convert_guideline_to_dict(self, guideline: Guideline) -> dict:
         """Convert Guideline model to dict format for GuidelineJudgeMetric."""
         config_dict = {}
@@ -131,13 +179,17 @@ class EvaluationService:
             "scoring_scale_config": config_dict,
         }
 
-    async def _run_lighteval_pipeline(
+    def _run_lighteval_pipeline(
         self,
         request: EvaluationRequest,
         dataset_content: str,
         guidelines: list[Guideline],
     ) -> dict:
-        """Run evaluation using lighteval pipeline."""
+        """Run evaluation using lighteval pipeline.
+
+        Returns:
+            dict with keys: summary, scores, sample_count, temp_dir
+        """
         # Get API key for judge model
         judge_api_key = self.s3.download_api_key(
             self.user_id, request.judge_model_provider
@@ -197,11 +249,11 @@ class EvaluationService:
         )
 
         # Run evaluation pipeline
-        pipeline = EvaluationPipeline(
+        pipeline = CustomTaskEvaluationPipeline(
             task=task,
             evaluation_tracker=evaluation_tracker,
             model=model,
-            params=EvaluationPipelineParameters(
+            params=CustomTaskEvaluationPipelineParameters(
                 max_samples=None, save_details=True, use_cache=True
             ),
         )
@@ -212,16 +264,78 @@ class EvaluationService:
         # Cleanup
         dataset_task.cleanup()
 
-        return results
+        return {**results, "temp_dir": temp_dir}
 
-    async def _write_lighteval_results(
+    def _run_lighteval_task_pipeline(self, request: TaskEvaluationRequest) -> dict:
+        """Run an evaluation on a task using lighteval.
+
+        Returns:
+            dict with keys: summary, scores, sample_count, temp_dir
+        """
+        # Create evaluation tracker with temporary directory
+        temp_dir = tempfile.mkdtemp()
+        evaluation_tracker = EvaluationTracker(
+            output_dir=temp_dir,
+            save_details=True,
+        )
+
+        # Create pipeline parameters
+        pipeline_params = PipelineParameters(
+            launcher_type=ParallelismManager.ACCELERATE, max_samples=request.n_samples
+        )
+
+        # Create model config
+        api_key = self.s3.download_api_key(self.user_id, request.model_provider)
+        base_url = request.api_base or DEFAULT_API_BASES.get(
+            request.model_provider, DEFAULT_API_BASES["openai"]
+        )
+
+        model_config = LiteLLMModelConfig(
+            model_name=request.completion_model, base_url=base_url, api_key=api_key
+        )
+
+        # Create pipeline
+        pipeline = Pipeline(
+            tasks=request.task_name,
+            pipeline_parameters=pipeline_params,
+            evaluation_tracker=evaluation_tracker,
+            model_config=model_config,
+        )
+
+        # Run pipeline
+        pipeline.evaluate()
+        pipeline.save_and_push_results()
+
+        results = pipeline.get_results()
+
+        # Extract task results
+        task_results = results["results"]["all"]
+
+        # Extract scores by metric
+        scores_by_metric = {}
+        for metric_name, value in task_results.items():
+            if not metric_name.endswith("_stderr"):
+                scores_by_metric[metric_name] = value
+
+        # Extract sample count from config_general
+        actual_sample_count = results.get("config_general", {}).get(
+            "max_samples", request.n_samples
+        )
+
+        return {
+            "summary": task_results,
+            "scores": scores_by_metric,
+            "sample_count": actual_sample_count,
+            "temp_dir": temp_dir,
+        }
+
+    async def _write_results(
         self,
         trace: Trace,
         request: EvaluationRequest,
-        results: dict,
-        guidelines: list[Guideline],
+        pipeline_output: dict,
     ) -> None:
-        """Write lighteval results to database as events."""
+        """Write evaluation results to database as events."""
         # Create spec event
         await self.repository.create_event(
             trace_id=trace.id,
@@ -232,83 +346,72 @@ class EvaluationService:
                 "completion_model": request.completion_model,
                 "model_provider": request.model_provider,
                 "judge_model": request.judge_model,
-                "sample_count": len(results["samples"]),
+                "sample_count": pipeline_output["sample_count"],
             },
         )
 
-        # Write sample-level results
-        for idx, sample_result in enumerate(results["samples"]):
-            sample_id = str(idx)
+        # Upload evaluation results directory to S3
+        s3_path = self.s3.upload_eval_results(trace.id, pipeline_output["temp_dir"])
 
-            # Extract completion from the result (stored in judge prompts)
-            completion = None
-            for guideline in guidelines:
-                prompt_key = f"user_prompt_judge_{guideline.name}"
-                if prompt_key in sample_result:
-                    # Parse completion from judge prompt
-                    prompt_text = sample_result[prompt_key]
-                    if "The response is:" in prompt_text:
-                        completion = (
-                            prompt_text.split("The response is:")[1]
-                            .split("\n")[0]
-                            .strip()
-                        )
-                        break
-
-            # Log sampling event (if we found completion)
-            if completion:
-                await self.repository.create_event(
-                    trace_id=trace.id,
-                    event_type="sampling",
-                    sample_id=sample_id,
-                    data={
-                        "completion": completion,
-                        "model": request.completion_model,
-                    },
-                )
-
-            # Log judge events
-            for guideline in guidelines:
-                guideline_name = guideline.name
-                score = sample_result.get(guideline_name)
-                judge_key = f"judgement_judge_{guideline_name}"
-                prompt_key = f"user_prompt_judge_{guideline_name}"
-
-                event_data = {}
-                if prompt_key in sample_result:
-                    event_data["prompt"] = sample_result[prompt_key]
-                if judge_key in sample_result:
-                    event_data["response"] = str(sample_result[judge_key])
-                if score is not None:
-                    event_data["score"] = score
-
-                await self.repository.create_event(
-                    trace_id=trace.id,
-                    event_type="judge",
-                    sample_id=sample_id,
-                    guideline_name=guideline_name,
-                    data=event_data,
-                )
+        # Create sampling event with S3 path
+        await self.repository.create_event(
+            trace_id=trace.id,
+            event_type="sampling",
+            data={"s3_path": s3_path},
+        )
 
         # Create report event
         await self.repository.create_event(
             trace_id=trace.id,
             event_type="report",
-            data={"scores": results["summary"]},
+            data={"scores": pipeline_output["summary"]},
         )
 
-    def _extract_summary(self, results: dict, guidelines: list[Guideline]) -> dict:
-        """Extract summary statistics from lighteval results."""
+    async def _write_task_results(
+        self,
+        trace: Trace,
+        request: TaskEvaluationRequest,
+        pipeline_output: dict,
+    ) -> None:
+        """Write task evaluation results to database as events."""
+        # Create spec event
+        await self.repository.create_event(
+            trace_id=trace.id,
+            event_type="spec",
+            data={
+                "task_name": request.task_name,
+                "completion_model": request.completion_model,
+                "model_provider": request.model_provider,
+            },
+        )
+
+        # Upload evaluation results directory to S3
+        s3_path = self.s3.upload_eval_results(trace.id, pipeline_output["temp_dir"])
+
+        # Create sampling event with S3 path
+        await self.repository.create_event(
+            trace_id=trace.id,
+            event_type="sampling",
+            data={"s3_path": s3_path},
+        )
+
+        # Create report event
+        await self.repository.create_event(
+            trace_id=trace.id,
+            event_type="report",
+            data={"scores": pipeline_output["summary"]},
+        )
+
+    def _extract_summary(
+        self, pipeline_output: dict, guidelines: list[Guideline]
+    ) -> dict:
+        """Extract summary statistics from pipeline output."""
         summary = {}
 
         for guideline in guidelines:
             metric_name = guideline.name
-            scores = [
-                s.get(metric_name)
-                for s in results["samples"]
-                if s.get(metric_name) is not None
-            ]
-            failed_count = len(results["samples"]) - len(scores)
+            scores = pipeline_output["scores"].get(metric_name, [])
+            failed_count = pipeline_output["sample_count"] - len(scores)
 
             # Calculate statistics based on scoring scale
             if guideline.scoring_scale in [
@@ -334,8 +437,6 @@ class EvaluationService:
             else:
                 # Numeric/Percentage: mean, std, min, max, percentiles
                 if scores:
-                    import statistics
-
                     sorted_scores = sorted(scores)
                     mean = statistics.mean(scores)
                     std = statistics.stdev(scores) if len(scores) > 1 else 0.0
@@ -383,6 +484,28 @@ class EvaluationService:
 
         return summary
 
+    def _extract_task_summary(self, pipeline_output: dict) -> dict:
+        """Extract summary statistics from task pipeline output."""
+        summary = {}
+        task_results = pipeline_output["summary"]
+
+        for metric_name, value in task_results.items():
+            if metric_name.endswith("_stderr"):
+                continue
+
+            summary[metric_name] = {
+                "mean": round(value, 2),
+                "std": round(task_results.get(metric_name + "_stderr", 0), 2),
+                "min": None,
+                "max": None,
+                "p25": None,
+                "p50": None,
+                "p75": None,
+                "failed": 0,
+            }
+
+        return summary
+
     def _build_response_from_summary(
         self, trace: Trace, request: EvaluationRequest, sample_count: int, summary: dict
     ) -> EvaluationResponse:
@@ -418,6 +541,22 @@ class EvaluationService:
             model_provider=request.model_provider,
             judge_model=request.judge_model,
             scores=scores,
+            created_at=trace.created_at,
+        )
+
+    def _build_task_response_from_summary(
+        self, trace: Trace, request: TaskEvaluationRequest, pipeline_output: dict
+    ) -> TaskEvaluationResponse:
+        """Build task evaluation response from summary."""
+        return TaskEvaluationResponse(
+            trace_id=trace.id,
+            status=trace.status,
+            task_name=request.task_name,
+            sample_count=pipeline_output.get("sample_count"),
+            guideline_names=[],
+            completion_model=request.completion_model,
+            model_provider=request.model_provider,
+            judge_model=request.judge_model,
             created_at=trace.created_at,
         )
 

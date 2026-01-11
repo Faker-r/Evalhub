@@ -6,7 +6,7 @@ This mimics what the evaluation service does.
 import os
 from dotenv import load_dotenv
 from api.evaluations.eval_pipeline.dataset_task import DatasetTask
-from api.evaluations.eval_pipeline.eval_pipeline import EvaluationPipeline, EvaluationPipelineParameters
+from api.evaluations.eval_pipeline.eval_pipeline import CustomTaskEvaluationPipeline, CustomTaskEvaluationPipelineParameters
 from api.evaluations.eval_pipeline.guideline_judge import GuidelineJudgeMetric
 from api.guidelines.schemas import GuidelineScoringScale
 from lighteval.logging.evaluation_tracker import EvaluationTracker
@@ -91,11 +91,11 @@ def test_lighteval_integration():
     
     # Step 6: Run evaluation pipeline
     print("\n6. Running evaluation pipeline...")
-    pipeline = EvaluationPipeline(
+    pipeline = CustomTaskEvaluationPipeline(
         task=task,
         evaluation_tracker=evaluation_tracker,
         model=model,
-        params=EvaluationPipelineParameters(
+        params=CustomTaskEvaluationPipelineParameters(
             max_samples=2,  # Only test with 2 samples
             save_details=True,
             use_cache=True

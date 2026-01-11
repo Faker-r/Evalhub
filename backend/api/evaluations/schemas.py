@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict
 
 
@@ -29,11 +28,11 @@ class NumericScoreDistribution(BaseModel):
 
     mean: float
     std: float
-    min: float
-    max: float
-    p25: float
-    p50: float  # median
-    p75: float
+    min: float | None = None
+    max: float | None = None
+    p25: float | None = None
+    p50: float | None = None  # median
+    p75: float | None = None
     failed: int = 0
 
 
@@ -88,4 +87,31 @@ class TraceEventResponse(BaseModel):
     sample_id: str | None
     guideline_name: str | None
     data: dict
+    created_at: datetime
+
+
+class TaskEvaluationRequest(BaseModel):
+    """Request schema for running a task evaluation."""
+
+    task_name: str
+    n_samples: int
+    completion_model: str
+    model_provider: str
+    api_base: str | None = None
+    judge_model: str
+    judge_model_provider: str
+    judge_api_base: str | None = None
+
+
+class TaskEvaluationResponse(BaseModel):
+    """Response schema for a task evaluation."""
+
+    trace_id: int
+    status: str
+    task_name: str
+    sample_count: int | None = None
+    guideline_names: list[str] = []
+    completion_model: str
+    model_provider: str
+    judge_model: str
     created_at: datetime

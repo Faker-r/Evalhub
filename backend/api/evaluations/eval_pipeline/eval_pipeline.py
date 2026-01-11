@@ -1,3 +1,5 @@
+"""Module for custom task evaluation pipeline."""
+
 from dataclasses import dataclass
 from lighteval.tasks.lighteval_task import LightevalTask
 from lighteval.logging.evaluation_tracker import EvaluationTracker
@@ -8,13 +10,15 @@ from lighteval.metrics import apply_metric
 
 
 @dataclass
-class EvaluationPipelineParameters:
+class CustomTaskEvaluationPipelineParameters:
+    """Parameters for custom task evaluation pipeline."""
+
     max_samples: int | None = None
     save_details: bool = True
     use_cache: bool = True
 
 
-class EvaluationPipeline:
+class CustomTaskEvaluationPipeline:
     """Evaluation pipeline for running tasks with lighteval."""
 
     def __init__(
@@ -22,12 +26,12 @@ class EvaluationPipeline:
         task: LightevalTask,
         evaluation_tracker: EvaluationTracker,
         model: LightevalModel,
-        params: EvaluationPipelineParameters | None = None,
+        params: CustomTaskEvaluationPipelineParameters | None = None,
     ):
         self.task = task
         self.evaluation_tracker = evaluation_tracker
         self.model = model
-        self.params = params or EvaluationPipelineParameters()
+        self.params = params or CustomTaskEvaluationPipelineParameters()
         if not self.params.use_cache and hasattr(self.model, "_cache"):
             self.model._cache = None
 
@@ -43,7 +47,6 @@ class EvaluationPipeline:
         if not metrics:
             return [{} for _ in docs]
 
-        outputs = [{} for _ in docs]
         metrics_with_compute = [
             m
             for m in metrics
@@ -51,10 +54,11 @@ class EvaluationPipeline:
         ]
         metrics_without_compute = [m for m in metrics if m not in metrics_with_compute]
 
-        if metrics_without_compute:
-            metric_outputs = apply_metric(responses, docs, metrics_without_compute)
-            for i, item in enumerate(metric_outputs):
-                outputs[i].update(item)
+        outputs = (
+            apply_metric(responses, docs, metrics_without_compute)
+            if metrics_without_compute
+            else [{} for _ in docs]
+        )
 
         for metric in metrics_with_compute:
             metric_outputs = metric.compute(responses=responses, docs=docs)
@@ -80,31 +84,40 @@ class EvaluationPipeline:
         self.evaluation_tracker.general_config_logger.log_model_info(
             model_config=self.model.config
         )
+
         docs = self.task.get_docs(self.params.max_samples)
         responses = self._run_model(docs)
-        sample_metrics = self._compute_metrics(responses, docs)
-        aggregated = self._aggregate_metrics(sample_metrics)
+        outputs = self._compute_metrics(responses, docs)
 
         task_name = self.task.full_name
-        for doc, response, metrics in zip(docs, responses, sample_metrics):
-            numeric_metrics = {
-                k: v for k, v in metrics.items() if isinstance(v, (int, float))
-            }
-            if numeric_metrics:
-                self.evaluation_tracker.metrics_logger.log(task_name, numeric_metrics)
+        for output, doc, response in zip(outputs, docs, responses):
+            # Only log metrics that have aggregation functions to metrics_logger
+            aggregation_keys = set(self.task.aggregation().keys())
+            metrics_only = {k: v for k, v in output.items() if k in aggregation_keys}
+
+            self.evaluation_tracker.metrics_logger.log(task_name, metrics_only)
             if self.params.save_details:
+                # Details logger gets the full output including metadata
                 self.evaluation_tracker.details_logger.log(
-                    task_name, doc, response, metrics
+                    task_name, doc, response, output
                 )
 
         self.evaluation_tracker.metrics_logger.aggregate(
             task_dict={self.task.full_name: self.task}, bootstrap_iters=0
         )
         self.evaluation_tracker.details_logger.aggregate()
+
+        aggregated = self._aggregate_metrics(outputs)
+        scores_by_metric = {}
+        for metric_name in aggregated.keys():
+            scores_by_metric[metric_name] = [
+                sample[metric_name] for sample in outputs if metric_name in sample
+            ]
+
         return {
-            "task": task_name,
-            "samples": sample_metrics,
             "summary": aggregated,
+            "scores": scores_by_metric,
+            "sample_count": len(docs),
         }
 
     def save_and_push_results(self):

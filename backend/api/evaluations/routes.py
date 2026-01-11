@@ -7,6 +7,8 @@ from api.core.security import CurrentUser, get_current_user
 from api.evaluations.schemas import (
     EvaluationRequest,
     EvaluationResponse,
+    TaskEvaluationRequest,
+    TaskEvaluationResponse,
     TraceListResponse,
     TraceResponse,
 )
@@ -35,6 +37,24 @@ async def run_evaluation(
         f"guidelines={request.guideline_names}, user={current_user.email}"
     )
     return await EvaluationService(session, current_user.id).run_evaluation(request)
+
+
+@router.post(
+    "/tasks", response_model=TaskEvaluationResponse, status_code=status.HTTP_201_CREATED
+)
+async def run_task_evaluation(
+    request: TaskEvaluationRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> TaskEvaluationResponse:
+    """Run an evaluation on a task."""
+    logger.debug(
+        f"Running task evaluation: task={request.task_name}, "
+        f"model={request.completion_model}, user={current_user.email}"
+    )
+    return await EvaluationService(session, current_user.id).run_task_evaluation(
+        request
+    )
 
 
 @router.get("/traces", response_model=TraceListResponse)
