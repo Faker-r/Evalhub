@@ -28,11 +28,6 @@ class NumericScoreDistribution(BaseModel):
 
     mean: float
     std: float
-    min: float | None = None
-    max: float | None = None
-    p25: float | None = None
-    p50: float | None = None  # median
-    p75: float | None = None
     failed: int = 0
 
 

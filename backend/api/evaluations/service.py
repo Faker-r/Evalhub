@@ -451,38 +451,15 @@ class EvaluationService:
                     "failed": failed_count,
                 }
             else:
-                # Numeric/Percentage: mean, std, min, max, percentiles
+                # Numeric/Percentage: mean, std
                 if scores:
-                    sorted_scores = sorted(scores)
                     mean = statistics.mean(scores)
                     std = statistics.stdev(scores) if len(scores) > 1 else 0.0
-                    min_score = min(scores)
-                    max_score = max(scores)
-
-                    # Calculate percentiles
-                    def percentile(data, p):
-                        n = len(data)
-                        pos = (n - 1) * p
-                        lower = int(pos)
-                        upper = lower + 1
-                        weight = pos - lower
-                        if upper >= n:
-                            return data[-1]
-                        return data[lower] * (1 - weight) + data[upper] * weight
-
-                    p25 = percentile(sorted_scores, 0.25)
-                    p50 = percentile(sorted_scores, 0.50)
-                    p75 = percentile(sorted_scores, 0.75)
 
                     summary[metric_name] = {
                         "type": "numeric",
                         "mean": round(mean, 2),
                         "std": round(std, 2),
-                        "min": round(min_score, 2),
-                        "max": round(max_score, 2),
-                        "p25": round(p25, 2),
-                        "p50": round(p50, 2),
-                        "p75": round(p75, 2),
                         "failed": failed_count,
                     }
                 else:
@@ -490,11 +467,6 @@ class EvaluationService:
                         "type": "numeric",
                         "mean": 0.0,
                         "std": 0.0,
-                        "min": 0.0,
-                        "max": 0.0,
-                        "p25": 0.0,
-                        "p50": 0.0,
-                        "p75": 0.0,
                         "failed": failed_count,
                     }
 
@@ -512,11 +484,6 @@ class EvaluationService:
             summary[metric_name] = {
                 "mean": round(value, 2),
                 "std": round(task_results.get(metric_name + "_stderr", 0), 2),
-                "min": None,
-                "max": None,
-                "p25": None,
-                "p50": None,
-                "p75": None,
                 "failed": 0,
             }
 
@@ -539,11 +506,6 @@ class EvaluationService:
                 scores[name] = NumericScoreDistribution(
                     mean=summary_data["mean"],
                     std=summary_data["std"],
-                    min=summary_data["min"],
-                    max=summary_data["max"],
-                    p25=summary_data["p25"],
-                    p50=summary_data["p50"],
-                    p75=summary_data["p75"],
                     failed=summary_data["failed"],
                 )
 
