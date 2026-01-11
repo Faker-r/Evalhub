@@ -182,6 +182,7 @@ export default function Profile() {
                           <SelectItem value="groq">Groq</SelectItem>
                           <SelectItem value="together">Together AI</SelectItem>
                           <SelectItem value="replicate">Replicate</SelectItem>
+                          <SelectItem value="baseten">Baseten</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

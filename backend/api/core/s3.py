@@ -1,5 +1,6 @@
 import boto3
 from botocore.exceptions import ClientError
+import os
 
 from api.core.config import settings
 from api.core.logging import get_logger
@@ -10,6 +11,7 @@ logger = get_logger(__name__)
 DATASETS_PREFIX = "datasets"
 API_KEYS_PREFIX = "api_keys"
 TRACES_PREFIX = "traces"
+EVAL_RESULTS_PREFIX = "eval_results"
 
 
 def get_s3_client():
@@ -274,3 +276,39 @@ class S3Storage:
                 raise FileNotFoundError(f"Trace not found in S3: {filename}")
             logger.error(f"Failed to download trace from S3: {e}")
             raise
+
+    # ==================== Evaluation Results Methods ====================
+
+    def upload_eval_results(self, trace_id: int, directory: str) -> str:
+        """Upload evaluation results directory to S3.
+
+        Args:
+            trace_id: Trace ID
+            directory: Local directory path containing evaluation results
+
+        Returns:
+            str: S3 path prefix where files were uploaded
+        """
+        s3_prefix = f"{EVAL_RESULTS_PREFIX}/{trace_id}"
+
+        try:
+            for root, dirs, files in os.walk(directory):
+                for file in files:
+                    local_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(local_path, directory)
+                    s3_key = f"{s3_prefix}/{relative_path}"
+
+                    with open(local_path, 'rb') as f:
+                        self.client.put_object(
+                            Bucket=self.bucket,
+                            Key=s3_key,
+                            Body=f.read(),
+                        )
+                    logger.debug(f"Uploaded eval result file to S3: {s3_key}")
+
+            logger.info(f"Uploaded eval results to S3: {s3_prefix}")
+            return s3_prefix
+        except ClientError as e:
+            logger.error(f"Failed to upload eval results to S3: {e}")
+            raise
+

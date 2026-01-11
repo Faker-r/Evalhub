@@ -1,7 +1,6 @@
 """Module for generating response classes for guideline scoring."""
 
 from collections import Counter
-from enum import Enum
 from typing import Callable, Type, Literal, Dict, Any
 import json
 from pydantic import BaseModel, Field
