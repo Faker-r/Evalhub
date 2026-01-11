@@ -108,8 +108,14 @@ class EvaluationService:
             # Run lighteval pipeline
             pipeline_output = self._run_lighteval_task_pipeline(request)
 
+            # Extract metric names to use as guidelines
+            metric_names = list(pipeline_output["scores"].keys())
+
+            # Update trace with metric names as guidelines
+            trace = await self._update_trace_guidelines(trace, metric_names)
+
             # Write results to database and upload to S3
-            await self._write_task_results(trace, request, pipeline_output)
+            await self._write_task_results(trace, request, pipeline_output, metric_names)
 
             # Finalize
             summary = self._extract_task_summary(pipeline_output)
@@ -121,7 +127,7 @@ class EvaluationService:
             await self._upload_trace_jsonl_simple(trace)
 
             return self._build_task_response_from_summary(
-                trace, request, pipeline_output
+                trace, request, pipeline_output, metric_names
             )
 
         except Exception as e:
@@ -158,6 +164,14 @@ class EvaluationService:
             model_provider=request.model_provider,
             judge_model=request.judge_model,
         )
+
+    async def _update_trace_guidelines(self, trace: Trace, guideline_names: list[str]) -> Trace:
+        """Update trace with guideline names."""
+        if guideline_names:
+            trace.guideline_names = guideline_names
+            await self.session.commit()
+            await self.session.refresh(trace)
+        return trace
 
     def _convert_guideline_to_dict(self, guideline: Guideline) -> dict:
         """Convert Guideline model to dict format for GuidelineJudgeMetric."""
@@ -372,6 +386,7 @@ class EvaluationService:
         trace: Trace,
         request: TaskEvaluationRequest,
         pipeline_output: dict,
+        metric_names: list[str],
     ) -> None:
         """Write task evaluation results to database as events."""
         # Create spec event
@@ -382,6 +397,7 @@ class EvaluationService:
                 "task_name": request.task_name,
                 "completion_model": request.completion_model,
                 "model_provider": request.model_provider,
+                "guideline_names": metric_names,
             },
         )
 
@@ -545,7 +561,7 @@ class EvaluationService:
         )
 
     def _build_task_response_from_summary(
-        self, trace: Trace, request: TaskEvaluationRequest, pipeline_output: dict
+        self, trace: Trace, request: TaskEvaluationRequest, pipeline_output: dict, metric_names: list[str]
     ) -> TaskEvaluationResponse:
         """Build task evaluation response from summary."""
         return TaskEvaluationResponse(
@@ -553,7 +569,7 @@ class EvaluationService:
             status=trace.status,
             task_name=request.task_name,
             sample_count=pipeline_output.get("sample_count"),
-            guideline_names=[],
+            guideline_names=metric_names,
             completion_model=request.completion_model,
             model_provider=request.model_provider,
             judge_model=request.judge_model,
