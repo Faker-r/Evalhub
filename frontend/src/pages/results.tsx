@@ -2,11 +2,13 @@ import Layout from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, RefreshCw, Clock, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
 
 export default function Results() {
   const { isAuthenticated } = useAuth();
@@ -20,6 +22,8 @@ export default function Results() {
   });
 
   const traces = tracesData?.traces || [];
+
+  const [selectedTrace, setSelectedTrace] = useState<any>(null);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -57,6 +61,69 @@ export default function Results() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
+  };
+
+  const renderScores = (scores: any) => {
+    if (!scores) return null;
+
+    const scoreEntries = Object.entries(scores);
+    const hasCategoricalScores = scoreEntries.some(([, scoreData]: [string, any]) => 'distribution' in scoreData);
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Guideline</TableHead>
+            <TableHead>Score</TableHead>
+            {hasCategoricalScores && <TableHead>Distribution</TableHead>}
+            <TableHead className="text-right">Failed</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {scoreEntries.map(([guidelineName, scoreData]: [string, any]) => {
+            const isNumeric = 'mean' in scoreData;
+            const isCategorical = 'distribution' in scoreData;
+
+            return (
+              <TableRow key={guidelineName}>
+                <TableCell className="font-medium">{guidelineName}</TableCell>
+                <TableCell>
+                  {isNumeric && (
+                    <span className="font-mono">
+                      {scoreData.mean.toFixed(2)} ± {scoreData.std.toFixed(2)}
+                    </span>
+                  )}
+                  {isCategorical && (
+                    <span className="font-medium">{scoreData.mode || 'N/A'}</span>
+                  )}
+                </TableCell>
+                {hasCategoricalScores && (
+                  <TableCell>
+                    {isCategorical && (
+                      <div className="flex flex-wrap gap-1">
+                        {Object.entries(scoreData.distribution).map(([category, count]: [string, any]) => (
+                          <Badge key={category} variant="outline" className="text-xs">
+                            {category}: {count}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    {isNumeric && <span className="text-muted-foreground">-</span>}
+                  </TableCell>
+                )}
+                <TableCell className="text-right">
+                  {scoreData.failed > 0 ? (
+                    <span className="text-red-600 font-medium">{scoreData.failed}</span>
+                  ) : (
+                    <span className="text-muted-foreground">0</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    );
   };
 
   if (!isAuthenticated) {
@@ -216,19 +283,84 @@ export default function Results() {
                       </TableCell>
                       <TableCell>
                         {trace.status === "completed" && trace.summary && (
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                alert(
-                                  `Scores:\n${JSON.stringify(trace.summary, null, 2)}`
-                                )
-                              }
-                            >
-                              View Scores
-                            </Button>
-                          </div>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => setSelectedTrace(trace)}
+                              >
+                                <Eye className="w-4 h-4" />
+                                View Scores
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle>Evaluation Details #{selectedTrace?.id}</DialogTitle>
+                              </DialogHeader>
+                              {selectedTrace && (
+                                <div className="space-y-6">
+                                  {/* Evaluation Info */}
+                                  <Card>
+                                    <CardHeader>
+                                      <CardTitle className="text-lg">Evaluation Information</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <span className="text-sm text-muted-foreground">Dataset:</span>
+                                        <p className="font-medium">{selectedTrace.dataset_name}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-sm text-muted-foreground">Model:</span>
+                                        <p className="font-medium">{selectedTrace.completion_model}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-sm text-muted-foreground">Provider:</span>
+                                        <p className="font-medium">{selectedTrace.model_provider}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-sm text-muted-foreground">Judge Model:</span>
+                                        <p className="font-medium">{selectedTrace.judge_model}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-sm text-muted-foreground">Status:</span>
+                                        <p className="font-medium">{getStatusBadge(selectedTrace.status)}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-sm text-muted-foreground">Created:</span>
+                                        <p className="font-medium">{formatDate(selectedTrace.created_at)}</p>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+
+                                  {/* Guidelines */}
+                                  <Card>
+                                    <CardHeader>
+                                      <CardTitle className="text-lg">Guidelines</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                      <div className="flex flex-wrap gap-2">
+                                        {selectedTrace.guideline_names.map((name: string) => (
+                                          <Badge key={name} variant="secondary">
+                                            {name}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+
+                                  {/* Scores */}
+                                  <div>
+                                    <h3 className="text-lg font-semibold mb-4">Evaluation Scores</h3>
+                                    <div className="border rounded-lg">
+                                      {renderScores(selectedTrace.summary?.scores)}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </DialogContent>
+                          </Dialog>
                         )}
                         {trace.status === "running" && (
                           <span className="text-sm text-muted-foreground">
