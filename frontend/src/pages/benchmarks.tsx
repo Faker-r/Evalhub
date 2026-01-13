@@ -263,7 +263,7 @@ export default function Benchmarks() {
                     const tasks = benchmark.tasks || [];
                     
                     return (
-                      <Card key={benchmark.id} className="hover:shadow-md transition-shadow flex flex-col h-[450px]">
+                      <Card key={benchmark.id} className="hover-elevate hover-border-trace flex flex-col h-[450px]">
                         <CardHeader className="pb-2 space-y-2.5 flex-shrink-0">
                           <CardTitle className="text-lg font-bold leading-tight break-words">
                             {benchmark.dataset_name}

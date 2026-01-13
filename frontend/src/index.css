@@ -140,6 +140,68 @@
     @apply bg-white/80 backdrop-blur-md border border-white/20;
   }
   
+  /* Elevate / Hover effects */
+  @keyframes border-trace {
+    0% {
+      mask-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+      -webkit-mask-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    }
+    25% {
+      mask-size: 100% 4px, 4px 0%, 0% 4px, 4px 0%;
+      -webkit-mask-size: 100% 4px, 4px 0%, 0% 4px, 4px 0%;
+    }
+    50% {
+      mask-size: 100% 4px, 4px 100%, 0% 4px, 4px 0%;
+      -webkit-mask-size: 100% 4px, 4px 100%, 0% 4px, 4px 0%;
+    }
+    75% {
+      mask-size: 100% 4px, 4px 100%, 100% 4px, 4px 0%;
+      -webkit-mask-size: 100% 4px, 4px 100%, 100% 4px, 4px 0%;
+    }
+    100% {
+      mask-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%;
+      -webkit-mask-size: 100% 4px, 4px 100%, 100% 4px, 4px 100%;
+    }
+  }
+
+  .hover-elevate {
+    @apply transition-all duration-300 ease-out relative;
+  }
+  
+  .hover-elevate:hover {
+    @apply -translate-y-1 shadow-xl;
+  }
+  
+  /* Green border trace animation - ONLY for specific cards */
+  .hover-border-trace::after {
+    content: "";
+    @apply absolute inset-0 border-2 border-primary rounded-[inherit] pointer-events-none;
+    mask-image: 
+      linear-gradient(#000, #000),
+      linear-gradient(#000, #000),
+      linear-gradient(#000, #000),
+      linear-gradient(#000, #000);
+    -webkit-mask-image: 
+      linear-gradient(#000, #000),
+      linear-gradient(#000, #000),
+      linear-gradient(#000, #000),
+      linear-gradient(#000, #000);
+    mask-repeat: no-repeat;
+    -webkit-mask-repeat: no-repeat;
+    mask-position: top left, top right, bottom right, bottom left;
+    -webkit-mask-position: top left, top right, bottom right, bottom left;
+    mask-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+    -webkit-mask-size: 0% 4px, 4px 0%, 0% 4px, 4px 0%;
+  }
+
+  .hover-border-trace:hover::after {
+    animation: border-trace 0.4s forwards linear;
+  }
+  
+  .active-elevate-2:active {
+    @apply translate-y-0 shadow-sm opacity-90;
+  }
+
   /* Custom grid background */
   .bg-grid-pattern {
     background-size: 40px 40px;
