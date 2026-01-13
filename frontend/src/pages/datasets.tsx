@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { TagInput } from "@/components/ui/tag-input";
 
 export default function Datasets() {
   const { isAuthenticated } = useAuth();
@@ -24,6 +25,7 @@ export default function Datasets() {
   const [uploadData, setUploadData] = useState({
     name: "",
     category: "",
+    categories: [] as string[],
     file: null as File | null,
   });
 
@@ -43,7 +45,7 @@ export default function Datasets() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['datasets'] });
       setUploadModalOpen(false);
-      setUploadData({ name: "", category: "", file: null });
+      setUploadData({ name: "", category: "", categories: [], file: null });
       toast({
         title: "Success",
         description: "Dataset uploaded successfully",
@@ -59,7 +61,10 @@ export default function Datasets() {
   });
 
   const handleUpload = () => {
-    if (!uploadData.name || !uploadData.category || !uploadData.file) {
+    // If we use categories array, populate category string from it
+    const categoryString = uploadData.categories.length > 0 ? uploadData.categories.join(", ") : uploadData.category;
+    
+    if (!uploadData.name || !categoryString || !uploadData.file) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -67,7 +72,12 @@ export default function Datasets() {
       });
       return;
     }
-    uploadMutation.mutate(uploadData);
+    
+    uploadMutation.mutate({
+      name: uploadData.name,
+      category: categoryString,
+      file: uploadData.file
+    });
   };
 
   // Filter datasets
@@ -129,13 +139,10 @@ export default function Datasets() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
-                    <Input
-                      id="category"
-                      placeholder="e.g., qa, coding, math"
-                      value={uploadData.category}
-                      onChange={(e) =>
-                        setUploadData({ ...uploadData, category: e.target.value })
-                      }
+                    <TagInput 
+                      value={uploadData.categories}
+                      onChange={(tags) => setUploadData({ ...uploadData, categories: tags })}
+                      placeholder="e.g. coding, humor (press Enter to add)"
                     />
                   </div>
                   <div className="space-y-2">
