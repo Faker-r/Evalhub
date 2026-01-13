@@ -169,7 +169,12 @@
   }
   
   .hover-elevate:hover {
-    @apply -translate-y-1 shadow-xl;
+    @apply shadow-xl;
+  }
+
+  /* Only lift up the cards with the border animation */
+  .hover-border-trace:hover {
+    @apply -translate-y-1;
   }
   
   /* Green border trace animation - ONLY for specific cards */
