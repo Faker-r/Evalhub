@@ -1,12 +1,14 @@
 import json
 import tempfile
 import statistics
+import asyncio
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.logging import get_logger
 from api.core.s3 import S3Storage
+from api.core.database import get_session
 from api.evaluations.models import Trace
 from api.evaluations.repository import EvaluationRepository
 from api.evaluations.schemas import (
@@ -31,6 +33,7 @@ from lighteval.logging.evaluation_tracker import EvaluationTracker
 from lighteval.models.endpoints.litellm_model import LiteLLMModelConfig, LiteLLMClient
 from lighteval.tasks.registry import Registry
 from lighteval.pipeline import ParallelismManager, Pipeline, PipelineParameters
+from lighteval.models.model_input import GenerationParameters
 
 logger = get_logger(__name__)
 
@@ -44,6 +47,9 @@ DEFAULT_API_BASES = {
     "together": "https://api.together.xyz/v1",
     "anyscale": "https://api.endpoints.anyscale.com/v1",
 }
+
+# Default temperature for model completion
+DEFAULT_TEMPERATURE = 0.7
 
 
 class EvaluationService:
@@ -60,41 +66,69 @@ class EvaluationService:
 
     async def run_evaluation(self, request: EvaluationRequest) -> EvaluationResponse:
         """Run an evaluation on a dataset with given guidelines using lighteval."""
-        # Setup phase
-        dataset_content = self._load_dataset_content(request.dataset_name)
-        guidelines = await self._load_guidelines(request.guideline_names)
-
         # Initialize trace in database
         trace = await self._create_trace(request)
 
-        try:
-            # Run lighteval pipeline
-            pipeline_output = self._run_lighteval_pipeline(
-                request, dataset_content, guidelines
-            )
+        # Start background evaluation
+        asyncio.create_task(
+            EvaluationService._run_evaluation_background(trace.id, request)
+        )
 
-            # Write results to database and upload to S3
-            await self._write_results(trace, request, pipeline_output)
+        # Return immediately with running status
+        return EvaluationResponse(
+            trace_id=trace.id,
+            status="running",
+            dataset_name=request.dataset_name,
+            sample_count=0,
+            guideline_names=request.guideline_names,
+            completion_model=request.model_completion_config.model_name,
+            model_provider=request.model_completion_config.model_provider,
+            judge_model=request.judge_config.model_name,
+            scores={},
+            created_at=trace.created_at,
+        )
 
-            # Finalize
-            summary = self._extract_summary(pipeline_output, guidelines)
-            trace = await self.repository.update_trace_status(
-                trace.id, "completed", {"scores": summary}
-            )
+    @staticmethod
+    async def _run_evaluation_background(trace_id: int, request: EvaluationRequest):
+        """Run evaluation in background."""
+        async for session in get_session():
+            repository = EvaluationRepository(session)
+            try:
+                # Get trace to get user_id
+                trace = await repository.get_trace_by_id(trace_id)
+                service = EvaluationService(session, trace.user_id)
 
-            # Upload trace to S3
-            await self._upload_trace_jsonl_simple(trace)
+                # Setup phase
+                dataset_content = service._load_dataset_content(request.dataset_name)
+                guidelines = await service._load_guidelines(request.guideline_names)
 
-            return self._build_response_from_summary(
-                trace, request, pipeline_output["sample_count"], summary
-            )
+                # Run lighteval pipeline
+                pipeline_output = service._run_lighteval_pipeline(
+                    request, dataset_content, guidelines
+                )
 
-        except Exception as e:
-            logger.error("Evaluation failed: %s", e)
-            await self.repository.update_trace_status(
-                trace.id, "failed", {"error": str(e)}
-            )
-            raise
+                # Write results to database and upload to S3
+                trace = await repository.get_trace_by_id(trace_id)
+                await service._write_results(trace, request, pipeline_output)
+
+                # Finalize
+                summary = service._extract_summary(pipeline_output, guidelines)
+                await repository.update_trace_status(
+                    trace_id, "completed", {"scores": summary}
+                )
+
+                # Upload trace to S3
+                trace = await repository.get_trace_by_id(trace_id)
+                await service._upload_trace_jsonl_simple(trace)
+
+            except Exception as e:
+                logger.error("Evaluation failed: %s", e)
+                await repository.update_trace_status(
+                    trace_id, "failed", {"error": str(e)}
+                )
+            finally:
+                await session.close()
+            break
 
     async def run_task_evaluation(
         self, request: TaskEvaluationRequest
@@ -104,38 +138,69 @@ class EvaluationService:
         # Initialize trace in database
         trace = await self._create_task_trace(request)
 
-        try:
-            # Run lighteval pipeline
-            pipeline_output = self._run_lighteval_task_pipeline(request)
+        # Start background evaluation
+        asyncio.create_task(
+            EvaluationService._run_task_evaluation_background(trace.id, request)
+        )
 
-            # Extract metric names to use as guidelines
-            metric_names = list(pipeline_output["scores"].keys())
+        # Return immediately with running status
+        judge_model = request.judge_config.model_name if request.judge_config else ""
+        return TaskEvaluationResponse(
+            trace_id=trace.id,
+            status="running",
+            task_name=request.task_name,
+            sample_count=0,
+            guideline_names=[],
+            completion_model=request.model_completion_config.model_name,
+            model_provider=request.model_completion_config.model_provider,
+            judge_model=judge_model,
+            created_at=trace.created_at,
+        )
 
-            # Update trace with metric names as guidelines
-            trace = await self._update_trace_guidelines(trace, metric_names)
+    @staticmethod
+    async def _run_task_evaluation_background(
+        trace_id: int, request: TaskEvaluationRequest
+    ):
+        """Run task evaluation in background."""
+        async for session in get_session():
+            repository = EvaluationRepository(session)
+            try:
+                # Get trace to get user_id
+                trace = await repository.get_trace_by_id(trace_id)
+                service = EvaluationService(session, trace.user_id)
 
-            # Write results to database and upload to S3
-            await self._write_task_results(trace, request, pipeline_output, metric_names)
+                # Run lighteval pipeline
+                pipeline_output = service._run_lighteval_task_pipeline(request)
 
-            # Finalize
-            summary = self._extract_task_summary(pipeline_output)
-            trace = await self.repository.update_trace_status(
-                trace.id, "completed", {"scores": summary}
-            )
+                # Extract metric names to use as guidelines
+                metric_names = list(pipeline_output["scores"].keys())
 
-            # Upload trace to S3
-            await self._upload_trace_jsonl_simple(trace)
+                # Update trace with metric names as guidelines
+                trace = await service._update_trace_guidelines(trace, metric_names)
 
-            return self._build_task_response_from_summary(
-                trace, request, pipeline_output, metric_names
-            )
+                # Write results to database and upload to S3
+                await service._write_task_results(
+                    trace, request, pipeline_output, metric_names
+                )
 
-        except Exception as e:
-            logger.error("Evaluation failed: %s", e)
-            await self.repository.update_trace_status(
-                trace.id, "failed", {"error": str(e)}
-            )
-            raise
+                # Finalize
+                summary = service._extract_task_summary(pipeline_output)
+                await repository.update_trace_status(
+                    trace_id, "completed", {"scores": summary}
+                )
+
+                # Upload trace to S3
+                trace = await repository.get_trace_by_id(trace_id)
+                await service._upload_trace_jsonl_simple(trace)
+
+            except Exception as e:
+                logger.error("Evaluation failed: %s", e)
+                await repository.update_trace_status(
+                    trace_id, "failed", {"error": str(e)}
+                )
+            finally:
+                await session.close()
+            break
 
     # ==================== Lighteval Integration ====================
 
@@ -149,23 +214,26 @@ class EvaluationService:
             user_id=self.user_id,
             dataset_name=request.dataset_name,
             guideline_names=request.guideline_names,
-            completion_model=request.completion_model,
-            model_provider=request.model_provider,
-            judge_model=request.judge_model,
+            completion_model=request.model_completion_config.model_name,
+            model_provider=request.model_completion_config.model_provider,
+            judge_model=request.judge_config.model_name,
         )
 
-    async def _create_task_trace(self, request: EvaluationRequest) -> Trace:
+    async def _create_task_trace(self, request: TaskEvaluationRequest) -> Trace:
         """Create initial trace in database."""
+        judge_model = request.judge_config.model_name if request.judge_config else ""
         return await self.repository.create_trace(
             user_id=self.user_id,
             dataset_name=request.task_name,
             guideline_names=[],
-            completion_model=request.completion_model,
-            model_provider=request.model_provider,
-            judge_model=request.judge_model,
+            completion_model=request.model_completion_config.model_name,
+            model_provider=request.model_completion_config.model_provider,
+            judge_model=judge_model,
         )
 
-    async def _update_trace_guidelines(self, trace: Trace, guideline_names: list[str]) -> Trace:
+    async def _update_trace_guidelines(
+        self, trace: Trace, guideline_names: list[str]
+    ) -> Trace:
         """Update trace with guideline names."""
         if guideline_names:
             trace.guideline_names = guideline_names
@@ -206,10 +274,10 @@ class EvaluationService:
         """
         # Get API key for judge model
         judge_api_key = self.s3.download_api_key(
-            self.user_id, request.judge_model_provider
+            self.user_id, request.judge_config.model_provider
         )
-        judge_url = request.judge_api_base or DEFAULT_API_BASES.get(
-            request.judge_model_provider, DEFAULT_API_BASES["openai"]
+        judge_url = request.judge_config.api_base or DEFAULT_API_BASES.get(
+            request.judge_config.model_provider, DEFAULT_API_BASES["openai"]
         )
 
         # Create judge metrics from guidelines
@@ -218,7 +286,7 @@ class EvaluationService:
             guideline_dict = self._convert_guideline_to_dict(guideline)
             metric = GuidelineJudgeMetric(
                 guideline=guideline_dict,
-                model=request.judge_model,
+                model=request.judge_config.model_name,
                 url=judge_url,
                 api_key=judge_api_key,
             )
@@ -238,13 +306,15 @@ class EvaluationService:
         registry.task_to_configs = {request.dataset_name: [task.config]}
 
         # Create model client
-        model_api_key = self.s3.download_api_key(self.user_id, request.model_provider)
-        model_url = request.api_base or DEFAULT_API_BASES.get(
-            request.model_provider, DEFAULT_API_BASES["openai"]
+        model_api_key = self.s3.download_api_key(
+            self.user_id, request.model_completion_config.model_provider
+        )
+        model_url = request.model_completion_config.api_base or DEFAULT_API_BASES.get(
+            request.model_completion_config.model_provider, DEFAULT_API_BASES["openai"]
         )
 
         model_config = LiteLLMModelConfig(
-            model_name=request.completion_model,
+            model_name=request.model_completion_config.model_name,
             base_url=model_url,
             api_key=model_api_key,
         )
@@ -295,22 +365,36 @@ class EvaluationService:
 
         # Create pipeline parameters
         pipeline_params = PipelineParameters(
-            launcher_type=ParallelismManager.ACCELERATE, max_samples=request.n_samples
+            launcher_type=ParallelismManager.ACCELERATE,
+            max_samples=request.dataset_config.n_samples,
         )
 
         # Create model config
-        api_key = self.s3.download_api_key(self.user_id, request.model_provider)
-        base_url = request.api_base or DEFAULT_API_BASES.get(
-            request.model_provider, DEFAULT_API_BASES["openai"]
+        api_key = self.s3.download_api_key(
+            self.user_id, request.model_completion_config.model_provider
+        )
+        base_url = request.model_completion_config.api_base or DEFAULT_API_BASES.get(
+            request.model_completion_config.model_provider, DEFAULT_API_BASES["openai"]
         )
 
         model_config = LiteLLMModelConfig(
-            model_name=request.completion_model, base_url=base_url, api_key=api_key
+            model_name=request.model_completion_config.model_name,
+            base_url=base_url,
+            api_key=api_key,
+            generation_parameters=GenerationParameters(
+                temperature=DEFAULT_TEMPERATURE,  # TODO: make this configurable
+            ),
+        )
+
+        task_name = (
+            request.task_name
+            if "|" in request.task_name
+            else f"{request.task_name}|{request.dataset_config.n_fewshots}"
         )
 
         # Create pipeline
         pipeline = Pipeline(
-            tasks=request.task_name,
+            tasks=task_name,
             pipeline_parameters=pipeline_params,
             evaluation_tracker=evaluation_tracker,
             model_config=model_config,
@@ -333,7 +417,7 @@ class EvaluationService:
 
         # Extract sample count from config_general
         actual_sample_count = results.get("config_general", {}).get(
-            "max_samples", request.n_samples
+            "max_samples", request.dataset_config.n_samples
         )
 
         return {
@@ -357,9 +441,9 @@ class EvaluationService:
             data={
                 "dataset_name": request.dataset_name,
                 "guideline_names": request.guideline_names,
-                "completion_model": request.completion_model,
-                "model_provider": request.model_provider,
-                "judge_model": request.judge_model,
+                "completion_model": request.model_completion_config.model_name,
+                "model_provider": request.model_completion_config.model_provider,
+                "judge_model": request.judge_config.model_name,
                 "sample_count": pipeline_output["sample_count"],
             },
         )
@@ -395,8 +479,8 @@ class EvaluationService:
             event_type="spec",
             data={
                 "task_name": request.task_name,
-                "completion_model": request.completion_model,
-                "model_provider": request.model_provider,
+                "completion_model": request.model_completion_config.model_name,
+                "model_provider": request.model_completion_config.model_provider,
                 "guideline_names": metric_names,
             },
         )
@@ -515,26 +599,31 @@ class EvaluationService:
             dataset_name=request.dataset_name,
             sample_count=sample_count,
             guideline_names=request.guideline_names,
-            completion_model=request.completion_model,
-            model_provider=request.model_provider,
-            judge_model=request.judge_model,
+            completion_model=request.model_completion_config.model_name,
+            model_provider=request.model_completion_config.model_provider,
+            judge_model=request.judge_config.model_name,
             scores=scores,
             created_at=trace.created_at,
         )
 
     def _build_task_response_from_summary(
-        self, trace: Trace, request: TaskEvaluationRequest, pipeline_output: dict, metric_names: list[str]
+        self,
+        trace: Trace,
+        request: TaskEvaluationRequest,
+        pipeline_output: dict,
+        metric_names: list[str],
     ) -> TaskEvaluationResponse:
         """Build task evaluation response from summary."""
+        judge_model = request.judge_config.model_name if request.judge_config else ""
         return TaskEvaluationResponse(
             trace_id=trace.id,
             status=trace.status,
             task_name=request.task_name,
             sample_count=pipeline_output.get("sample_count"),
             guideline_names=metric_names,
-            completion_model=request.completion_model,
-            model_provider=request.model_provider,
-            judge_model=request.judge_model,
+            completion_model=request.model_completion_config.model_name,
+            model_provider=request.model_completion_config.model_provider,
+            judge_model=judge_model,
             created_at=trace.created_at,
         )
 

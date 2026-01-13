@@ -50,7 +50,7 @@ async def run_task_evaluation(
     """Run an evaluation on a task."""
     logger.debug(
         f"Running task evaluation: task={request.task_name}, "
-        f"model={request.completion_model}, user={current_user.email}"
+        f"model={request.model_completion_config.model_name}, user={current_user.email}"
     )
     return await EvaluationService(session, current_user.id).run_task_evaluation(
         request

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { Check, ChevronRight, ChevronLeft, Database, FileText, Gavel, Key, Play, Server } from "lucide-react";
+import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -14,19 +14,37 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
 const STEPS = [
-  { id: 1, title: "Select Dataset", icon: Database },
-  { id: 2, title: "Guidelines", icon: FileText },
+  { id: 1, title: "Select Source", icon: Database },
+  { id: 2, title: "Dataset Configuration", icon: FileText },
   { id: 3, title: "Model & Judge", icon: Server },
   { id: 4, title: "Submit", icon: Play },
 ];
+
+type SelectionType = "dataset" | "benchmark" | null;
 
 export default function Submit() {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
+  
+  // Selection type
+  const [selectionType, setSelectionType] = useState<SelectionType>(null);
+  
+  // Dataset-specific state
   const [selectedDataset, setSelectedDataset] = useState("");
   const [selectedGuidelines, setSelectedGuidelines] = useState<string[]>([]);
+  
+  // Benchmark-specific state
+  const [selectedBenchmark, setSelectedBenchmark] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState("");
+  const [numFewShots, setNumFewShots] = useState(0);
+  const [numSamples, setNumSamples] = useState<number | undefined>(undefined);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
+  const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
+  
+  // Model configuration
   const [completionModel, setCompletionModel] = useState("gpt-3.5-turbo");
   const [judgeModel, setJudgeModel] = useState("gpt-3.5-turbo");
   const [modelProvider, setModelProvider] = useState("openai");
@@ -36,6 +54,13 @@ export default function Submit() {
   const { data: datasetsData } = useQuery({
     queryKey: ['datasets'],
     queryFn: () => apiClient.getDatasets(),
+    enabled: isAuthenticated,
+  });
+
+  // Fetch benchmarks
+  const { data: benchmarksData } = useQuery({
+    queryKey: ['benchmarks'],
+    queryFn: () => apiClient.getBenchmarks({ page: 1, page_size: 100 }),
     enabled: isAuthenticated,
   });
 
@@ -54,19 +79,24 @@ export default function Submit() {
   });
 
   const datasets = datasetsData?.datasets || [];
+  const benchmarks = benchmarksData?.benchmarks || [];
   const guidelines = guidelinesData?.guidelines || [];
   const apiKeys = apiKeysData?.api_key_providers || [];
 
-  // Submit evaluation
-  const submitMutation = useMutation({
+  // Submit dataset evaluation
+  const submitDatasetMutation = useMutation({
     mutationFn: () =>
       apiClient.createEvaluation({
         dataset_name: selectedDataset,
         guideline_names: selectedGuidelines,
-        completion_model: completionModel,
-        model_provider: modelProvider,
-        judge_model: judgeModel,
-        judge_model_provider: judgeProvider,
+        model_completion_config: {
+          model_name: completionModel,
+          model_provider: modelProvider,
+        },
+        judge_config: {
+          model_name: judgeModel,
+          model_provider: judgeProvider,
+        },
       }),
     onSuccess: () => {
       toast({
@@ -84,22 +114,63 @@ export default function Submit() {
     },
   });
 
-  const handleNext = () => {
-    if (currentStep === 1 && !selectedDataset) {
+  // Submit task evaluation
+  const submitTaskMutation = useMutation({
+    mutationFn: () =>
+      apiClient.createTaskEvaluation({
+        task_name: selectedTask,
+        dataset_config: {
+          dataset_name: selectedBenchmark.dataset_name,
+          n_fewshots: numFewShots,
+          n_samples: numSamples,
+        },
+        model_completion_config: {
+          model_name: completionModel,
+          model_provider: modelProvider,
+        },
+      }),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Task evaluation started successfully!",
+      });
+      setLocation("/results");
+    },
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Please select a dataset",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleNext = () => {
+    if (currentStep === 1 && !selectionType) {
+      toast({
+        title: "Error",
+        description: "Please select a dataset or benchmark",
         variant: "destructive",
       });
       return;
     }
-    if (currentStep === 2 && selectedGuidelines.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select at least one guideline",
-        variant: "destructive",
-      });
-      return;
+    if (currentStep === 2) {
+      if (selectionType === "dataset" && selectedGuidelines.length === 0) {
+        toast({
+          title: "Error",
+          description: "Please select at least one guideline",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (selectionType === "benchmark" && !selectedTask) {
+        toast({
+          title: "Error",
+          description: "Please select a task",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     if (currentStep < STEPS.length) setCurrentStep(currentStep + 1);
   };
@@ -117,7 +188,12 @@ export default function Submit() {
       });
       return;
     }
-    submitMutation.mutate();
+    
+    if (selectionType === "dataset") {
+      submitDatasetMutation.mutate();
+    } else if (selectionType === "benchmark") {
+      submitTaskMutation.mutate();
+    }
   };
 
   const toggleGuideline = (guidelineName: string) => {
@@ -126,6 +202,114 @@ export default function Submit() {
     } else {
       setSelectedGuidelines([...selectedGuidelines, guidelineName]);
     }
+  };
+
+  const handleSelectDataset = (ds: any) => {
+    setSelectedDataset(ds.name);
+    setSelectionType("dataset");
+    setSelectedBenchmark(null);
+    setSelectedTask("");
+  };
+
+  const handleSelectBenchmark = (benchmark: any) => {
+    setSelectedBenchmark(benchmark);
+    setSelectionType("benchmark");
+    setSelectedDataset("");
+    setSelectedGuidelines([]);
+  };
+
+  const toggleTask = async (taskName: string) => {
+    const newExpanded = new Set(expandedTasks);
+    if (newExpanded.has(taskName)) {
+      newExpanded.delete(taskName);
+      setExpandedTasks(newExpanded);
+    } else {
+      newExpanded.add(taskName);
+      setExpandedTasks(newExpanded);
+      
+      if (!taskDetails[taskName]) {
+        setLoadingTasks(prev => new Set(prev).add(taskName));
+        try {
+          const details = await apiClient.getTaskDetails(taskName);
+          setTaskDetails(prev => ({ ...prev, [taskName]: details }));
+        } catch (error) {
+          console.error('Failed to fetch task details:', error);
+        } finally {
+          setLoadingTasks(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(taskName);
+            return newSet;
+          });
+        }
+      }
+    }
+  };
+
+  const NestedValue = ({ value, depth = 0 }: { value: any; depth?: number }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    
+    if (value === null || value === undefined) {
+      return <span className="text-gray-400 italic">null</span>;
+    }
+    
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const entries = Object.entries(value);
+      if (entries.length === 0) {
+        return <span className="text-gray-400">{'{}'}</span>;
+      }
+      
+      return (
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+          >
+            {isExpanded ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            <span>{entries.length} {entries.length === 1 ? 'field' : 'fields'}</span>
+          </button>
+          {isExpanded && (
+            <div className="ml-4 pl-2 border-l-2 border-gray-200 space-y-1">
+              {entries.map(([key, val]) => (
+                <div key={key} className="text-xs">
+                  <span className="font-semibold text-gray-700">{key}:</span>{' '}
+                  <NestedValue value={val} depth={depth + 1} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="text-gray-400">[]</span>;
+      }
+      
+      return (
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+          >
+            {isExpanded ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            <span>{value.length} {value.length === 1 ? 'item' : 'items'}</span>
+          </button>
+          {isExpanded && (
+            <div className="ml-4 pl-2 border-l-2 border-gray-200 space-y-1">
+              {value.map((item, idx) => (
+                <div key={idx} className="text-xs">
+                  <span className="text-gray-500">[{idx}]:</span>{' '}
+                  <NestedValue value={item} depth={depth + 1} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    return <span className="text-gray-900 font-mono text-xs">{String(value)}</span>;
   };
 
   if (!isAuthenticated) {
@@ -197,37 +381,82 @@ export default function Submit() {
 
               <CardContent className="flex-1 p-8">
                 {currentStep === 1 && (
-                  <div className="space-y-4">
-                    <Label>Select a dataset</Label>
-                    {datasets.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No datasets available. Please upload one first.
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {datasets.map((ds) => (
-                          <div
-                            key={ds.id}
-                            onClick={() => setSelectedDataset(ds.name)}
-                            className={cn(
-                              "border p-4 rounded-lg cursor-pointer transition-all",
-                              selectedDataset === ds.name
-                                ? "border-mint-500 bg-mint-50/20"
-                                : "border-border hover:border-mint-300"
-                            )}
-                          >
-                            <div className="font-bold text-lg mb-1">{ds.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {ds.category} • {ds.sample_count} samples
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <Label className="text-lg font-semibold">Select a Dataset</Label>
+                      {datasets.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No datasets available. Please upload one first.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {datasets.map((ds) => (
+                            <div
+                              key={ds.id}
+                              onClick={() => handleSelectDataset(ds)}
+                              className={cn(
+                                "border p-4 rounded-lg cursor-pointer transition-all",
+                                selectedDataset === ds.name
+                                  ? "border-mint-500 bg-mint-50/20"
+                                  : "border-border hover:border-mint-300"
+                              )}
+                            >
+                              <div className="font-bold text-lg mb-1">{ds.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {ds.category} • {ds.sample_count} samples
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
                       </div>
-                    )}
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-white px-2 text-muted-foreground">Or</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <Label className="text-lg font-semibold">Select a Benchmark</Label>
+                      {benchmarks.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No benchmarks available.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                          {benchmarks.map((benchmark) => (
+                            <div
+                              key={benchmark.id}
+                              onClick={() => handleSelectBenchmark(benchmark)}
+                              className={cn(
+                                "border p-4 rounded-lg cursor-pointer transition-all",
+                                selectedBenchmark?.id === benchmark.id
+                                  ? "border-mint-500 bg-mint-50/20"
+                                  : "border-border hover:border-mint-300"
+                              )}
+                            >
+                              <div className="font-bold text-lg mb-1">{benchmark.dataset_name}</div>
+                              <div className="text-sm text-muted-foreground line-clamp-2">
+                                {benchmark.description || "No description"}
+                              </div>
+                              {benchmark.tasks && (
+                                <div className="text-xs text-muted-foreground mt-2">
+                                  {benchmark.tasks.length} tasks available
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
-                {currentStep === 2 && (
+                {currentStep === 2 && selectionType === "dataset" && (
                   <div className="space-y-4">
                     <Label>Select guidelines (at least one)</Label>
                     {guidelines.length === 0 ? (
@@ -267,34 +496,112 @@ export default function Submit() {
                   </div>
                 )}
 
-                {currentStep === 3 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Judge Section - Left */}
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Judge Provider</Label>
-                        <Select value={judgeProvider} onValueChange={setJudgeProvider}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="openai">OpenAI</SelectItem>
-                            <SelectItem value="anthropic">Anthropic</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Judge Model</Label>
-                        <Input
-                          value={judgeModel}
-                          onChange={(e) => setJudgeModel(e.target.value)}
-                          placeholder="e.g., gpt-4"
-                        />
+                {currentStep === 2 && selectionType === "benchmark" && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-base font-semibold">Select Task</Label>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Choose from {selectedBenchmark?.tasks?.length || 0} available tasks
+                      </p>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {selectedBenchmark?.tasks?.map((task: string) => (
+                          <div key={task} className="border border-gray-200 rounded-md">
+                            <div
+                              onClick={() => setSelectedTask(task)}
+                              className={cn(
+                                "p-3 cursor-pointer transition-all",
+                                selectedTask === task
+                                  ? "bg-mint-50 border-mint-500"
+                                  : "hover:bg-gray-50"
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <code className="text-xs text-mint-700 font-mono break-all flex-1">
+                                  {task}
+                                </code>
+                                <div className="flex items-center gap-2">
+                                  {selectedTask === task && (
+                                    <Check className="w-4 h-4 text-mint-500 flex-shrink-0" />
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleTask(task);
+                                    }}
+                                    className="text-gray-500 hover:text-gray-700"
+                                  >
+                                    {expandedTasks.has(task) ? (
+                                      <ChevronLeft className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            {expandedTasks.has(task) && (
+                              <div className="px-3 pb-3 border-t border-gray-100">
+                                {loadingTasks.has(task) ? (
+                                  <div className="text-xs text-gray-500 py-2">Loading task details...</div>
+                                ) : taskDetails[task] ? (
+                                  <div className="mt-2 space-y-2">
+                                    {Object.entries(taskDetails[task]).map(([key, value]) => (
+                                      <div key={key} className="text-xs">
+                                        <span className="font-semibold text-gray-700">{key}:</span>{' '}
+                                        <NestedValue value={value} />
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-red-500 py-2">Failed to load task details</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
 
-                    {/* Completion Model Section - Right */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                      <div className="space-y-2">
+                        <Label>Number of Samples</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={numSamples === undefined ? "" : numSamples}
+                          onChange={(e) => setNumSamples(e.target.value ? parseInt(e.target.value) : undefined)}
+                          placeholder="All samples"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Number of samples to evaluate (leave empty for all)
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Number of Few-Shot Examples</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={numFewShots}
+                          onChange={(e) => setNumFewShots(parseInt(e.target.value) || 0)}
+                          placeholder="e.g., 0, 5, 10"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Examples to include in the prompt for few-shot learning
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {currentStep === 3 && (
+                  <div className={cn(
+                    "grid gap-6",
+                    selectionType === "dataset" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+                  )}>
+                    {/* Completion Model Section */}
                     <div className="space-y-4">
+                      <h3 className="font-semibold text-lg">Completion Model</h3>
                       <div className="space-y-2">
                         <Label>Model Provider</Label>
                         <Select value={modelProvider} onValueChange={setModelProvider}>
@@ -308,7 +615,7 @@ export default function Submit() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Completion Model</Label>
+                        <Label>Model Name</Label>
                         <Input
                           value={completionModel}
                           onChange={(e) => setCompletionModel(e.target.value)}
@@ -316,6 +623,33 @@ export default function Submit() {
                         />
                       </div>
                     </div>
+
+                    {/* Judge Section - Only for datasets */}
+                    {selectionType === "dataset" && (
+                      <div className="space-y-4">
+                        <h3 className="font-semibold text-lg">Judge Model</h3>
+                        <div className="space-y-2">
+                          <Label>Judge Provider</Label>
+                          <Select value={judgeProvider} onValueChange={setJudgeProvider}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="openai">OpenAI</SelectItem>
+                              <SelectItem value="anthropic">Anthropic</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Judge Model</Label>
+                          <Input
+                            value={judgeModel}
+                            onChange={(e) => setJudgeModel(e.target.value)}
+                            placeholder="e.g., gpt-4"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -325,26 +659,55 @@ export default function Submit() {
                       <h3 className="font-bold text-lg">Review Your Evaluation</h3>
                       <div className="space-y-2 p-4 bg-zinc-50 rounded-lg">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Dataset:</span>
-                          <span className="font-medium">{selectedDataset}</span>
+                          <span className="text-muted-foreground">Type:</span>
+                          <span className="font-medium capitalize">{selectionType}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Guidelines:</span>
-                          <span className="font-medium">
-                            {selectedGuidelines.join(", ")}
-                          </span>
-                        </div>
+                        
+                        {selectionType === "dataset" ? (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Dataset:</span>
+                              <span className="font-medium">{selectedDataset}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Guidelines:</span>
+                              <span className="font-medium">
+                                {selectedGuidelines.join(", ")}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Judge Model:</span>
+                              <span className="font-medium">{judgeModel}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Judge Provider:</span>
+                              <span className="font-medium">{judgeProvider}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Benchmark:</span>
+                              <span className="font-medium">{selectedBenchmark?.dataset_name}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Task:</span>
+                              <span className="font-medium text-xs font-mono">{selectedTask}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Number of Samples:</span>
+                              <span className="font-medium">{numSamples ?? "All"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Few-Shot Examples:</span>
+                              <span className="font-medium">{numFewShots}</span>
+                            </div>
+                          </>
+                        )}
+                        
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Completion Model:</span>
                           <span className="font-medium">{completionModel}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Judge Model:</span>
-                          <span className="font-medium">{judgeModel}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Judge Provider:</span>
-                          <span className="font-medium">{judgeProvider}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Completion Provider:</span>
@@ -382,10 +745,12 @@ export default function Submit() {
                 ) : (
                   <Button
                     onClick={handleSubmit}
-                    disabled={submitMutation.isPending}
+                    disabled={submitDatasetMutation.isPending || submitTaskMutation.isPending}
                     className="bg-mint-500 hover:bg-mint-600"
                   >
-                    {submitMutation.isPending ? "Submitting..." : "Start Evaluation"}
+                    {(submitDatasetMutation.isPending || submitTaskMutation.isPending) 
+                      ? "Submitting..." 
+                      : "Start Evaluation"}
                     <Play className="w-4 h-4 ml-2" />
                   </Button>
                 )}
