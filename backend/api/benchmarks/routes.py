@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.benchmarks.schemas import BenchmarkListResponse, BenchmarkResponse
+from api.benchmarks.schemas import BenchmarkListResponse, BenchmarkResponse, TaskDetailsResponse
 from api.benchmarks.service import BenchmarkService
 from api.core.database import get_session
 from api.core.logging import get_logger
@@ -52,3 +52,13 @@ async def get_benchmark(
     """Get a single benchmark by ID."""
     logger.debug(f"Getting benchmark: {benchmark_id}")
     return await BenchmarkService(session).get_benchmark(benchmark_id)
+
+
+@router.get("/task-details/{task_name}", response_model=TaskDetailsResponse)
+async def get_task_details(
+    task_name: str,
+    session: AsyncSession = Depends(get_session),
+) -> TaskDetailsResponse:
+    """Get task details by task name."""
+    logger.debug(f"Getting task details: {task_name}")
+    return await BenchmarkService(session).get_task_details(task_name)

@@ -35,3 +35,9 @@ class BenchmarkListResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
+
+class TaskDetailsResponse(BaseModel):
+    """Response schema for task details."""
+
+    task_name: str
+    task_details_nested_dict: Optional[dict] = None

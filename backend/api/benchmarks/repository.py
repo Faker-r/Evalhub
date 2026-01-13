@@ -1,4 +1,7 @@
-from typing import Optional
+"""Repository for handling benchmark database operations."""
+import functools
+from dataclasses import asdict
+from typing import Callable, Optional
 
 from sqlalchemy import func, select, String, cast
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +10,10 @@ from api.benchmarks.models import Benchmark
 from api.core.exceptions import NotFoundException
 from api.core.logging import get_logger
 from scripts.benchmark_utils import normalize_language_code
+
+from lighteval.tasks.registry import Registry
+from lighteval.tasks.lighteval_task import LightevalTaskConfig
+from lighteval.metrics.utils.metric_utils import Metric
 
 logger = get_logger(__name__)
 
@@ -210,3 +217,36 @@ class BenchmarkRepository:
         else:
             benchmark_data["dataset_name"] = dataset_name
             return await self.create(benchmark_data)
+
+    def _generate_task_details_dict(self, task_obj: LightevalTaskConfig) -> dict:
+        def convert(value):
+            if isinstance(value, functools.partial):
+                func_name = getattr(value.func, "__name__", str(value.func))
+                return f"partial({func_name}, ...)"
+            if isinstance(value, Callable):
+                return getattr(value, "__name__", repr(value))
+            if isinstance(value, Metric.get_allowed_types_for_metrics()):
+                return str(value)
+            if isinstance(value, dict):
+                return {k: convert(v) for k, v in value.items()}
+            if isinstance(value, (list, tuple)):
+                return [convert(item) for item in value]
+            return value
+
+        return {k: convert(v) for k, v in asdict(task_obj).items()}
+
+    async def get_task_details(self, task_name: str) -> Optional[dict]:
+        """Get task details by task name.
+
+        Args:
+            task_name: Task name
+
+        Returns:
+            TaskDetails: Found task details
+        """
+        task_map = Registry().load_tasks()
+        task_obj = task_map.get(task_name, None) or task_map.get(f"{task_name}|0", None)
+        if not task_obj:
+            return None
+        
+        return self._generate_task_details_dict(task_obj.config)
