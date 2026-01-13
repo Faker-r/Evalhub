@@ -14,6 +14,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { TagInput } from "@/components/ui/tag-input";
 
 export default function Guidelines() {
   const { isAuthenticated } = useAuth();
@@ -28,6 +29,7 @@ export default function Guidelines() {
     name: "",
     prompt: "",
     category: "",
+    categories: [] as string[],
     scoring_scale: "numeric" as "boolean" | "custom_category" | "numeric" | "percentage",
     scoring_scale_config: { min_value: 0, max_value: 10 } as any,
   });
@@ -50,7 +52,8 @@ export default function Guidelines() {
       setCreateData({ 
         name: "", 
         prompt: "", 
-        category: "", 
+        category: "",
+        categories: [], 
         scoring_scale: "numeric", 
         scoring_scale_config: { min_value: 0, max_value: 10 } 
       });
@@ -70,7 +73,9 @@ export default function Guidelines() {
   });
 
   const handleCreate = () => {
-    if (!createData.name || !createData.prompt || !createData.category) {
+    const categoryString = createData.categories.length > 0 ? createData.categories.join(", ") : createData.category;
+
+    if (!createData.name || !createData.prompt || !categoryString) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -98,7 +103,10 @@ export default function Guidelines() {
       return;
     }
     
-    createMutation.mutate(createData);
+    createMutation.mutate({
+      ...createData,
+      category: categoryString
+    });
   };
 
   const handleScoringScaleChange = (value: string) => {
@@ -178,13 +186,10 @@ export default function Guidelines() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="category">Guideline Category</Label>
-                    <Input
-                      id="category"
-                      placeholder="e.g., accuracy, helpfulness, safety"
-                      value={createData.category}
-                      onChange={(e) =>
-                        setCreateData({ ...createData, category: e.target.value })
-                      }
+                    <TagInput 
+                      value={createData.categories}
+                      onChange={(tags) => setCreateData({ ...createData, categories: tags })}
+                      placeholder="Add categories (press Enter to add)"
                     />
                   </div>
                   <div className="space-y-2">
