@@ -199,14 +199,42 @@ class ApiClient {
   async createEvaluation(data: {
     dataset_name: string;
     guideline_names: string[];
-    completion_model: string;
-    model_provider: string;
-    judge_model: string;
-    judge_model_provider: string;
-    api_base?: string;
-    judge_api_base?: string;
+    model_completion_config: {
+      model_name: string;
+      model_provider: string;
+      api_base?: string;
+    };
+    judge_config: {
+      model_name: string;
+      model_provider: string;
+      api_base?: string;
+    };
   }) {
     return this.request('/evaluations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async createTaskEvaluation(data: {
+    task_name: string;
+    dataset_config: {
+      dataset_name: string;
+      n_samples?: number;
+      n_fewshots?: number;
+    };
+    model_completion_config: {
+      model_name: string;
+      model_provider: string;
+      api_base?: string;
+    };
+    judge_config?: {
+      model_name: string;
+      model_provider: string;
+      api_base?: string;
+    };
+  }) {
+    return this.request('/evaluations/tasks', {
       method: 'POST',
       body: JSON.stringify(data),
     });

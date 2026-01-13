@@ -1,18 +1,6 @@
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, ConfigDict
-
-
-class EvaluationRequest(BaseModel):
-    """Request schema for running an evaluation."""
-
-    dataset_name: str
-    guideline_names: list[str]
-    completion_model: str
-    model_provider: str
-    api_base: str | None = None
-    judge_model: str
-    judge_model_provider: str
-    judge_api_base: str | None = None
 
 
 class CategoricalScoreDistribution(BaseModel):
@@ -85,17 +73,38 @@ class TraceEventResponse(BaseModel):
     created_at: datetime
 
 
+class DatasetConfig(BaseModel):
+    """Request schema for running a task evaluation."""
+
+    dataset_name: str
+    n_samples: int | None = None
+    n_fewshots: int | None = None
+
+
+class ModelConfig(BaseModel):
+    """Request schema for running a task evaluation."""
+
+    model_name: str
+    model_provider: str
+    api_base: str | None = None
+
+
+class EvaluationRequest(BaseModel):
+    """Request schema for running an evaluation."""
+
+    dataset_name: str
+    guideline_names: list[str]
+    model_completion_config: ModelConfig
+    judge_config: ModelConfig
+
+
 class TaskEvaluationRequest(BaseModel):
     """Request schema for running a task evaluation."""
 
     task_name: str
-    n_samples: int
-    completion_model: str
-    model_provider: str
-    api_base: str | None = None
-    judge_model: str
-    judge_model_provider: str
-    judge_api_base: str | None = None
+    dataset_config: DatasetConfig
+    model_completion_config: ModelConfig
+    judge_config: ModelConfig | None = None
 
 
 class TaskEvaluationResponse(BaseModel):
