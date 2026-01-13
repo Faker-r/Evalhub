@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Hexagon, Menu, X, User, Settings, LogOut, Key } from "lucide-react";
+import { Hexagon, Menu, X, Settings, LogOut } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { LoginModal } from "@/components/login-modal";
@@ -56,6 +56,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </a>
               </Link>
             ))}
+            {isAuthenticated && (
+              <Link href="/results">
+                <a className={cn(
+                  "text-sm font-medium transition-colors hover:text-mint-600",
+                  location === "/results" ? "text-black" : "text-muted-foreground"
+                )}>
+                  My Evaluations
+                </a>
+              </Link>
+            )}
           </nav>
 
           {/* Desktop Actions */}
@@ -90,10 +100,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <DropdownMenuItem onClick={() => (window.location.href = "/profile")}>
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Profile & API Keys</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => (window.location.href = "/results")}>
-                      <User className="mr-2 h-4 w-4" />
-                      <span>My Evaluations</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={logout}>
@@ -144,6 +150,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </a>
               </Link>
             ))}
+            {isAuthenticated && (
+              <Link href="/results">
+                <a 
+                  className="text-sm font-medium py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  My Evaluations
+                </a>
+              </Link>
+            )}
             <div className="flex flex-col gap-2 pt-4 border-t border-border">
               {isAuthenticated ? (
                 <>

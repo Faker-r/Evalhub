@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { Check, ChevronRight, ChevronLeft, Database, FileText, Gavel, Key, Play, Server } from "lucide-react";
+import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
