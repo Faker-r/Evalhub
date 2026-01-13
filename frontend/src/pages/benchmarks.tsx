@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ExternalLink, Search, ChevronLeft, ChevronRight, ChevronDown, Download, Box } from "lucide-react";
+import { ExternalLink, Search, ChevronLeft, ChevronRight, ChevronDown, Download, Box, ChevronUp } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -85,6 +85,9 @@ export default function Benchmarks() {
   const [showAllLanguages, setShowAllLanguages] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [selectedBenchmark, setSelectedBenchmark] = useState<any>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
+  const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
 
   const ITEMS_PER_PAGE = 12;
 
@@ -127,8 +130,102 @@ export default function Benchmarks() {
     );
   };
 
+  const toggleTask = async (taskName: string) => {
+    const newExpanded = new Set(expandedTasks);
+    if (newExpanded.has(taskName)) {
+      newExpanded.delete(taskName);
+      setExpandedTasks(newExpanded);
+    } else {
+      newExpanded.add(taskName);
+      setExpandedTasks(newExpanded);
+      
+      if (!taskDetails[taskName]) {
+        setLoadingTasks(prev => new Set(prev).add(taskName));
+        try {
+          const details = await apiClient.getTaskDetails(taskName);
+          setTaskDetails(prev => ({ ...prev, [taskName]: details }));
+        } catch (error) {
+          console.error('Failed to fetch task details:', error);
+        } finally {
+          setLoadingTasks(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(taskName);
+            return newSet;
+          });
+        }
+      }
+    }
+  };
+
   const visibleLanguages = showAllLanguages ? LANGUAGE_FILTERS : LANGUAGE_FILTERS.slice(0, 8);
   const visibleTags = showAllTags ? VALID_BENCHMARK_TAGS : VALID_BENCHMARK_TAGS.slice(0, 15);
+
+  const NestedValue = ({ value, depth = 0 }: { value: any; depth?: number }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    
+    if (value === null || value === undefined) {
+      return <span className="text-gray-400 italic">null</span>;
+    }
+    
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const entries = Object.entries(value);
+      if (entries.length === 0) {
+        return <span className="text-gray-400">{'{}'}</span>;
+      }
+      
+      return (
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+          >
+            {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            <span>{entries.length} {entries.length === 1 ? 'field' : 'fields'}</span>
+          </button>
+          {isExpanded && (
+            <div className="ml-4 pl-2 border-l-2 border-gray-200 space-y-1">
+              {entries.map(([key, val]) => (
+                <div key={key} className="text-xs">
+                  <span className="font-semibold text-gray-700">{key}:</span>{' '}
+                  <NestedValue value={val} depth={depth + 1} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="text-gray-400">[]</span>;
+      }
+      
+      return (
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+          >
+            {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+            <span>{value.length} {value.length === 1 ? 'item' : 'items'}</span>
+          </button>
+          {isExpanded && (
+            <div className="ml-4 pl-2 border-l-2 border-gray-200 space-y-1">
+              {value.map((item, idx) => (
+                <div key={idx} className="text-xs">
+                  <span className="text-gray-500">[{idx}]:</span>{' '}
+                  <NestedValue value={item} depth={depth + 1} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    return <span className="text-gray-900 font-mono text-xs">{String(value)}</span>;
+  };
 
   return (
     <Layout>
@@ -468,10 +565,38 @@ export default function Benchmarks() {
                       {selectedBenchmark.tasks?.length > 0 && (
                         <div>
                           <h3 className="text-sm font-semibold mb-2">Run using Lighteval ({selectedBenchmark.tasks.length} tasks)</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedBenchmark.tasks.map((task: string, idx: number) => (
-                              <div key={idx} className="bg-mint-50 rounded-md px-2 py-1 border border-mint-100">
-                                <code className="text-xs text-mint-700 font-mono break-all">{task}</code>
+                          <div className="space-y-2">
+                            {selectedBenchmark.tasks.map((task: string) => (
+                              <div key={task} className="border border-gray-200 rounded-md">
+                                <button
+                                  onClick={() => toggleTask(task)}
+                                  className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
+                                >
+                                  <code className="text-xs text-mint-700 font-mono break-all">{task}</code>
+                                  {expandedTasks.has(task) ? (
+                                    <ChevronUp className="w-4 h-4 text-gray-500 flex-shrink-0 ml-2" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0 ml-2" />
+                                  )}
+                                </button>
+                                {expandedTasks.has(task) && (
+                                  <div className="px-3 pb-3 border-t border-gray-100">
+                                    {loadingTasks.has(task) ? (
+                                      <div className="text-xs text-gray-500 py-2">Loading task details...</div>
+                                    ) : taskDetails[task] ? (
+                                      <div className="mt-2 space-y-2">
+                                        {Object.entries(taskDetails[task]).map(([key, value]) => (
+                                          <div key={key} className="text-xs">
+                                            <span className="font-semibold text-gray-700">{key}:</span>{' '}
+                                            <NestedValue value={value} />
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-red-500 py-2">Failed to load task details</div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>

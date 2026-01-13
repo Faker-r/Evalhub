@@ -3,9 +3,8 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.benchmarks.models import Benchmark
 from api.benchmarks.repository import BenchmarkRepository
-from api.benchmarks.schemas import BenchmarkListResponse, BenchmarkResponse
+from api.benchmarks.schemas import BenchmarkListResponse, BenchmarkResponse, TaskDetailsResponse
 from api.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -91,3 +90,18 @@ class BenchmarkService:
         if benchmark:
             return BenchmarkResponse.model_validate(benchmark)
         return None
+
+    async def get_task_details(self, task_name: str) -> TaskDetailsResponse:
+        """Get task details by task name.
+
+        Args:
+            task_name: Task name
+
+        Returns:
+            TaskDetailsResponse: Found task details
+        """
+        response = TaskDetailsResponse(task_name=task_name)
+        task_details_nested_dict = await self.repository.get_task_details(task_name)
+        if task_details_nested_dict:
+            response.task_details_nested_dict = task_details_nested_dict
+        return response

@@ -326,6 +326,14 @@ class ApiClient {
     }>(`/benchmarks/${benchmarkId}`);
   }
 
+  async getTaskDetails(taskName: string) {
+    const response = await this.request<{
+      task_name: string;
+      task_details_nested_dict: Record<string, any> | null;
+    }>(`/benchmarks/task-details/${encodeURIComponent(taskName)}`);
+    return response.task_details_nested_dict || {};
+  }
+
   // Health check
   async health() {
     return this.request<{ status: string }>('/health');
