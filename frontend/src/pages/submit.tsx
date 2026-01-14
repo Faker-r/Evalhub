@@ -3,15 +3,79 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server } from "lucide-react";
+import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server, ChevronDown } from "lucide-react";
+import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+
+interface ProviderComboboxProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  predefinedOptions?: string[];
+}
+
+function ProviderCombobox({ value, onChange, placeholder = "Select or type...", predefinedOptions = [] }: ProviderComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+
+  const handleSelect = (selectedValue: string) => {
+    onChange(selectedValue);
+    setInputValue(selectedValue);
+    setOpen(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    onChange(newValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div className="flex items-center w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 cursor-pointer">
+          <input
+            className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+            value={inputValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+          />
+          <ChevronDown className="h-4 w-4 opacity-50" />
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search or type custom..." />
+          <CommandList>
+            {predefinedOptions.map((option) => (
+              <CommandItem
+                key={option}
+                onSelect={() => handleSelect(option)}
+                className={value === option ? "bg-accent" : ""}
+              >
+                {option}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const STEPS = [
   { id: 1, title: "Select Source", icon: Database },
@@ -604,15 +668,12 @@ export default function Submit() {
                       <h3 className="font-semibold text-lg">Completion Model</h3>
                       <div className="space-y-2">
                         <Label>Model Provider</Label>
-                        <Select value={modelProvider} onValueChange={setModelProvider}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="openai">OpenAI</SelectItem>
-                            <SelectItem value="anthropic">Anthropic</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <ProviderCombobox
+                          value={modelProvider}
+                          onChange={setModelProvider}
+                          placeholder="Select or type provider..."
+                          predefinedOptions={["openai", "anthropic", "baseten"]}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Model Name</Label>
@@ -630,15 +691,12 @@ export default function Submit() {
                         <h3 className="font-semibold text-lg">Judge Model</h3>
                         <div className="space-y-2">
                           <Label>Judge Provider</Label>
-                          <Select value={judgeProvider} onValueChange={setJudgeProvider}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="openai">OpenAI</SelectItem>
-                              <SelectItem value="anthropic">Anthropic</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <ProviderCombobox
+                            value={judgeProvider}
+                            onChange={setJudgeProvider}
+                            placeholder="Select or type provider..."
+                            predefinedOptions={["openai", "anthropic", "baseten"]}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label>Judge Model</Label>

@@ -279,6 +279,7 @@ class EvaluationService:
         judge_url = request.judge_config.api_base or DEFAULT_API_BASES.get(
             request.judge_config.model_provider, DEFAULT_API_BASES["openai"]
         )
+        judge_model_name = f"{request.judge_config.model_provider}/{request.judge_config.model_name}"
 
         # Create judge metrics from guidelines
         metrics = []
@@ -286,7 +287,7 @@ class EvaluationService:
             guideline_dict = self._convert_guideline_to_dict(guideline)
             metric = GuidelineJudgeMetric(
                 guideline=guideline_dict,
-                model=request.judge_config.model_name,
+                model=judge_model_name,
                 url=judge_url,
                 api_key=judge_api_key,
             )
@@ -313,8 +314,9 @@ class EvaluationService:
             request.model_completion_config.model_provider, DEFAULT_API_BASES["openai"]
         )
 
+        model_name = f"{request.model_completion_config.model_provider}/{request.model_completion_config.model_name}"
         model_config = LiteLLMModelConfig(
-            model_name=request.model_completion_config.model_name,
+            model_name=model_name,
             base_url=model_url,
             api_key=model_api_key,
         )
@@ -377,8 +379,10 @@ class EvaluationService:
             request.model_completion_config.model_provider, DEFAULT_API_BASES["openai"]
         )
 
+        model_name = f"{request.model_completion_config.model_provider}/{request.model_completion_config.model_name}"
         model_config = LiteLLMModelConfig(
-            model_name=request.model_completion_config.model_name,
+            model_name=model_name,
+            provider=request.model_completion_config.model_provider,
             base_url=base_url,
             api_key=api_key,
             generation_parameters=GenerationParameters(
