@@ -126,6 +126,56 @@ export default function Results() {
     );
   };
 
+  const renderGuidelines = (names: string[]) => {
+    const maxChars = 28;
+    const visible: string[] = [];
+    let usedChars = 0;
+
+    for (const name of names) {
+      const nextChars = visible.length === 0 ? name.length : usedChars + 2 + name.length;
+      if (nextChars > maxChars) {
+        break;
+      }
+      visible.push(name);
+      usedChars = nextChars;
+    }
+
+    if (names.length === 1) {
+      const name = names[0];
+      const displayName =
+        name.length > maxChars ? `${name.slice(0, maxChars)}....` : name;
+
+      return (
+        <div className="flex max-w-[240px]">
+          <Badge variant="secondary" className="text-xs max-w-[240px] truncate">
+            {displayName}
+          </Badge>
+        </div>
+      );
+    }
+
+    const didTruncate = visible.some((name) => name.length > maxChars);
+    const displayNames = visible.map((name) =>
+      name.length > maxChars ? `${name.slice(0, maxChars)}....` : name
+    );
+    const hasMore = visible.length < names.length || didTruncate;
+
+    return (
+      <div className="flex flex-wrap gap-1 max-w-[240px]">
+        {displayNames.map((name) => (
+          <Badge key={name} variant="secondary" className="text-xs">
+            {name}
+          </Badge>
+        ))}
+        {hasMore && (
+          <Badge variant="secondary" className="text-xs">
+            ....
+          </Badge>
+        )}
+      </div>
+    );
+  };
+
   if (!isAuthenticated) {
     return (
       <Layout>
@@ -263,19 +313,8 @@ export default function Results() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {trace.guideline_names.slice(0, 2).map((name) => (
-                            <Badge key={name} variant="secondary" className="text-xs">
-                              {name}
-                            </Badge>
-                          ))}
-                          {trace.guideline_names.length > 2 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{trace.guideline_names.length - 2}
-                            </Badge>
-                          )}
-                        </div>
+                      <TableCell className="max-w-[240px]">
+                        {renderGuidelines(trace.guideline_names)}
                       </TableCell>
                       <TableCell>{getStatusBadge(trace.status)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
