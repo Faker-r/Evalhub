@@ -2,6 +2,7 @@ import json
 import tempfile
 import statistics
 import asyncio
+from dataclasses import asdict
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +29,7 @@ from api.evaluations.eval_pipeline.eval_pipeline import (
     CustomTaskEvaluationPipelineParameters,
 )
 from api.evaluations.eval_pipeline.guideline_judge import GuidelineJudgeMetric
+from api.evaluations.eval_pipeline.metric_doc_generator import MetricDocGenerator
 
 from lighteval.logging.evaluation_tracker import EvaluationTracker
 from lighteval.models.endpoints.litellm_model import LiteLLMModelConfig, LiteLLMClient
@@ -171,6 +173,8 @@ class EvaluationService:
 
                 # Run lighteval pipeline
                 pipeline_output = service._run_lighteval_task_pipeline(request)
+                task_name = service._build_task_name(request)
+                metric_docs = service._build_metric_docs_for_task(task_name)
 
                 # Extract metric names to use as guidelines
                 metric_names = list(pipeline_output["scores"].keys())
@@ -186,7 +190,7 @@ class EvaluationService:
                 # Finalize
                 summary = service._extract_task_summary(pipeline_output)
                 await repository.update_trace_status(
-                    trace_id, "completed", {"scores": summary}
+                    trace_id, "completed", {"scores": summary, "metric_docs": metric_docs}
                 )
 
                 # Upload trace to S3
@@ -390,11 +394,7 @@ class EvaluationService:
             ),
         )
 
-        task_name = (
-            request.task_name
-            if "|" in request.task_name
-            else f"{request.task_name}|{request.dataset_config.n_fewshots}"
-        )
+        task_name = self._build_task_name(request)
 
         # Create pipeline
         pipeline = Pipeline(
@@ -503,7 +503,9 @@ class EvaluationService:
         await self.repository.create_event(
             trace_id=trace.id,
             event_type="report",
-            data={"scores": pipeline_output["summary"]},
+            data={
+                "scores": pipeline_output["summary"],
+            },
         )
 
     def _extract_summary(
@@ -630,6 +632,25 @@ class EvaluationService:
             judge_model=judge_model,
             created_at=trace.created_at,
         )
+
+    def _build_task_name(self, request: TaskEvaluationRequest) -> str:
+        if "|" in request.task_name:
+            return request.task_name
+        return f"{request.task_name}|{request.dataset_config.n_fewshots}"
+
+    def _build_metric_docs_for_task(self, task_name: str) -> dict:
+        registry = Registry(tasks=task_name)
+        configs = [
+            config
+            for configs in registry.task_to_configs.values()
+            for config in configs
+        ]
+        metrics = [metric for config in configs for metric in config.metrics]
+        metric_docs = MetricDocGenerator.generate_metric_docs(metrics)
+        return {
+            name: [asdict(desc) for desc in descriptions]
+            for name, descriptions in metric_docs.items()
+        }
 
     async def _upload_trace_jsonl_simple(self, trace: Trace) -> None:
         """Upload trace events as JSONL to S3."""
