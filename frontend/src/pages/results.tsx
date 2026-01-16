@@ -4,11 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye } from "lucide-react";
+import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function Results() {
   const { isAuthenticated } = useAuth();
@@ -63,7 +64,48 @@ export default function Results() {
     return date.toLocaleString();
   };
 
-  const renderScores = (scores: any) => {
+  const renderMetricDocs = (metricDocs: any) => {
+    if (!metricDocs) return null;
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Metric Documentation</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Object.entries(metricDocs).map(([metricName, descriptions]: [string, any]) => (
+            <div key={metricName} className="border-b last:border-b-0 pb-4 last:pb-0">
+              <h4 className="font-semibold text-sm mb-2">{metricName}</h4>
+              <div className="space-y-3">
+                {descriptions.map((desc: any, idx: number) => (
+                  <div key={idx} className="bg-muted/50 p-3 rounded-md space-y-2 text-sm">
+                    <div>
+                      <span className="font-medium text-muted-foreground">Measure: </span>
+                      <span>{desc.measure}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-muted-foreground">Sample Level: </span>
+                      <span>{desc.sample_level}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-muted-foreground">Corpus Level: </span>
+                      <span>{desc.corpus_level}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-muted-foreground">Source: </span>
+                      <span className="text-xs font-mono">{desc.source}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderScores = (scores: any, metricDocs: any) => {
     if (!scores) return null;
 
     const scoreEntries = Object.entries(scores);
@@ -83,10 +125,35 @@ export default function Results() {
           {scoreEntries.map(([guidelineName, scoreData]: [string, any]) => {
             const isNumeric = 'mean' in scoreData;
             const isCategorical = 'distribution' in scoreData;
+            const hasMetricDoc = metricDocs && metricDocs[guidelineName];
 
             return (
               <TableRow key={guidelineName}>
-                <TableCell className="font-medium">{guidelineName}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <span>{guidelineName}</span>
+                    {hasMetricDoc && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-md">
+                            <div className="space-y-2 text-sm">
+                              {metricDocs[guidelineName].map((desc: any, idx: number) => (
+                                <div key={idx} className="space-y-1">
+                                  <p><span className="font-semibold">Measure:</span> {desc.measure}</p>
+                                  <p><span className="font-semibold">Sample:</span> {desc.sample_level}</p>
+                                  <p><span className="font-semibold">Corpus:</span> {desc.corpus_level}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   {isNumeric && (
                     <span className="font-mono">
@@ -393,9 +460,12 @@ export default function Results() {
                                   <div>
                                     <h3 className="text-lg font-semibold mb-4">Evaluation Scores</h3>
                                     <div className="border rounded-lg">
-                                      {renderScores(selectedTrace.summary?.scores)}
+                                      {renderScores(selectedTrace.summary?.scores, selectedTrace.summary?.metric_docs)}
                                     </div>
                                   </div>
+
+                                  {/* Metric Documentation */}
+                                  {selectedTrace.summary?.metric_docs && renderMetricDocs(selectedTrace.summary.metric_docs)}
                                 </div>
                               )}
                             </DialogContent>
