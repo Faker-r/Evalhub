@@ -7,7 +7,7 @@ import asyncio
 from dotenv import load_dotenv
 from api.core.database import get_session
 from api.evaluations.service import EvaluationService
-from api.evaluations.schemas import TaskEvaluationRequest
+from api.evaluations.schemas import TaskEvaluationRequest, DatasetConfig, ModelConfig
 
 load_dotenv()
 
@@ -27,15 +27,20 @@ async def test_task_evaluation_service():
     print("\n2. Preparing evaluation request...")
     request = TaskEvaluationRequest(
         task_name="gsm8k|5",
-        n_samples=5,
-        completion_model="openai/gpt-4.1",
-        model_provider="openai",
-        api_base=None,
-        judge_model="openai/gpt-4.1",
-        judge_model_provider="openai",
-        judge_api_base=None
+        dataset_config=DatasetConfig(
+            dataset_name="gsm8k",
+            n_samples=5,
+        ),
+        model_completion_config=ModelConfig(
+            model_name="deepseek-ai/DeepSeek-V3.2",
+            model_provider="baseten",
+        ),
+        judge_config=ModelConfig(
+            model_name="gpt-4o",
+            model_provider="openai",
+        ),
     )
-    print(f"✓ Request prepared: task={request.task_name}, samples={request.n_samples}")
+    print(f"✓ Request prepared: task={request.task_name}, samples={request.dataset_config.n_samples}")
     
     # Step 3: Create database session
     print("\n3. Creating database session...")

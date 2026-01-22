@@ -30,6 +30,7 @@ dependencies = [
     "huggingface-hub>=0.20.0",
     "transformers>=4.36.0",
     "datasets>=2.16.0",
+    "litellm[caching] (>=1.81.1,<2.0.0)",
 ]
 
 [tool.pytest.ini_options]

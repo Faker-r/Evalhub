@@ -2,6 +2,7 @@ import json
 import tempfile
 import statistics
 import asyncio
+import traceback
 from dataclasses import asdict
 
 from fastapi import HTTPException, status
@@ -126,7 +127,7 @@ class EvaluationService:
             except Exception as e:
                 logger.error("Evaluation failed: %s", e)
                 await repository.update_trace_status(
-                    trace_id, "failed", {"error": str(e)}
+                    trace_id, "failed", {"error": str(e), "traceback": traceback.format_exc()}
                 )
             finally:
                 await session.close()
@@ -200,7 +201,7 @@ class EvaluationService:
             except Exception as e:
                 logger.error("Evaluation failed: %s", e)
                 await repository.update_trace_status(
-                    trace_id, "failed", {"error": str(e)}
+                    trace_id, "failed", {"error": str(e), "traceback": traceback.format_exc()}
                 )
             finally:
                 await session.close()
