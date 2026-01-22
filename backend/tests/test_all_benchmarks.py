@@ -90,6 +90,18 @@ def fetch_benchmarks_from_supabase() -> list[dict]:
     return benchmarks
 
 
+def fetch_benchmarks_by_names(names: list[str]) -> list[dict]:
+    """Fetch specific benchmarks from Supabase by dataset_name."""
+    print(f"Fetching specific benchmarks: {names}")
+    client = get_supabase_client()
+    response = client.table("benchmarks").select("*").in_("dataset_name", names).execute()
+    benchmarks = response.data
+    # Sort by downloads like the main fetcher
+    benchmarks.sort(key=lambda x: x.get("downloads", 0), reverse=True)
+    print(f"Found {len(benchmarks)} benchmarks matching the provided names")
+    return benchmarks
+
+
 def fetch_benchmarks_from_json(filepath: str = "benchmarks_rows.json") -> list[dict]:
     """Fetch benchmarks from local JSON file, sorted by downloads descending."""
     print(f"Looking for {filepath}...")
@@ -676,13 +688,19 @@ async def main():
         action="store_true",
         help="Load benchmarks from benchmarks_rows.json instead of Supabase",
     )
+    parser.add_argument(
+        "--datasets",
+        type=str,
+        help="Comma-separated list of dataset names to run (e.g. 'gsm8k,mmlu'). Supersedes --limit.",
+    )
 
     args = parser.parse_args()
 
     # Configuration
     user_id = "e01da140-64b2-4ab9-b379-4f55dcaf0b22"
     n_samples = 5
-    output_path = "./tests/benchmark_test_report.md"
+    timestamp = datetime.now().isoformat(timespec="seconds").replace(":", "-")
+    output_path = f"./tests/benchmark_test_report_{timestamp}.md"
 
     # Get provider config
     provider_config = PROVIDER_CONFIGS[args.provider]
@@ -690,7 +708,25 @@ async def main():
     model_provider = provider_config["model_provider"]
 
     # Fetch benchmarks
-    if args.from_json:
+    # Fetch benchmarks
+    if args.datasets:
+        dataset_names = [d.strip() for d in args.datasets.split(",") if d.strip()]
+        
+        if args.from_json:
+            all_benchmarks = fetch_benchmarks_from_json()
+            # Filter locally
+            benchmarks = [b for b in all_benchmarks if b.get("dataset_name") in dataset_names]
+            print(f"Filtered to {len(benchmarks)} benchmarks from JSON")
+        else:
+            try:
+                benchmarks = fetch_benchmarks_by_names(dataset_names)
+            except Exception as e:
+                print(f"Failed to fetch specific benchmarks from Supabase: {e}")
+                print("Falling back to JSON file...")
+                all_benchmarks = fetch_benchmarks_from_json()
+                benchmarks = [b for b in all_benchmarks if b.get("dataset_name") in dataset_names]
+
+    elif args.from_json:
         benchmarks = fetch_benchmarks_from_json()
     else:
         try:
@@ -705,6 +741,9 @@ async def main():
         sys.exit(1)
 
     # Run tests
+    # Run tests
+    # If datasets are specified, ignore limit unless explicitly desired? 
+    # Usually valid to just run what was requested. args.limit applies if set.
     report = await run_all_benchmarks(
         benchmarks=benchmarks,
         user_id=user_id,
