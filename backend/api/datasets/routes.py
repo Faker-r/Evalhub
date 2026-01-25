@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.core.database import get_session
 from api.core.logging import get_logger
 from api.core.security import CurrentUser, get_current_user
-from api.datasets.schemas import DatasetListResponse, DatasetResponse
+from api.datasets.schemas import DatasetListResponse, DatasetResponse, DatasetPreviewResponse
 from api.datasets.service import DatasetService
 
 logger = get_logger(__name__)
@@ -36,3 +36,14 @@ async def get_datasets(
     """Get all datasets."""
     datasets = await DatasetService(session).get_all_datasets()
     return DatasetListResponse(datasets=datasets)
+
+
+@router.get("/{dataset_id}/preview", response_model=DatasetPreviewResponse)
+async def get_dataset_preview(
+    dataset_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> DatasetPreviewResponse:
+    """Get a preview of a dataset."""
+    samples = await DatasetService(session).get_dataset_preview(dataset_id)
+    return DatasetPreviewResponse(samples=samples)

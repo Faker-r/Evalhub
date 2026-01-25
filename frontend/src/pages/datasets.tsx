@@ -4,10 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Database, Upload, FileText, Calendar, Layers } from "lucide-react";
+import { Database, Upload, FileText, Calendar, Layers, Eye } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -28,6 +28,8 @@ export default function Datasets() {
     categories: [] as string[],
     file: null as File | null,
   });
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [selectedDatasetId, setSelectedDatasetId] = useState<number | null>(null);
 
   // Fetch datasets
   const { data: datasetsData, isLoading } = useQuery({
@@ -90,6 +92,18 @@ export default function Datasets() {
   // Get unique categories
   const categories = Array.from(new Set(datasets.map((d) => d.category)));
 
+  // Preview query
+  const { data: previewData, isLoading: isPreviewLoading } = useQuery({
+    queryKey: ['dataset-preview', selectedDatasetId],
+    queryFn: () => selectedDatasetId ? apiClient.getDatasetPreview(selectedDatasetId) : null,
+    enabled: !!selectedDatasetId && previewModalOpen,
+  });
+
+  const handlePreview = (id: number) => {
+    setSelectedDatasetId(id);
+    setPreviewModalOpen(true);
+  };
+  
   if (!isAuthenticated) {
     return (
       <Layout>
@@ -272,6 +286,7 @@ export default function Datasets() {
                     <TableHead>Category</TableHead>
                     <TableHead>Samples</TableHead>
                     <TableHead>ID</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -285,6 +300,16 @@ export default function Datasets() {
                       <TableCell className="text-muted-foreground">
                         #{dataset.id}
                       </TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handlePreview(dataset.id)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Preview
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -292,6 +317,40 @@ export default function Datasets() {
             )}
           </CardContent>
         </Card>
+
+        {/* Preview Dialog */}
+        <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Dataset Content</DialogTitle>
+              <DialogDescription>
+                Showing all samples.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="flex-1 overflow-y-auto min-h-0 py-4">
+              {isPreviewLoading ? (
+                 <div className="flex justify-center p-8">
+                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                 </div>
+              ) : previewData?.samples ? (
+                <div className="space-y-4">
+                  {previewData.samples.map((sample, idx) => (
+                    <Card key={idx} className="bg-muted/50">
+                      <CardContent className="p-4 overflow-x-auto">
+                        <pre className="text-xs">{JSON.stringify(sample, null, 2)}</pre>
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
+              ) : (
+                  <div className="text-center text-muted-foreground p-4">
+                      No preview available
+                  </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

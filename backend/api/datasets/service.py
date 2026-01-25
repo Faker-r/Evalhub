@@ -176,3 +176,35 @@ class DatasetService:
             return self.s3.download_dataset(dataset.name)
         except FileNotFoundError:
             raise NotFoundException(f"Dataset file not found: {dataset.name}")
+
+    async def get_dataset_preview(self, dataset_id: int) -> list[dict]:
+        """Get a preview of the dataset content.
+
+        Args:
+            dataset_id: Dataset ID
+
+        Returns:
+            list[dict]: List of sample JSON objects
+        """
+        dataset = await self.repository.get_by_id(dataset_id)
+
+        try:
+            content = self.s3.download_dataset(dataset.name)
+            lines = content.split("\n")
+
+            preview = []
+            for line in lines:
+                if not line.strip():
+                    continue
+                try:
+                    preview.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+
+            return preview
+        except Exception as e:
+            logger.error(f"Failed to load preview for dataset {dataset_id}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to load dataset preview",
+            )
