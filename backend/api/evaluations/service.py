@@ -250,8 +250,6 @@ class EvaluationService:
 
                 dataset_content = service._load_dataset_content(request.dataset_name)
 
-                breakpoint()
-
                 guidelines = []
                 if request.judge_type == JudgeType.LLM_AS_JUDGE and request.guideline_names:
                     guidelines = await service._load_guidelines(request.guideline_names)
@@ -276,7 +274,6 @@ class EvaluationService:
                 await service._upload_trace_jsonl_simple(trace)
 
             except Exception as e:
-                breakpoint()
                 logger.error("Flexible evaluation failed: %s", e)
                 await repository.update_trace_status(
                     trace_id, "failed", {"error": str(e), "traceback": traceback.format_exc()}
@@ -534,7 +531,6 @@ class EvaluationService:
     ) -> dict:
         """Run flexible evaluation using lighteval pipeline."""
         guideline_metrics = []
-        breakpoint()
         if request.judge_type == JudgeType.LLM_AS_JUDGE and request.judge_config:
             judge_api_key = self.s3.download_api_key(
                 self.user_id, request.judge_config.model_provider
@@ -566,8 +562,6 @@ class EvaluationService:
         )
         task = dataset_task.build_lighteval_task()
 
-        breakpoint()
-
         registry = Registry(tasks=None)
         registry._task_registry[request.dataset_name] = task.config
         registry.task_to_configs = {request.dataset_name: [task.config]}
@@ -590,8 +584,6 @@ class EvaluationService:
         if hasattr(model, "_cache") and model._cache is not None:
             model._cache._init_registry(registry)
 
-        breakpoint()
-
         temp_dir = tempfile.mkdtemp()
         evaluation_tracker = EvaluationTracker(
             output_dir=temp_dir,
@@ -610,8 +602,6 @@ class EvaluationService:
 
         results = pipeline.evaluate()
         pipeline.save_and_push_results()
-
-        breakpoint()
 
         dataset_task.cleanup()
 

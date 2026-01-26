@@ -240,6 +240,31 @@ class ApiClient {
     });
   }
 
+  async createFlexibleEvaluation(data: {
+    dataset_name: string;
+    input_field: string;
+    output_type: 'text' | 'multiple_choice';
+    text_config?: { gold_answer_field?: string };
+    mc_config?: { choices_field: string; gold_answer_field: string };
+    judge_type: 'llm_as_judge' | 'f1_score' | 'exact_match';
+    guideline_names?: string[];
+    model_completion_config: {
+      model_name: string;
+      model_provider: string;
+      api_base?: string;
+    };
+    judge_config?: {
+      model_name: string;
+      model_provider: string;
+      api_base?: string;
+    };
+  }) {
+    return this.request('/evaluations/flexible', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   async getTraces() {
     return this.request<{
       traces: {

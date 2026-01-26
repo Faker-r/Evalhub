@@ -99,6 +99,13 @@ export default function Submit() {
   const [selectedDataset, setSelectedDataset] = useState("");
   const [selectedGuidelines, setSelectedGuidelines] = useState<string[]>([]);
   
+  // Flexible evaluation state
+  const [inputField, setInputField] = useState("");
+  const [outputType, setOutputType] = useState<"text" | "multiple_choice" | null>(null);
+  const [goldAnswerField, setGoldAnswerField] = useState("");
+  const [choicesField, setChoicesField] = useState("");
+  const [judgeType, setJudgeType] = useState<"llm_as_judge" | "f1_score" | "exact_match" | null>(null);
+  
   // Benchmark-specific state
   const [selectedBenchmark, setSelectedBenchmark] = useState<any>(null);
   const [selectedTask, setSelectedTask] = useState("");
@@ -147,20 +154,25 @@ export default function Submit() {
   const guidelines = guidelinesData?.guidelines || [];
   const apiKeys = apiKeysData?.api_key_providers || [];
 
-  // Submit dataset evaluation
-  const submitDatasetMutation = useMutation({
+  // Submit flexible evaluation
+  const submitFlexibleMutation = useMutation({
     mutationFn: () =>
-      apiClient.createEvaluation({
+      apiClient.createFlexibleEvaluation({
         dataset_name: selectedDataset,
-        guideline_names: selectedGuidelines,
+        input_field: inputField,
+        output_type: outputType!,
+        text_config: outputType === "text" ? { gold_answer_field: goldAnswerField || undefined } : undefined,
+        mc_config: outputType === "multiple_choice" ? { choices_field: choicesField, gold_answer_field: goldAnswerField } : undefined,
+        judge_type: judgeType!,
+        guideline_names: judgeType === "llm_as_judge" ? selectedGuidelines : undefined,
         model_completion_config: {
           model_name: completionModel,
           model_provider: modelProvider,
         },
-        judge_config: {
+        judge_config: judgeType === "llm_as_judge" ? {
           model_name: judgeModel,
           model_provider: judgeProvider,
-        },
+        } : undefined,
       }),
     onSuccess: () => {
       toast({
@@ -219,13 +231,47 @@ export default function Submit() {
       return;
     }
     if (currentStep === 2) {
-      if (selectionType === "dataset" && selectedGuidelines.length === 0) {
-        toast({
-          title: "Error",
-          description: "Please select at least one guideline",
-          variant: "destructive",
-        });
-        return;
+      if (selectionType === "dataset") {
+        if (!inputField) {
+          toast({
+            title: "Error",
+            description: "Please enter the input field name",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (!outputType) {
+          toast({
+            title: "Error",
+            description: "Please select an output type",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (outputType === "multiple_choice" && (!choicesField || !goldAnswerField)) {
+          toast({
+            title: "Error",
+            description: "Please enter both choices field and gold answer field",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (!judgeType) {
+          toast({
+            title: "Error",
+            description: "Please select a judge type",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (judgeType === "llm_as_judge" && selectedGuidelines.length === 0) {
+          toast({
+            title: "Error",
+            description: "Please select at least one guideline",
+            variant: "destructive",
+          });
+          return;
+        }
       }
       if (selectionType === "benchmark" && !selectedTask) {
         toast({
@@ -254,7 +300,7 @@ export default function Submit() {
     }
     
     if (selectionType === "dataset") {
-      submitDatasetMutation.mutate();
+      submitFlexibleMutation.mutate();
     } else if (selectionType === "benchmark") {
       submitTaskMutation.mutate();
     }
@@ -273,6 +319,13 @@ export default function Submit() {
     setSelectionType("dataset");
     setSelectedBenchmark(null);
     setSelectedTask("");
+    // Reset flexible evaluation state
+    setInputField("");
+    setOutputType(null);
+    setGoldAnswerField("");
+    setChoicesField("");
+    setJudgeType(null);
+    setSelectedGuidelines([]);
   };
 
   const handleSelectBenchmark = (benchmark: any) => {
@@ -521,40 +574,197 @@ export default function Submit() {
                 )}
 
                 {currentStep === 2 && selectionType === "dataset" && (
-                  <div className="space-y-4">
-                    <Label>Select guidelines (at least one)</Label>
-                    {guidelines.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No guidelines available. Please create one first.
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {guidelines.map((guideline) => (
+                  <div className="space-y-6">
+                    {/* 1. Input Field */}
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Input Field</Label>
+                      <p className="text-sm text-muted-foreground">
+                        The field name in your dataset that contains the input/prompt
+                      </p>
+                      <Input
+                        value={inputField}
+                        onChange={(e) => setInputField(e.target.value)}
+                        placeholder="e.g., question, input, prompt"
+                      />
+                    </div>
+
+                    {/* 2. Output Type - only show after input field is filled */}
+                    {inputField && (
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold">Output Type</Label>
+                        <p className="text-sm text-muted-foreground">
+                          How should the model respond?
+                        </p>
+                        <div className="flex gap-4">
                           <div
-                            key={guideline.id}
-                            onClick={() => toggleGuideline(guideline.name)}
+                            onClick={() => {
+                              setOutputType("text");
+                              setChoicesField("");
+                            }}
                             className={cn(
-                              "border p-4 rounded-lg cursor-pointer transition-all",
-                              selectedGuidelines.includes(guideline.name)
+                              "flex-1 border p-4 rounded-lg cursor-pointer transition-all",
+                              outputType === "text"
                                 ? "border-mint-500 bg-mint-50/20"
                                 : "border-border hover:border-mint-300"
                             )}
                           >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="font-bold">{guideline.name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {guideline.category} • {guideline.scoring_scale === "numeric" 
-                                    ? `${guideline.scoring_scale_config.min_value}-${guideline.scoring_scale_config.max_value}` 
-                                    : guideline.scoring_scale}
+                            <div className="font-medium">Text</div>
+                            <div className="text-sm text-muted-foreground">Free-form text response</div>
+                          </div>
+                          <div
+                            onClick={() => setOutputType("multiple_choice")}
+                            className={cn(
+                              "flex-1 border p-4 rounded-lg cursor-pointer transition-all",
+                              outputType === "multiple_choice"
+                                ? "border-mint-500 bg-mint-50/20"
+                                : "border-border hover:border-mint-300"
+                            )}
+                          >
+                            <div className="font-medium">Multiple Choice</div>
+                            <div className="text-sm text-muted-foreground">Select from options</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 2.1 Text config - gold answer field (optional) */}
+                    {outputType === "text" && (
+                      <div className="space-y-2">
+                        <Label className="text-base font-semibold">Gold Answer Field (Optional)</Label>
+                        <p className="text-sm text-muted-foreground">
+                          The field name containing the expected/correct answer for comparison
+                        </p>
+                        <Input
+                          value={goldAnswerField}
+                          onChange={(e) => setGoldAnswerField(e.target.value)}
+                          placeholder="e.g., answer, expected_output"
+                        />
+                      </div>
+                    )}
+
+                    {/* 2.2 Multiple choice config - gold answer + choices field (required) */}
+                    {outputType === "multiple_choice" && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-base font-semibold">Choices Field</Label>
+                          <p className="text-sm text-muted-foreground">
+                            The field name containing the list of choices
+                          </p>
+                          <Input
+                            value={choicesField}
+                            onChange={(e) => setChoicesField(e.target.value)}
+                            placeholder="e.g., choices, options"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-base font-semibold">Gold Answer Field</Label>
+                          <p className="text-sm text-muted-foreground">
+                            The field name containing the correct answer
+                          </p>
+                          <Input
+                            value={goldAnswerField}
+                            onChange={(e) => setGoldAnswerField(e.target.value)}
+                            placeholder="e.g., answer, correct_choice"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3. Judge Type - show after output type config is complete */}
+                    {outputType && (outputType === "text" || (choicesField && goldAnswerField)) && (
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold">Judge Type</Label>
+                        <p className="text-sm text-muted-foreground">
+                          How should responses be evaluated?
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div
+                            onClick={() => setJudgeType("llm_as_judge")}
+                            className={cn(
+                              "border p-4 rounded-lg cursor-pointer transition-all",
+                              judgeType === "llm_as_judge"
+                                ? "border-mint-500 bg-mint-50/20"
+                                : "border-border hover:border-mint-300"
+                            )}
+                          >
+                            <div className="font-medium">LLM as Judge</div>
+                            <div className="text-sm text-muted-foreground">Use an LLM to evaluate responses with guidelines</div>
+                          </div>
+                          <div
+                            onClick={() => {
+                              setJudgeType("exact_match");
+                              setSelectedGuidelines([]);
+                            }}
+                            className={cn(
+                              "border p-4 rounded-lg cursor-pointer transition-all",
+                              judgeType === "exact_match"
+                                ? "border-mint-500 bg-mint-50/20"
+                                : "border-border hover:border-mint-300"
+                            )}
+                          >
+                            <div className="font-medium">Exact Match</div>
+                            <div className="text-sm text-muted-foreground">Compare output exactly to gold answer</div>
+                          </div>
+                          <div
+                            onClick={() => {
+                              setJudgeType("f1_score");
+                              setSelectedGuidelines([]);
+                            }}
+                            className={cn(
+                              "border p-4 rounded-lg cursor-pointer transition-all",
+                              judgeType === "f1_score"
+                                ? "border-mint-500 bg-mint-50/20"
+                                : "border-border hover:border-mint-300"
+                            )}
+                          >
+                            <div className="font-medium">F1 Score</div>
+                            <div className="text-sm text-muted-foreground">Token-level F1 comparison</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3.1 Guideline selection - only for LLM as Judge */}
+                    {judgeType === "llm_as_judge" && (
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold">Select Guidelines</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Choose guidelines for the LLM judge to evaluate against
+                        </p>
+                        {guidelines.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
+                            No guidelines available. Please create one first.
+                          </div>
+                        ) : (
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {guidelines.map((guideline) => (
+                              <div
+                                key={guideline.id}
+                                onClick={() => toggleGuideline(guideline.name)}
+                                className={cn(
+                                  "border p-3 rounded-lg cursor-pointer transition-all",
+                                  selectedGuidelines.includes(guideline.name)
+                                    ? "border-mint-500 bg-mint-50/20"
+                                    : "border-border hover:border-mint-300"
+                                )}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="font-medium">{guideline.name}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {guideline.category} • {guideline.scoring_scale === "numeric" 
+                                        ? `${guideline.scoring_scale_config.min_value}-${guideline.scoring_scale_config.max_value}` 
+                                        : guideline.scoring_scale}
+                                    </div>
+                                  </div>
+                                  {selectedGuidelines.includes(guideline.name) && (
+                                    <Check className="w-4 h-4 text-mint-500" />
+                                  )}
                                 </div>
                               </div>
-                              {selectedGuidelines.includes(guideline.name) && (
-                                <Check className="w-5 h-5 text-mint-500" />
-                              )}
-                            </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
                       </div>
                     )}
                   </div>
@@ -661,7 +871,7 @@ export default function Submit() {
                 {currentStep === 3 && (
                   <div className={cn(
                     "grid gap-6",
-                    selectionType === "dataset" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+                    judgeType === "llm_as_judge" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
                   )}>
                     {/* Completion Model Section */}
                     <div className="space-y-4">
@@ -685,8 +895,8 @@ export default function Submit() {
                       </div>
                     </div>
 
-                    {/* Judge Section - Only for datasets */}
-                    {selectionType === "dataset" && (
+                    {/* Judge Section - Only for LLM as Judge */}
+                    {judgeType === "llm_as_judge" && (
                       <div className="space-y-4">
                         <h3 className="font-semibold text-lg">Judge Model</h3>
                         <div className="space-y-2">
@@ -728,19 +938,53 @@ export default function Submit() {
                               <span className="font-medium">{selectedDataset}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Guidelines:</span>
-                              <span className="font-medium">
-                                {selectedGuidelines.join(", ")}
-                              </span>
+                              <span className="text-muted-foreground">Input Field:</span>
+                              <span className="font-medium font-mono text-sm">{inputField}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Judge Model:</span>
-                              <span className="font-medium">{judgeModel}</span>
+                              <span className="text-muted-foreground">Output Type:</span>
+                              <span className="font-medium capitalize">{outputType?.replace("_", " ")}</span>
                             </div>
+                            {outputType === "text" && goldAnswerField && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Gold Answer Field:</span>
+                                <span className="font-medium font-mono text-sm">{goldAnswerField}</span>
+                              </div>
+                            )}
+                            {outputType === "multiple_choice" && (
+                              <>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Choices Field:</span>
+                                  <span className="font-medium font-mono text-sm">{choicesField}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Gold Answer Field:</span>
+                                  <span className="font-medium font-mono text-sm">{goldAnswerField}</span>
+                                </div>
+                              </>
+                            )}
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Judge Provider:</span>
-                              <span className="font-medium">{judgeProvider}</span>
+                              <span className="text-muted-foreground">Judge Type:</span>
+                              <span className="font-medium capitalize">{judgeType?.replace(/_/g, " ")}</span>
                             </div>
+                            {judgeType === "llm_as_judge" && (
+                              <>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Guidelines:</span>
+                                  <span className="font-medium">
+                                    {selectedGuidelines.length > 0 ? selectedGuidelines.join(", ") : "None"}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Judge Model:</span>
+                                  <span className="font-medium">{judgeModel}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Judge Provider:</span>
+                                  <span className="font-medium">{judgeProvider}</span>
+                                </div>
+                              </>
+                            )}
                           </>
                         ) : (
                           <>
@@ -775,7 +1019,7 @@ export default function Submit() {
                       {apiKeys.length === 0 && (
                         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                           <p className="text-sm text-yellow-800">
-                            ⚠️ No API keys configured. Please add your{" "}
+                            Warning: No API keys configured. Please add your{" "}
                             {modelProvider} API key in your profile settings.
                           </p>
                         </div>
@@ -803,10 +1047,10 @@ export default function Submit() {
                 ) : (
                   <Button
                     onClick={handleSubmit}
-                    disabled={submitDatasetMutation.isPending || submitTaskMutation.isPending}
+                    disabled={submitFlexibleMutation.isPending || submitTaskMutation.isPending}
                     className="bg-mint-500 hover:bg-mint-600"
                   >
-                    {(submitDatasetMutation.isPending || submitTaskMutation.isPending) 
+                    {(submitFlexibleMutation.isPending || submitTaskMutation.isPending) 
                       ? "Submitting..." 
                       : "Start Evaluation"}
                     <Play className="w-4 h-4 ml-2" />
