@@ -9,6 +9,7 @@ from api.evaluations.schemas import (
     EvaluationResponse,
     TaskEvaluationRequest,
     TaskEvaluationResponse,
+    FlexibleEvaluationRequest,
     TraceListResponse,
     TraceResponse,
 )
@@ -53,6 +54,24 @@ async def run_task_evaluation(
         f"model={request.model_completion_config.model_name}, user={current_user.email}"
     )
     return await EvaluationService(session, current_user.id).run_task_evaluation(
+        request
+    )
+
+
+@router.post(
+    "/flexible", response_model=TaskEvaluationResponse, status_code=status.HTTP_201_CREATED
+)
+async def run_flexible_evaluation(
+    request: FlexibleEvaluationRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> TaskEvaluationResponse:
+    """Run a flexible evaluation on a dataset with configurable parsing and judging."""
+    logger.debug(
+        f"Running flexible evaluation: dataset={request.dataset_name}, "
+        f"judge_type={request.judge_type}, user={current_user.email}"
+    )
+    return await EvaluationService(session, current_user.id).run_flexible_evaluation(
         request
     )
 
