@@ -18,6 +18,7 @@ class BenchmarkResponse(BaseModel):
     downloads: Optional[int] = None
     tags: Optional[list[str]] = None
     estimated_input_tokens: Optional[int] = None
+    dataset_size: Optional[int] = None
     repo_type: Optional[str] = None
     created_at_hf: Optional[datetime] = None
     private: Optional[bool] = None

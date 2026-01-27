@@ -68,8 +68,8 @@ class BenchmarkRepository:
         self,
         page: int = 1,
         page_size: int = 50,
-        sort_by: str = "dataset_name",
-        sort_order: str = "asc",
+        sort_by: str = "downloads",
+        sort_order: str = "desc",
         tag_filter: Optional[list[str]] = None,
         author_filter: Optional[str] = None,
         search_query: Optional[str] = None,
@@ -152,9 +152,13 @@ class BenchmarkRepository:
         # Apply sorting
         sort_column = getattr(Benchmark, sort_by, Benchmark.dataset_name)
         if sort_order == "desc":
-            query = query.order_by(sort_column.desc())
+            if sort_by == "downloads":
+                # Special case: downloads desc, then dataset_size desc
+                query = query.order_by(Benchmark.downloads.desc().nulls_last(), Benchmark.dataset_size.desc().nulls_last())
+            else:
+                query = query.order_by(sort_column.desc().nulls_last())
         else:
-            query = query.order_by(sort_column.asc())
+            query = query.order_by(sort_column.asc().nulls_last())
 
         # Apply pagination
         offset = (page - 1) * page_size

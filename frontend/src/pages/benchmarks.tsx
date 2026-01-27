@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ExternalLink, Search, ChevronLeft, ChevronRight, ChevronDown, Download, Box, ChevronUp } from "lucide-react";
+import { ExternalLink, Search, ChevronLeft, ChevronRight, ChevronDown, Download, Box, ChevronUp, Database } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const VALID_BENCHMARK_TAGS = [
   "bias", "biology", "biomedical", "chemistry", "classification", "code-generation",
@@ -82,6 +83,8 @@ export default function Benchmarks() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<string>("downloads");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showAllLanguages, setShowAllLanguages] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [selectedBenchmark, setSelectedBenchmark] = useState<any>(null);
@@ -92,7 +95,7 @@ export default function Benchmarks() {
   const ITEMS_PER_PAGE = 12;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['benchmarks', searchQuery, selectedLanguages, selectedTags],
+    queryKey: ['benchmarks', searchQuery, selectedLanguages, selectedTags, sortBy, sortOrder],
     queryFn: () => {
       const languageTags = selectedLanguages.map(code => `language:${code}`);
       const allTags = [...languageTags, ...selectedTags];
@@ -102,6 +105,8 @@ export default function Benchmarks() {
         page_size: 100,
         search: searchQuery || undefined,
         tags: allTags.length > 0 ? allTags : undefined,
+        sort_by: sortBy,
+        sort_order: sortOrder,
       });
     },
   });
@@ -262,6 +267,43 @@ export default function Benchmarks() {
               </CardContent>
             </Card>
 
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-medium">Sort by</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup
+                  defaultValue="most_popular"
+                  onValueChange={(value) => {
+                    if (value === "most_popular") {
+                      setSortBy("downloads");
+                      setSortOrder("desc");
+                    } else if (value === "largest_dataset") {
+                      setSortBy("dataset_size");
+                      setSortOrder("desc");
+                    } else if (value === "alphabetical") {
+                      setSortBy("task_name");
+                      setSortOrder("asc");
+                    }
+                  }}
+                  className="space-y-3"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="most_popular" id="sort-popular" />
+                    <Label htmlFor="sort-popular" className="text-sm font-normal leading-none cursor-pointer">Most Popular</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="largest_dataset" id="sort-largest" />
+                    <Label htmlFor="sort-largest" className="text-sm font-normal leading-none cursor-pointer">Largest Dataset</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="alphabetical" id="sort-alpha" />
+                    <Label htmlFor="sort-alpha" className="text-sm font-normal leading-none cursor-pointer">Alphabetical</Label>
+                  </div>
+                </RadioGroup>
+              </CardContent>
+            </Card>
+
             {LANGUAGE_FILTERS.length > 0 && (
               <Card>
                 <CardHeader className="pb-3">
@@ -402,18 +444,24 @@ export default function Benchmarks() {
                           )}
                         
                           <div className="mt-auto space-y-2 flex-shrink-0">
-                            {(benchmark.downloads || benchmark.estimated_input_tokens) && (
+                            {(benchmark.downloads || benchmark.estimated_input_tokens || benchmark.dataset_size) && (
                               <div className="flex items-center gap-4 text-xs text-muted-foreground pb-2">
                                 {benchmark.downloads && (
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1" title="Downloads">
                                     <Download className="w-3 h-3" />
                                     <span>{benchmark.downloads.toLocaleString()}</span>
                                   </div>
                                 )}
                                 {benchmark.estimated_input_tokens && (
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1" title="Estimated Input Tokens">
                                     <Box className="w-3 h-3" />
                                     <span>{benchmark.estimated_input_tokens.toLocaleString()} tokens</span>
+                                  </div>
+                                )}
+                                {benchmark.dataset_size && (
+                                  <div className="flex items-center gap-1" title="Dataset Rows">
+                                    <Database className="w-3 h-3" />
+                                    <span>{benchmark.dataset_size.toLocaleString()} rows</span>
                                   </div>
                                 )}
                               </div>

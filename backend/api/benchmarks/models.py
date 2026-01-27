@@ -20,6 +20,7 @@ class Benchmark(Base):
     downloads = Column(Integer, nullable=True)
     tags = Column(JSONB, nullable=True)
     estimated_input_tokens = Column(Integer, nullable=True)
+    dataset_size = Column(Integer, nullable=True)
     repo_type = Column(String, nullable=True)
     created_at_hf = Column(DateTime, nullable=True)
     private = Column(Boolean, nullable=True)
