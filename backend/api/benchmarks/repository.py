@@ -68,7 +68,7 @@ class BenchmarkRepository:
         self,
         page: int = 1,
         page_size: int = 50,
-        sort_by: str = "task_name",
+        sort_by: str = "dataset_name",
         sort_order: str = "asc",
         tag_filter: Optional[list[str]] = None,
         author_filter: Optional[str] = None,
@@ -83,7 +83,7 @@ class BenchmarkRepository:
             sort_order: Sort order ('asc' or 'desc')
             tag_filter: Filter by tags (AND logic)
             author_filter: Filter by author
-            search_query: Search in task_name, dataset_name, or hf_repo
+            search_query: Search in dataset_name or hf_repo
 
         Returns:
             tuple[list[Benchmark], int]: List of benchmarks and total count
@@ -111,7 +111,6 @@ class BenchmarkRepository:
                 search_pattern = f"%{search_query}%"
             
             query = query.where(
-                (Benchmark.task_name.ilike(search_pattern)) |
                 (Benchmark.dataset_name.ilike(search_pattern)) |
                 (Benchmark.hf_repo.ilike(search_pattern)) |
                 (cast(Benchmark.tags, String).ilike(search_pattern))
@@ -141,7 +140,6 @@ class BenchmarkRepository:
                 search_pattern = f"%{search_query}%"
             
             count_query = count_query.where(
-                (Benchmark.task_name.ilike(search_pattern)) |
                 (Benchmark.dataset_name.ilike(search_pattern)) |
                 (Benchmark.hf_repo.ilike(search_pattern)) |
                 (cast(Benchmark.tags, String).ilike(search_pattern))
