@@ -11,6 +11,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const VALID_BENCHMARK_TAGS = [
   "bias", "biology", "biomedical", "chemistry", "classification", "code-generation",
@@ -82,6 +83,8 @@ export default function Benchmarks() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<string>("downloads");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showAllLanguages, setShowAllLanguages] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [selectedBenchmark, setSelectedBenchmark] = useState<any>(null);
@@ -92,7 +95,7 @@ export default function Benchmarks() {
   const ITEMS_PER_PAGE = 12;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['benchmarks', searchQuery, selectedLanguages, selectedTags],
+    queryKey: ['benchmarks', searchQuery, selectedLanguages, selectedTags, sortBy, sortOrder],
     queryFn: () => {
       const languageTags = selectedLanguages.map(code => `language:${code}`);
       const allTags = [...languageTags, ...selectedTags];
@@ -102,6 +105,8 @@ export default function Benchmarks() {
         page_size: 100,
         search: searchQuery || undefined,
         tags: allTags.length > 0 ? allTags : undefined,
+        sort_by: sortBy,
+        sort_order: sortOrder,
       });
     },
   });
@@ -259,6 +264,43 @@ export default function Benchmarks() {
                     className="text-sm pl-9"
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-medium">Sort by</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup
+                  defaultValue="most_popular"
+                  onValueChange={(value) => {
+                    if (value === "most_popular") {
+                      setSortBy("downloads");
+                      setSortOrder("desc");
+                    } else if (value === "largest_dataset") {
+                      setSortBy("dataset_size");
+                      setSortOrder("desc");
+                    } else if (value === "alphabetical") {
+                      setSortBy("task_name");
+                      setSortOrder("asc");
+                    }
+                  }}
+                  className="space-y-3"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="most_popular" id="sort-popular" />
+                    <Label htmlFor="sort-popular" className="text-sm font-normal leading-none cursor-pointer">Most Popular</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="largest_dataset" id="sort-largest" />
+                    <Label htmlFor="sort-largest" className="text-sm font-normal leading-none cursor-pointer">Largest Dataset</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="alphabetical" id="sort-alpha" />
+                    <Label htmlFor="sort-alpha" className="text-sm font-normal leading-none cursor-pointer">Alphabetical</Label>
+                  </div>
+                </RadioGroup>
               </CardContent>
             </Card>
 
