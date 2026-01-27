@@ -40,7 +40,7 @@ class BenchmarkService:
             sort_order: Sort order ('asc' or 'desc')
             tag_filter: Filter by tag
             author_filter: Filter by author
-            search_query: Search in task_name, dataset_name, or hf_repo
+            search_query: Search in dataset_name or hf_repo
 
         Returns:
             BenchmarkListResponse: Paginated list of benchmarks
