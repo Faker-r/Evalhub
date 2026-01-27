@@ -6,7 +6,7 @@ from typing import Callable, Optional
 from sqlalchemy import func, select, String, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.benchmarks.models import Benchmark
+from api.benchmarks.models import Benchmark, BenchmarkTask
 from api.core.exceptions import NotFoundException
 from api.core.logging import get_logger
 from scripts.benchmark_utils import normalize_language_code
@@ -153,8 +153,7 @@ class BenchmarkRepository:
         sort_column = getattr(Benchmark, sort_by, Benchmark.dataset_name)
         if sort_order == "desc":
             if sort_by == "downloads":
-                # Special case: downloads desc, then dataset_size desc
-                query = query.order_by(Benchmark.downloads.desc().nulls_last(), Benchmark.dataset_size.desc().nulls_last())
+                query = query.order_by(Benchmark.downloads.desc().nulls_last())
             else:
                 query = query.order_by(sort_column.desc().nulls_last())
         else:
@@ -252,3 +251,54 @@ class BenchmarkRepository:
             return None
         
         return self._generate_task_details_dict(task_obj.config)
+
+    async def upsert_task(self, benchmark_id: int, task_data: dict) -> BenchmarkTask:
+        """Create or update a task by benchmark_id and task_name.
+
+        Args:
+            benchmark_id: Parent benchmark ID
+            task_data: Dictionary containing task data
+
+        Returns:
+            BenchmarkTask: Created or updated task
+        """
+        task_name = task_data.get("task_name")
+
+        # Check if task already exists
+        query = select(BenchmarkTask).where(
+            BenchmarkTask.benchmark_id == benchmark_id,
+            BenchmarkTask.task_name == task_name
+        )
+        result = await self.session.execute(query)
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            # Update existing task
+            for key, value in task_data.items():
+                setattr(existing, key, value)
+            await self.session.commit()
+            await self.session.refresh(existing)
+            logger.debug(f"Updated task: {task_name} (benchmark_id={benchmark_id})")
+            return existing
+        else:
+            # Create new task
+            task_data["benchmark_id"] = benchmark_id
+            task = BenchmarkTask(**task_data)
+            self.session.add(task)
+            await self.session.commit()
+            await self.session.refresh(task)
+            logger.debug(f"Created task: {task_name} (benchmark_id={benchmark_id})")
+            return task
+
+    async def get_tasks_by_benchmark_id(self, benchmark_id: int) -> list[BenchmarkTask]:
+        """Get all tasks for a benchmark.
+
+        Args:
+            benchmark_id: Parent benchmark ID
+
+        Returns:
+            list[BenchmarkTask]: List of tasks
+        """
+        query = select(BenchmarkTask).where(BenchmarkTask.benchmark_id == benchmark_id)
+        result = await self.session.execute(query)
+        return list(result.scalars().all())

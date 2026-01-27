@@ -342,8 +342,6 @@ class ApiClient {
         author: string | null;
         downloads: number | null;
         tags: string[] | null;
-        estimated_input_tokens: number | null;
-        dataset_size: number | null;
         repo_type: string | null;
         created_at_hf: string | null;
         private: boolean | null;
@@ -369,8 +367,6 @@ class ApiClient {
       author: string | null;
       downloads: number | null;
       tags: string[] | null;
-      estimated_input_tokens: number | null;
-      dataset_size: number | null;
       repo_type: string | null;
       created_at_hf: string | null;
       private: boolean | null;
@@ -379,6 +375,22 @@ class ApiClient {
       created_at: string;
       updated_at: string;
     }>(`/benchmarks/${benchmarkId}`);
+  }
+
+  async getBenchmarkTasks(benchmarkId: number) {
+    return this.request<{
+      tasks: {
+        id: number;
+        benchmark_id: number;
+        task_name: string;
+        hf_subset: string | null;
+        evaluation_splits: string[] | null;
+        dataset_size: number | null;
+        estimated_input_tokens: number | null;
+        created_at: string;
+        updated_at: string;
+      }[];
+    }>(`/benchmarks/${benchmarkId}/tasks`);
   }
 
   async getTaskDetails(taskName: string) {

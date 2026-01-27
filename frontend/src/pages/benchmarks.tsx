@@ -91,6 +91,8 @@ export default function Benchmarks() {
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
+  const [benchmarkTasks, setBenchmarkTasks] = useState<Record<number, any[]>>({});
+  const [loadingBenchmarkTasks, setLoadingBenchmarkTasks] = useState<Set<number>>(new Set());
 
   const ITEMS_PER_PAGE = 12;
 
@@ -122,6 +124,28 @@ export default function Benchmarks() {
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedLanguages, selectedTags, searchQuery]);
+
+  // Fetch benchmark tasks when modal opens
+  useEffect(() => {
+    const fetchBenchmarkTasks = async () => {
+      if (selectedBenchmark && !benchmarkTasks[selectedBenchmark.id] && !loadingBenchmarkTasks.has(selectedBenchmark.id)) {
+        setLoadingBenchmarkTasks(prev => new Set(prev).add(selectedBenchmark.id));
+        try {
+          const response = await apiClient.getBenchmarkTasks(selectedBenchmark.id);
+          setBenchmarkTasks(prev => ({ ...prev, [selectedBenchmark.id]: response.tasks }));
+        } catch (error) {
+          console.error('Failed to fetch benchmark tasks:', error);
+        } finally {
+          setLoadingBenchmarkTasks(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(selectedBenchmark.id);
+            return newSet;
+          });
+        }
+      }
+    };
+    fetchBenchmarkTasks();
+  }, [selectedBenchmark]);
 
   const toggleLanguage = (code: string) => {
     setSelectedLanguages(prev =>
@@ -444,26 +468,12 @@ export default function Benchmarks() {
                           )}
                         
                           <div className="mt-auto space-y-2 flex-shrink-0">
-                            {(benchmark.downloads || benchmark.estimated_input_tokens || benchmark.dataset_size) && (
+                            {benchmark.downloads && (
                               <div className="flex items-center gap-4 text-xs text-muted-foreground pb-2">
-                                {benchmark.downloads && (
-                                  <div className="flex items-center gap-1" title="Downloads">
-                                    <Download className="w-3 h-3" />
-                                    <span>{benchmark.downloads.toLocaleString()}</span>
-                                  </div>
-                                )}
-                                {benchmark.estimated_input_tokens && (
-                                  <div className="flex items-center gap-1" title="Estimated Input Tokens">
-                                    <Box className="w-3 h-3" />
-                                    <span>{benchmark.estimated_input_tokens.toLocaleString()} tokens</span>
-                                  </div>
-                                )}
-                                {benchmark.dataset_size && (
-                                  <div className="flex items-center gap-1" title="Dataset Rows">
-                                    <Database className="w-3 h-3" />
-                                    <span>{benchmark.dataset_size.toLocaleString()} rows</span>
-                                  </div>
-                                )}
+                                <div className="flex items-center gap-1" title="Downloads">
+                                  <Download className="w-3 h-3" />
+                                  <span>{benchmark.downloads.toLocaleString()}</span>
+                                </div>
                               </div>
                             )}
 
@@ -590,22 +600,14 @@ export default function Benchmarks() {
                         </p>
                       </div>
 
-                      {(selectedBenchmark.downloads || selectedBenchmark.estimated_input_tokens) && (
+                      {selectedBenchmark.downloads && (
                         <div>
                           <h3 className="text-sm font-semibold mb-2">Metrics</h3>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            {selectedBenchmark.downloads && (
-                              <div className="flex items-center gap-2">
-                                <Download className="w-4 h-4" />
-                                <span>{selectedBenchmark.downloads.toLocaleString()} downloads</span>
-                              </div>
-                            )}
-                            {selectedBenchmark.estimated_input_tokens && (
-                              <div className="flex items-center gap-2">
-                                <Box className="w-4 h-4" />
-                                <span>{selectedBenchmark.estimated_input_tokens.toLocaleString()} tokens</span>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                              <Download className="w-4 h-4" />
+                              <span>{selectedBenchmark.downloads.toLocaleString()} downloads</span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -629,6 +631,31 @@ export default function Benchmarks() {
                                 </button>
                                 {expandedTasks.has(task) && (
                                   <div className="px-3 pb-3 border-t border-gray-100">
+                                    {/* Task-specific size and tokens */}
+                                    {(() => {
+                                      const taskData = benchmarkTasks[selectedBenchmark.id]?.find(
+                                        (t: any) => t.task_name === task
+                                      );
+                                      if (taskData && (taskData.dataset_size || taskData.estimated_input_tokens)) {
+                                        return (
+                                          <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2 mb-2 py-2 px-2 bg-gray-50 rounded">
+                                            {taskData.dataset_size && (
+                                              <div className="flex items-center gap-1">
+                                                <Database className="w-3 h-3" />
+                                                <span>{taskData.dataset_size.toLocaleString()} samples</span>
+                                              </div>
+                                            )}
+                                            {taskData.estimated_input_tokens && (
+                                              <div className="flex items-center gap-1">
+                                                <Box className="w-3 h-3" />
+                                                <span>{taskData.estimated_input_tokens.toLocaleString()} tokens</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                     {loadingTasks.has(task) ? (
                                       <div className="text-xs text-gray-500 py-2">Loading task details...</div>
                                     ) : taskDetails[task] ? (
