@@ -15,8 +15,8 @@ router = APIRouter(prefix="/benchmarks", tags=["benchmarks"])
 async def get_benchmarks(
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(50, ge=1, le=100, description="Number of items per page"),
-    sort_by: str = Query("task_name", description="Field to sort by"),
-    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="Sort order"),
+    sort_by: str = Query("downloads", description="Field to sort by"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
     tag: list[str] | None = Query(None, description="Filter by tag (supports multiple)"),
     author: str | None = Query(None, description="Filter by author"),
     search: str | None = Query(None, description="Search in task_name, dataset_name, or hf_repo"),

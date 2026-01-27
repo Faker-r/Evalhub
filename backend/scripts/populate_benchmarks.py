@@ -134,15 +134,87 @@ def cancel_alarm():
         signal.alarm(0)
 
 
-def estimate_input_tokens(hf_repo: str, max_samples: int = 50, timeout: int = 10) -> Optional[int]:
+def get_dataset_size(hf_repo: str, token: Optional[str] = None) -> Optional[int]:
+    """
+    Get the total number of samples in a dataset.
+    
+    If the dataset has multiple configurations (subsets), sums the samples across all of them.
+    Limits to 100 configurations to prevent timeouts on massive datasets.
+
+    Args:
+        hf_repo: HuggingFace repository identifier
+        token: Optional HuggingFace API token for authenticated requests
+
+    Returns:
+        Optional[int]: Total number of samples across all splits/configs, or None if unavailable
+    """
+    try:
+        from datasets import load_dataset_builder, get_dataset_config_names
+
+        # Get all config names
+        configs = []
+        try:
+            try:
+                configs = get_dataset_config_names(hf_repo, token=token, trust_remote_code=True)
+            except TypeError:
+                # Handle older versions of datasets that don't support trust_remote_code in get_dataset_config_names
+                configs = get_dataset_config_names(hf_repo, token=token)
+        except Exception as e:
+            logger.warning(f"Could not get configs for {hf_repo}: {e}")
+            pass
+
+        # If no configs found (or error), try with default/None config
+        if not configs:
+            configs = [None]
+        
+        total_size = 0
+        configs_processed = 0
+        MAX_CONFIGS = 100
+        
+        for config in configs:
+            if configs_processed >= MAX_CONFIGS:
+                logger.warning(f"Dataset {hf_repo} has too many configs. Stopping at {MAX_CONFIGS}. Size ({total_size}) may be partial.")
+                break
+                
+            try:
+                # Load the dataset builder to get info without downloading data
+                builder = load_dataset_builder(hf_repo, config, token=token, trust_remote_code=True)
+
+                if builder.info and builder.info.splits:
+                    # Sum up all splits to get total size for this config
+                    config_size = sum(
+                        split_info.num_examples
+                        for split_info in builder.info.splits.values()
+                        if split_info.num_examples is not None
+                    )
+                    total_size += config_size
+                
+                configs_processed += 1
+            except Exception as e:
+                # Log but continue to next config
+                logger.warning(f"Could not get size for config '{config}' of {hf_repo}: {e}")
+                continue
+
+        if total_size > 0:
+            logger.info(f"Dataset size for {hf_repo}: {total_size} samples (across {configs_processed} configs)")
+            return total_size
+
+        return None
+    except Exception as e:
+        logger.warning(f"Could not get dataset size for {hf_repo}: {e}")
+        return None
+
+
+def estimate_input_tokens(hf_repo: str, token: Optional[str] = None, max_samples: int = 50, timeout: int = 10) -> Optional[int]:
     """
     Estimate the number of input tokens in a dataset by tokenizing samples.
-    
+
     Handles multiple configs and splits automatically.
     Optimized for speed with caching and reduced samples.
 
     Args:
         hf_repo: HuggingFace repository identifier
+        token: Optional HuggingFace API token for authenticated requests
         max_samples: Maximum number of samples to analyze (default: 50, reduced for speed)
         timeout: Maximum seconds to spend on this dataset (default: 10)
 
@@ -166,25 +238,25 @@ def estimate_input_tokens(hf_repo: str, max_samples: int = 50, timeout: int = 10
         config_used = None
         split_used = None
         
-        # Try different splits in order of preference (reduced to speed up)
-        splits_to_try = ["test", "validation"]  # Skip train (usually largest)
+        # Try different splits in order of preference
+        splits_to_try = ["test", "validation", "train"]
         
         # First, try without config
         for split in splits_to_try:
             try:
-                dataset = load_dataset(hf_repo, split=split, streaming=True)
+                dataset = load_dataset(hf_repo, split=split, streaming=True, token=token)
                 split_used = split
                 break
             except Exception as e:
                 error_msg = str(e).lower()
-                
+
                 # If it's a config issue, try with configs
                 if "config" in error_msg or "subset" in error_msg:
                     try:
-                        configs = get_dataset_config_names(hf_repo)
+                        configs = get_dataset_config_names(hf_repo, token=token)
                         if configs:
                             # Try first config with this split
-                            dataset = load_dataset(hf_repo, configs[0], split=split, streaming=True)
+                            dataset = load_dataset(hf_repo, configs[0], split=split, streaming=True, token=token)
                             config_used = configs[0]
                             split_used = split
                             break
@@ -206,22 +278,34 @@ def estimate_input_tokens(hf_repo: str, max_samples: int = 50, timeout: int = 10
         # Use cached tokenizer
         tokenizer = get_tokenizer()
 
+        def value_to_text(value) -> str:
+            """Recursively convert any value to text for token counting."""
+            if value is None:
+                return ""
+            if isinstance(value, str):
+                return value
+            if isinstance(value, (int, float, bool)):
+                return str(value)
+            if isinstance(value, list):
+                return " ".join(value_to_text(item) for item in value)
+            if isinstance(value, dict):
+                return " ".join(value_to_text(v) for v in value.values())
+            return str(value)
+
         token_counts = []
         for i, sample in enumerate(dataset):
             if i >= max_samples:
                 break
 
-            # Try to find text content in the sample
-            text = ""
+            # Concatenate ALL text content from the sample
+            text_parts = []
             if isinstance(sample, dict):
-                # Common field names for input text
-                for field in ["input", "text", "prompt", "question", "query", "context"]:
-                    if field in sample:
-                        text = str(sample[field])
-                        break
-                # If no common field found, concatenate all string values
-                if not text:
-                    text = " ".join(str(v) for v in sample.values() if isinstance(v, str))
+                for key, value in sample.items():
+                    part = value_to_text(value)
+                    if part:
+                        text_parts.append(part)
+
+            text = " ".join(text_parts)
 
             if text:
                 tokens = tokenizer.encode(text)
@@ -340,8 +424,11 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
             else:
                 repo_info = dataset_info.get("repo_info", {})
 
+            # Get dataset size
+            dataset_size = get_dataset_size(hf_repo, token=hf_token)
+
             # Estimate input tokens (skip if --skip-tokens flag is set)
-            estimated_tokens = None if (args and args.skip_tokens) else estimate_input_tokens(hf_repo)
+            estimated_tokens = None if (args and args.skip_tokens) else estimate_input_tokens(hf_repo, token=hf_token)
 
             # Parse created_at
             created_at_hf = None
@@ -395,6 +482,7 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
                 "downloads": repo_info.get("downloads"),
                 "tags": hf_tags,
                 "estimated_input_tokens": estimated_tokens,
+                "dataset_size": dataset_size,
                 "repo_type": repo_info.get("type"),
                 "created_at_hf": created_at_hf.replace(tzinfo=None) if created_at_hf else None,
                 "private": repo_info.get("private"),

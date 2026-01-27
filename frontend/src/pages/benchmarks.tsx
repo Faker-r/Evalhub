@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ExternalLink, Search, ChevronLeft, ChevronRight, ChevronDown, Download, Box, ChevronUp } from "lucide-react";
+import { ExternalLink, Search, ChevronLeft, ChevronRight, ChevronDown, Download, Box, ChevronUp, Database } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -402,18 +402,24 @@ export default function Benchmarks() {
                           )}
                         
                           <div className="mt-auto space-y-2 flex-shrink-0">
-                            {(benchmark.downloads || benchmark.estimated_input_tokens) && (
+                            {(benchmark.downloads || benchmark.estimated_input_tokens || benchmark.dataset_size) && (
                               <div className="flex items-center gap-4 text-xs text-muted-foreground pb-2">
                                 {benchmark.downloads && (
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1" title="Downloads">
                                     <Download className="w-3 h-3" />
                                     <span>{benchmark.downloads.toLocaleString()}</span>
                                   </div>
                                 )}
                                 {benchmark.estimated_input_tokens && (
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1" title="Estimated Input Tokens">
                                     <Box className="w-3 h-3" />
                                     <span>{benchmark.estimated_input_tokens.toLocaleString()} tokens</span>
+                                  </div>
+                                )}
+                                {benchmark.dataset_size && (
+                                  <div className="flex items-center gap-1" title="Dataset Rows">
+                                    <Database className="w-3 h-3" />
+                                    <span>{benchmark.dataset_size.toLocaleString()} rows</span>
                                   </div>
                                 )}
                               </div>

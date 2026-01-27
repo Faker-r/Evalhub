@@ -343,6 +343,7 @@ class ApiClient {
         downloads: number | null;
         tags: string[] | null;
         estimated_input_tokens: number | null;
+        dataset_size: number | null;
         repo_type: string | null;
         created_at_hf: string | null;
         private: boolean | null;
@@ -369,6 +370,7 @@ class ApiClient {
       downloads: number | null;
       tags: string[] | null;
       estimated_input_tokens: number | null;
+      dataset_size: number | null;
       repo_type: string | null;
       created_at_hf: string | null;
       private: boolean | null;
