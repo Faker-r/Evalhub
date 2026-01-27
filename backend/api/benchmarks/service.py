@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.benchmarks.repository import BenchmarkRepository
-from api.benchmarks.schemas import BenchmarkListResponse, BenchmarkResponse, TaskDetailsResponse
+from api.benchmarks.schemas import BenchmarkListResponse, BenchmarkResponse, BenchmarkTaskResponse, BenchmarkTasksListResponse, TaskDetailsResponse
 from api.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -105,3 +105,17 @@ class BenchmarkService:
         if task_details_nested_dict:
             response.task_details_nested_dict = task_details_nested_dict
         return response
+
+    async def get_benchmark_tasks(self, benchmark_id: int) -> BenchmarkTasksListResponse:
+        """Get all tasks for a benchmark.
+
+        Args:
+            benchmark_id: Benchmark ID
+
+        Returns:
+            BenchmarkTasksListResponse: List of tasks with size/token info
+        """
+        tasks = await self.repository.get_tasks_by_benchmark_id(benchmark_id)
+        return BenchmarkTasksListResponse(
+            tasks=[BenchmarkTaskResponse.model_validate(t) for t in tasks]
+        )

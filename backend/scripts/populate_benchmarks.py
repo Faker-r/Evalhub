@@ -236,7 +236,7 @@ def estimate_avg_tokens_per_sample(
     evaluation_splits: list[str],
     token: Optional[str] = None,
     max_samples: int = 50,
-    timeout: int = 30
+    timeout: int = 60
 ) -> Optional[int]:
     """
     Estimate the average number of input tokens per sample by tokenizing samples
@@ -454,30 +454,6 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
             else:
                 repo_info = dataset_info.get("repo_info", {})
 
-            # Get evaluation config from the primary task
-            hf_subset = primary_task_config.hf_subset
-            # Use evaluation_splits if available, fall back to hf_avail_splits, then default
-            if primary_task_config.evaluation_splits:
-                evaluation_splits = list(primary_task_config.evaluation_splits)
-                logger.info(f"Using evaluation_splits for {hf_repo}: {evaluation_splits}")
-            elif primary_task_config.hf_avail_splits:
-                evaluation_splits = list(primary_task_config.hf_avail_splits)
-                logger.info(f"No evaluation_splits for {hf_repo}, using hf_avail_splits: {evaluation_splits}")
-            else:
-                evaluation_splits = ["train", "validation", "test"]
-                logger.info(f"No splits defined for {hf_repo}, using defaults: {evaluation_splits}")
-
-            # Get dataset size (number of rows in evaluation splits)
-            dataset_size = get_dataset_size(hf_repo, hf_subset, evaluation_splits, token=hf_token)
-
-            # Estimate total input tokens = avg_tokens_per_sample * dataset_size
-            estimated_tokens = None
-            if not (args and args.skip_tokens):
-                avg_tokens = estimate_avg_tokens_per_sample(hf_repo, hf_subset, evaluation_splits, token=hf_token)
-                if avg_tokens and dataset_size:
-                    estimated_tokens = avg_tokens * dataset_size
-                    logger.info(f"Total tokens for {hf_repo}: {estimated_tokens} ({avg_tokens} avg × {dataset_size} rows)")
-
             # Parse created_at
             created_at_hf = None
             if repo_info.get("created_at"):
@@ -529,8 +505,6 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
                 "author": repo_info.get("author"),
                 "downloads": repo_info.get("downloads"),
                 "tags": hf_tags,
-                "estimated_input_tokens": estimated_tokens,
-                "dataset_size": dataset_size,
                 "repo_type": repo_info.get("type"),
                 "created_at_hf": created_at_hf.replace(tzinfo=None) if created_at_hf else None,
                 "private": repo_info.get("private"),
@@ -545,8 +519,55 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
             async with async_session() as session:
                 repository = BenchmarkRepository(session)
                 # Use dataset name for upsert
-                await repository.upsert(dataset_name, benchmark_data)
-            
+                benchmark = await repository.upsert(dataset_name, benchmark_data)
+
+                # Process tasks - calculate size and tokens for each task variant
+                if not (args and args.skip_task_details):
+                    if len(tasks) > 1:
+                        logger.info(f"Processing {len(tasks)} tasks for {hf_repo}")
+
+                    # Cache to avoid redundant API calls for same subset+splits combo
+                    task_cache = {}  # key: (subset, tuple(splits)) -> (size, tokens)
+
+                    for task_name, task_config in tasks:
+                        # Get this task's specific subset and evaluation splits
+                        task_subset = task_config.hf_subset
+                        if task_config.evaluation_splits:
+                            task_eval_splits = list(task_config.evaluation_splits)
+                        elif task_config.hf_avail_splits:
+                            task_eval_splits = list(task_config.hf_avail_splits)
+                        else:
+                            task_eval_splits = ["train", "validation", "test"]
+
+                        # Check cache first
+                        cache_key = (task_subset, tuple(sorted(task_eval_splits)))
+                        if cache_key in task_cache:
+                            task_size, task_tokens = task_cache[cache_key]
+                        else:
+                            # Calculate size and tokens for this specific task
+                            task_size = get_dataset_size(hf_repo, task_subset, task_eval_splits, token=hf_token)
+
+                            task_tokens = None
+                            if not (args and args.skip_tokens):
+                                task_avg_tokens = estimate_avg_tokens_per_sample(
+                                    hf_repo, task_subset, task_eval_splits, token=hf_token
+                                )
+                                if task_avg_tokens and task_size:
+                                    task_tokens = task_avg_tokens * task_size
+
+                            # Store in cache
+                            task_cache[cache_key] = (task_size, task_tokens)
+
+                        task_data = {
+                            "task_name": task_name,
+                            "hf_subset": task_subset,
+                            "evaluation_splits": task_eval_splits,
+                            "dataset_size": task_size,
+                            "estimated_input_tokens": task_tokens,
+                            "updated_at": datetime.now(),
+                        }
+                        await repository.upsert_task(benchmark.id, task_data)
+
             logger.info(f"Successfully processed {hf_repo}")
             success_count += 1
 
@@ -592,6 +613,11 @@ def main():
         action="store_true",
         help="Skip token estimation for faster processing (tokens will be None)",
     )
+    parser.add_argument(
+        "--skip-task-details",
+        action="store_true",
+        help="Skip per-task size/token calculation for faster processing",
+    )
 
     # Store args globally so estimate_input_tokens can access skip_tokens flag
     global args
@@ -607,6 +633,9 @@ def main():
     
     if args.skip_tokens:
         logger.info("⚡ FAST MODE: Skipping token estimation")
+
+    if args.skip_task_details:
+        logger.info("⚡ FAST MODE: Skipping per-task details")
 
     asyncio.run(populate_benchmarks(limit=args.limit, hf_token=hf_token))
 
