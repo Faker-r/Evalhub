@@ -28,7 +28,7 @@ class BenchmarkService:
         search_query: Optional[str] = None,
     ) -> BenchmarkListResponse:
         """Get all benchmarks with filtering, sorting, and pagination.
-        
+
         Note: This service layer currently acts as a pass-through to the repository
         with response formatting. It's maintained for future business logic additions
         and to keep a consistent service layer pattern across the application.
@@ -57,8 +57,19 @@ class BenchmarkService:
 
         total_pages = math.ceil(total / page_size) if total > 0 else 0
 
+        # Build response with default task info from first task
+        benchmark_responses = []
+        for b in benchmarks:
+            response = BenchmarkResponse.model_validate(b)
+            # Populate default values from first task
+            if b.tasks_rel:
+                first_task = b.tasks_rel[0]
+                response.default_dataset_size = first_task.dataset_size
+                response.default_estimated_input_tokens = first_task.estimated_input_tokens
+            benchmark_responses.append(response)
+
         return BenchmarkListResponse(
-            benchmarks=[BenchmarkResponse.model_validate(b) for b in benchmarks],
+            benchmarks=benchmark_responses,
             total=total,
             page=page,
             page_size=page_size,

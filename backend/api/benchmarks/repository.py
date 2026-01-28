@@ -5,6 +5,7 @@ from typing import Callable, Optional
 
 from sqlalchemy import func, select, String, cast
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from api.benchmarks.models import Benchmark, BenchmarkTask
 from api.core.exceptions import NotFoundException
@@ -162,6 +163,9 @@ class BenchmarkRepository:
         # Apply pagination
         offset = (page - 1) * page_size
         query = query.offset(offset).limit(page_size)
+
+        # Eagerly load tasks for default task info
+        query = query.options(selectinload(Benchmark.tasks_rel))
 
         result = await self.session.execute(query)
         benchmarks = list(result.scalars().all())

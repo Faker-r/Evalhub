@@ -24,6 +24,9 @@ class BenchmarkResponse(BaseModel):
     files: Optional[list[str]] = None
     created_at: datetime
     updated_at: datetime
+    # Default task info (from first task)
+    default_dataset_size: Optional[int] = None
+    default_estimated_input_tokens: Optional[int] = None
 
 
 class BenchmarkListResponse(BaseModel):

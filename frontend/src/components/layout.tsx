@@ -35,35 +35,36 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 w-full border-b border-border bg-white/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/">
-            <a className="flex items-center gap-2 group">
-              <div className="relative flex items-center justify-center w-8 h-8 bg-black rounded-lg group-hover:bg-mint-500 transition-colors duration-300">
-                <Hexagon className="w-5 h-5 text-white group-hover:text-black transition-colors" strokeWidth={2.5} />
-              </div>
-              <span className="font-display font-bold text-xl tracking-tight">EvalHub</span>
-            </a>
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="relative flex items-center justify-center w-8 h-8 bg-black rounded-lg group-hover:bg-mint-500 transition-colors duration-300">
+              <Hexagon className="w-5 h-5 text-white group-hover:text-black transition-colors" strokeWidth={2.5} />
+            </div>
+            <span className="font-display font-bold text-xl tracking-tight">EvalHub</span>
           </Link>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
             {navItems.map((item) => (
-              <Link key={item.href} href={item.href}>
-                <a className={cn(
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
                   "text-sm font-medium transition-colors hover:text-mint-600",
                   location === item.href ? "text-black" : "text-muted-foreground"
-                )}>
-                  {item.label}
-                </a>
+                )}
+              >
+                {item.label}
               </Link>
             ))}
             {isAuthenticated && (
-              <Link href="/results">
-                <a className={cn(
+              <Link
+                href="/results"
+                className={cn(
                   "text-sm font-medium transition-colors hover:text-mint-600",
                   location === "/results" ? "text-black" : "text-muted-foreground"
-                )}>
-                  My Evaluations
-                </a>
+                )}
+              >
+                My Evaluations
               </Link>
             )}
           </nav>
@@ -141,23 +142,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-border bg-white p-4 flex flex-col gap-4 animate-in slide-in-from-top-5">
             {navItems.map((item) => (
-              <Link key={item.href} href={item.href}>
-                <a 
-                  className="text-sm font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.label}
-                </a>
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-sm font-medium py-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {item.label}
               </Link>
             ))}
             {isAuthenticated && (
-              <Link href="/results">
-                <a 
-                  className="text-sm font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  My Evaluations
-                </a>
+              <Link
+                href="/results"
+                className="text-sm font-medium py-2"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                My Evaluations
               </Link>
             )}
             <div className="flex flex-col gap-2 pt-4 border-t border-border">
