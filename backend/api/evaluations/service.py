@@ -5,6 +5,7 @@ import asyncio
 import traceback
 from dataclasses import asdict
 
+from api.models_and_providers.service import ModelsAndProvidersService
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +23,7 @@ from api.evaluations.schemas import (
     TaskEvaluationResponse,
     FlexibleEvaluationRequest,
     JudgeType,
+    ModelConfig,
 )
 from api.guidelines.models import Guideline
 from api.guidelines.service import GuidelineService
@@ -36,7 +38,7 @@ from api.evaluations.eval_pipeline.guideline_judge import GuidelineJudgeMetric
 from api.evaluations.eval_pipeline.metric_doc_generator import MetricDocGenerator
 
 from lighteval.logging.evaluation_tracker import EvaluationTracker
-from lighteval.models.endpoints.litellm_model import LiteLLMModelConfig, LiteLLMClient
+from lighteval.models.endpoints.openai_model import OpenAICompatibleModelConfig, OpenAICompatibleClient
 from lighteval.tasks.registry import Registry
 from lighteval.pipeline import ParallelismManager, Pipeline, PipelineParameters
 from lighteval.models.model_input import GenerationParameters
@@ -54,6 +56,9 @@ DEFAULT_API_BASES = {
     "anyscale": "https://api.endpoints.anyscale.com/v1",
 }
 
+OPENROUTER_PROVIDER_SLUG = "openrouter"
+OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
+
 # Default temperature for model completion
 DEFAULT_TEMPERATURE = 0.7
 
@@ -67,6 +72,7 @@ class EvaluationService:
         self.repository = EvaluationRepository(session)
         self.guideline_service = GuidelineService(session)
         self.s3 = S3Storage()
+        self.model_providers_service = ModelsAndProvidersService(session)
 
     # ==================== Main Entry Point ====================
 
@@ -109,7 +115,7 @@ class EvaluationService:
                 guidelines = await service._load_guidelines(request.guideline_names)
 
                 # Run lighteval pipeline
-                pipeline_output = service._run_lighteval_pipeline(
+                pipeline_output = await service._run_lighteval_pipeline(
                     request, dataset_content, guidelines
                 )
 
@@ -176,7 +182,7 @@ class EvaluationService:
                 service = EvaluationService(session, trace.user_id)
 
                 # Run lighteval pipeline
-                pipeline_output = service._run_lighteval_task_pipeline(request)
+                pipeline_output = await service._run_lighteval_task_pipeline(request)
                 task_name = service._build_task_name(request)
                 metric_docs = service._build_metric_docs_for_task(task_name)
 
@@ -254,7 +260,7 @@ class EvaluationService:
                 if request.judge_type == JudgeType.LLM_AS_JUDGE and request.guideline_names:
                     guidelines = await service._load_guidelines(request.guideline_names)
 
-                pipeline_output = service._run_flexible_lighteval_pipeline(
+                pipeline_output = await service._run_flexible_lighteval_pipeline(
                     request, dataset_content, guidelines
                 )
 
@@ -357,7 +363,56 @@ class EvaluationService:
             "scoring_scale_config": config_dict,
         }
 
-    def _run_lighteval_pipeline(
+    async def _get_model_api_name_and_base_url(
+        self, model_provider_id: int, model_id: int
+    ) -> tuple[str, str]:
+        provider = await self.model_providers_service.get_provider(model_provider_id)
+        if not provider:
+            raise ValueError(f"Provider with id {model_provider_id} not found")
+
+        model = await self.model_providers_service.get_model(model_id)
+        if not model:
+            raise ValueError(f"Model with id {model_id} not found")
+
+        return model.api_name, provider.base_url
+
+    async def _create_openai_compatible_client(
+        self, model_completion_config: ModelConfig
+    ) -> OpenAICompatibleModelConfig:
+        if model_completion_config.api_source == "standard":
+            model_api_key = self.s3.download_api_key(
+                self.user_id, model_completion_config.model_provider_slug
+            )
+            model_name, model_url = await self._get_model_api_name_and_base_url(
+                model_completion_config.model_provider_id,
+                model_completion_config.model_id,
+            )
+            model_config = OpenAICompatibleModelConfig(
+                model_name=model_name,
+                base_url=model_url,
+                api_key=model_api_key,
+            )
+        else:
+            model_api_key = self.s3.download_api_key(
+                self.user_id, OPENROUTER_PROVIDER_SLUG
+            )
+            model_config = OpenAICompatibleModelConfig(
+                model_name=model_completion_config.model_slug,
+                base_url=OPENROUTER_API_BASE,
+                api_key=model_api_key,
+                generation_parameters=GenerationParameters(
+                    extra_body={
+                        "provider": {
+                            "order": [model_completion_config.model_provider_slug],
+                            "allow_fallbacks": False,
+                        }
+                    }
+                ),
+            )
+
+        return model_config
+    
+    async def _run_lighteval_pipeline(
         self,
         request: EvaluationRequest,
         dataset_content: str,
@@ -370,12 +425,14 @@ class EvaluationService:
         """
         # Get API key for judge model
         judge_api_key = self.s3.download_api_key(
-            self.user_id, request.judge_config.model_provider
+            self.user_id, request.judge_config.model_provider_slug
         )
         judge_url = request.judge_config.api_base or DEFAULT_API_BASES.get(
-            request.judge_config.model_provider, DEFAULT_API_BASES["openai"]
+            request.judge_config.model_provider_slug, DEFAULT_API_BASES["openai"]
         )
-        judge_model_name = f"{request.judge_config.model_provider}/{request.judge_config.model_name}"
+        judge_model_name = (
+            f"{request.judge_config.model_provider_slug}/{request.judge_config.model_name}"
+        )
 
         # Create judge metrics from guidelines
         metrics = []
@@ -403,20 +460,8 @@ class EvaluationService:
         registry.task_to_configs = {request.dataset_name: [task.config]}
 
         # Create model client
-        model_api_key = self.s3.download_api_key(
-            self.user_id, request.model_completion_config.model_provider
-        )
-        model_url = request.model_completion_config.api_base or DEFAULT_API_BASES.get(
-            request.model_completion_config.model_provider, DEFAULT_API_BASES["openai"]
-        )
-
-        model_name = f"{request.model_completion_config.model_provider}/{request.model_completion_config.model_name}"
-        model_config = LiteLLMModelConfig(
-            model_name=model_name,
-            base_url=model_url,
-            api_key=model_api_key,
-        )
-        model = LiteLLMClient(model_config)
+        model_config = await self._create_openai_compatible_client(request.model_completion_config)
+        model = OpenAICompatibleClient(model_config)
 
         # Initialize registry on model cache
         if hasattr(model, "_cache") and model._cache is not None:
@@ -448,7 +493,7 @@ class EvaluationService:
 
         return {**results, "temp_dir": temp_dir}
 
-    def _run_lighteval_task_pipeline(self, request: TaskEvaluationRequest) -> dict:
+    async def _run_lighteval_task_pipeline(self, request: TaskEvaluationRequest) -> dict:
         """Run an evaluation on a task using lighteval.
 
         Returns:
@@ -468,23 +513,7 @@ class EvaluationService:
         )
 
         # Create model config
-        api_key = self.s3.download_api_key(
-            self.user_id, request.model_completion_config.model_provider
-        )
-        base_url = request.model_completion_config.api_base or DEFAULT_API_BASES.get(
-            request.model_completion_config.model_provider, DEFAULT_API_BASES["openai"]
-        )
-
-        model_name = f"{request.model_completion_config.model_provider}/{request.model_completion_config.model_name}"
-        model_config = LiteLLMModelConfig(
-            model_name=model_name,
-            provider=request.model_completion_config.model_provider,
-            base_url=base_url,
-            api_key=api_key,
-            generation_parameters=GenerationParameters(
-                temperature=DEFAULT_TEMPERATURE,  # TODO: make this configurable
-            ),
-        )
+        model_config = await self._create_openai_compatible_client(request.model_completion_config)
 
         task_name = self._build_task_name(request)
 
@@ -523,7 +552,7 @@ class EvaluationService:
             "temp_dir": temp_dir,
         }
 
-    def _run_flexible_lighteval_pipeline(
+    async def _run_flexible_lighteval_pipeline(
         self,
         request: FlexibleEvaluationRequest,
         dataset_content: str,
@@ -533,12 +562,14 @@ class EvaluationService:
         guideline_metrics = []
         if request.judge_type == JudgeType.LLM_AS_JUDGE and request.judge_config:
             judge_api_key = self.s3.download_api_key(
-                self.user_id, request.judge_config.model_provider
+                self.user_id, request.judge_config.model_provider_slug
             )
             judge_url = request.judge_config.api_base or DEFAULT_API_BASES.get(
-                request.judge_config.model_provider, DEFAULT_API_BASES["openai"]
+                request.judge_config.model_provider_slug, DEFAULT_API_BASES["openai"]
             )
-            judge_model_name = f"{request.judge_config.model_provider}/{request.judge_config.model_name}"
+            judge_model_name = (
+                f"{request.judge_config.model_provider_slug}/{request.judge_config.model_name}"
+            )
 
             for guideline in guidelines:
                 guideline_dict = self._convert_guideline_to_dict(guideline)
@@ -566,20 +597,8 @@ class EvaluationService:
         registry._task_registry[request.dataset_name] = task.config
         registry.task_to_configs = {request.dataset_name: [task.config]}
 
-        model_api_key = self.s3.download_api_key(
-            self.user_id, request.model_completion_config.model_provider
-        )
-        model_url = request.model_completion_config.api_base or DEFAULT_API_BASES.get(
-            request.model_completion_config.model_provider, DEFAULT_API_BASES["openai"]
-        )
-
-        model_name = f"{request.model_completion_config.model_provider}/{request.model_completion_config.model_name}"
-        model_config = LiteLLMModelConfig(
-            model_name=model_name,
-            base_url=model_url,
-            api_key=model_api_key,
-        )
-        model = LiteLLMClient(model_config)
+        model_config = await self._create_openai_compatible_client(request.model_completion_config)
+        model = OpenAICompatibleClient(model_config)
 
         if hasattr(model, "_cache") and model._cache is not None:
             model._cache._init_registry(registry)

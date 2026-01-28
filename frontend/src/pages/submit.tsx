@@ -15,6 +15,22 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { ModelSelection } from "@/components/model-selection";
 
+interface ModelConfig {
+  // For standard providers
+  provider_id?: number;
+  provider_name?: string;
+  provider_slug?: string;
+  model_id?: number; // Database ID as integer
+  model_name?: string;
+  model_slug?: string;
+
+  // For OpenRouter
+  is_openrouter?: boolean;
+  openrouter_model_id?: string;
+  openrouter_model_name?: string;
+  openrouter_provider_slug?: string;
+}
+
 interface ProviderComboboxProps {
   value: string;
   onChange: (value: string) => void;
@@ -87,6 +103,31 @@ const STEPS = [
 
 type SelectionType = "dataset" | "benchmark" | null;
 
+// Helper function to convert ModelConfig to API format
+function convertModelConfigToAPI(config: ModelConfig) {
+  if (config.is_openrouter) {
+    return {
+      api_source: "openrouter",
+      model_name: config.openrouter_model_name || config.openrouter_model_id || '',
+      model_id: '-1', // OpenRouter models don't have a database ID
+      model_slug: config.openrouter_model_id || '',
+      model_provider: 'openrouter',
+      model_provider_slug: config.openrouter_provider_slug || 'openrouter',
+      model_provider_id: 0,
+    };
+  } else {
+    return {
+      api_source: "standard",
+      model_name: config.model_name || '',
+      model_id: String(config.model_id ?? 0), // Convert integer database ID to string for API
+      model_slug: config.model_slug || config.model_name || '',
+      model_provider: config.provider_name || '',
+      model_provider_slug: config.provider_slug || config.provider_name || '',
+      model_provider_id: config.provider_id || 0,
+    };
+  }
+}
+
 export default function Submit() {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -117,16 +158,8 @@ export default function Submit() {
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
   
   // Model configuration
-  const [completionModelConfig, setCompletionModelConfig] = useState({
-    provider: "openai",
-    model: "gpt-3.5-turbo",
-    apiBase: undefined as string | undefined,
-  });
-  const [judgeModelConfig, setJudgeModelConfig] = useState({
-    provider: "openai",
-    model: "gpt-3.5-turbo",
-    apiBase: undefined as string | undefined,
-  });
+  const [completionModelConfig, setCompletionModelConfig] = useState<ModelConfig>({});
+  const [judgeModelConfig, setJudgeModelConfig] = useState<ModelConfig>({});
 
   // Fetch datasets
   const { data: datasetsData } = useQuery({
@@ -172,16 +205,8 @@ export default function Submit() {
         mc_config: outputType === "multiple_choice" ? { choices_field: choicesField, gold_answer_field: goldAnswerField } : undefined,
         judge_type: judgeType!,
         guideline_names: judgeType === "llm_as_judge" ? selectedGuidelines : undefined,
-        model_completion_config: {
-          model_name: completionModelConfig.model,
-          model_provider: completionModelConfig.provider,
-          api_base: completionModelConfig.apiBase,
-        },
-        judge_config: judgeType === "llm_as_judge" ? {
-          model_name: judgeModelConfig.model,
-          model_provider: judgeModelConfig.provider,
-          api_base: judgeModelConfig.apiBase,
-        } : undefined,
+        model_completion_config: convertModelConfigToAPI(completionModelConfig),
+        judge_config: judgeType === "llm_as_judge" ? convertModelConfigToAPI(judgeModelConfig) : undefined,
       }),
     onSuccess: () => {
       toast({
@@ -209,11 +234,7 @@ export default function Submit() {
           n_fewshots: numFewShots,
           n_samples: numSamples,
         },
-        model_completion_config: {
-          model_name: completionModelConfig.model,
-          model_provider: completionModelConfig.provider,
-          api_base: completionModelConfig.apiBase,
-        },
+        model_completion_config: convertModelConfigToAPI(completionModelConfig),
       }),
     onSuccess: () => {
       toast({
@@ -955,18 +976,20 @@ export default function Submit() {
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Judge Model:</span>
-                                  <span className="font-medium">{judgeModelConfig.model}</span>
+                                  <span className="font-medium">
+                                    {judgeModelConfig.is_openrouter
+                                      ? (judgeModelConfig.openrouter_model_name || judgeModelConfig.openrouter_model_id)
+                                      : judgeModelConfig.model_name}
+                                  </span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Judge Provider:</span>
-                                  <span className="font-medium">{judgeModelConfig.provider}</span>
+                                  <span className="font-medium">
+                                    {judgeModelConfig.is_openrouter
+                                      ? (judgeModelConfig.openrouter_provider_slug || 'OpenRouter')
+                                      : judgeModelConfig.provider_name}
+                                  </span>
                                 </div>
-                                {judgeModelConfig.apiBase && (
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Judge API Base:</span>
-                                    <span className="font-medium text-xs">{judgeModelConfig.apiBase}</span>
-                                  </div>
-                                )}
                               </>
                             )}
                           </>
@@ -993,24 +1016,28 @@ export default function Submit() {
                         
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Completion Model:</span>
-                          <span className="font-medium">{completionModelConfig.model}</span>
+                          <span className="font-medium">
+                            {completionModelConfig.is_openrouter
+                              ? (completionModelConfig.openrouter_model_name || completionModelConfig.openrouter_model_id)
+                              : completionModelConfig.model_name}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Completion Provider:</span>
-                          <span className="font-medium">{completionModelConfig.provider}</span>
+                          <span className="font-medium">
+                            {completionModelConfig.is_openrouter
+                              ? (completionModelConfig.openrouter_provider_slug || 'OpenRouter')
+                              : completionModelConfig.provider_name}
+                          </span>
                         </div>
-                        {completionModelConfig.apiBase && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Completion API Base:</span>
-                            <span className="font-medium text-xs">{completionModelConfig.apiBase}</span>
-                          </div>
-                        )}
                       </div>
                       {apiKeys.length === 0 && (
                         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                           <p className="text-sm text-yellow-800">
                             Warning: No API keys configured. Please add your{" "}
-                            {completionModelConfig.provider} API key in your profile settings.
+                            {completionModelConfig.is_openrouter
+                              ? (completionModelConfig.openrouter_provider_slug || 'OpenRouter')
+                              : completionModelConfig.provider_name} API key in your profile settings.
                           </p>
                         </div>
                       )}

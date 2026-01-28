@@ -16,13 +16,26 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 
+interface ModelConfig {
+  // For standard providers
+  provider_id?: number;
+  provider_name?: string;
+  provider_slug?: string;
+  model_id?: number; // Database ID as integer
+  model_name?: string;
+  model_slug?: string;
+  api_base?: string;
+
+  // For OpenRouter
+  is_openrouter?: boolean;
+  openrouter_model_id?: string;
+  openrouter_model_name?: string;
+  openrouter_provider_slug?: string;
+}
+
 interface ModelSelectionProps {
-  value: {
-    provider: string;
-    model: string;
-    apiBase?: string;
-  };
-  onChange: (value: { provider: string; model: string; apiBase?: string }) => void;
+  value: ModelConfig;
+  onChange: (value: ModelConfig) => void;
   label?: string;
 }
 
@@ -100,7 +113,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
     setLoadingStandardProviders(true);
     try {
       const response = await apiClient.getProviders({ page_size: 100 });
-      setStandardProviders(response.providers);
+      setStandardProviders(response.providers.filter((p) => p.name !== 'OpenRouter'));
     } catch (error) {
       toast.error('Failed to load providers');
       console.error('Error fetching standard providers:', error);
@@ -185,16 +198,25 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
     const id = parseInt(modelId);
     setSelectedStandardModel(id);
 
-    // Find the selected provider and model
-    const provider = standardProviders.find((p) => p.id === selectedStandardProvider);
+    // Find the selected model
     const model = standardModels.find((m) => m.id === id);
 
-    if (provider && model) {
-      onChange({
-        provider: provider.name,
-        model: model.api_name,
-        apiBase: provider.base_url,
-      });
+    if (model) {
+      // Find the provider for this model from the model's providers array
+      const provider = model.providers.find((p: any) => p.id === selectedStandardProvider);
+
+      if (provider) {
+        onChange({
+          provider_id: provider.id,
+          provider_name: provider.name,
+          provider_slug: provider.slug || provider.name,
+          model_id: model.id,
+          model_name: model.api_name,
+          model_slug: model.slug || model.api_name,
+          api_base: provider.base_url,
+          is_openrouter: false,
+        });
+      }
     }
   };
 
@@ -207,11 +229,15 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
   const handleOpenRouterModelChange = (modelId: string) => {
     setSelectedOpenRouterModel(modelId);
 
+    // Find the model to get its name
+    const model = openRouterModels.find((m) => m.id === modelId);
+
     // Set the config for OpenRouter
     onChange({
-      provider: 'openrouter',
-      model: modelId,
-      apiBase: undefined,
+      is_openrouter: true,
+      openrouter_model_id: modelId,
+      openrouter_model_name: model?.name || modelId,
+      openrouter_provider_slug: selectedOpenRouterProvider || undefined,
     });
   };
 
@@ -447,22 +473,30 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
         )}
 
         {/* Current Selection Display */}
-        {value.model && (
+        {(value.model_name || value.openrouter_model_id) && (
           <div className="pt-4 border-t space-y-2">
             <Label>Current Selection</Label>
             <div className="text-sm space-y-1 p-3 bg-muted rounded-md">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Provider:</span>
-                <span className="font-medium">{value.provider}</span>
+                <span className="font-medium">
+                  {value.is_openrouter
+                    ? (value.openrouter_provider_slug || 'OpenRouter')
+                    : value.provider_name}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Model:</span>
-                <span className="font-medium">{value.model}</span>
+                <span className="font-medium">
+                  {value.is_openrouter
+                    ? (value.openrouter_model_name || value.openrouter_model_id)
+                    : value.model_name}
+                </span>
               </div>
-              {value.apiBase && (
+              {value.api_base && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">API Base:</span>
-                  <span className="font-medium text-xs truncate max-w-[200px]">{value.apiBase}</span>
+                  <span className="font-medium text-xs truncate max-w-[200px]">{value.api_base}</span>
                 </div>
               )}
             </div>

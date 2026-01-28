@@ -35,7 +35,11 @@ async def test_text_exact_match():
         judge_type=JudgeType.EXACT_MATCH,
         model_completion_config=ModelConfig(
             model_name="gpt-5.1",
+            model_id="gpt-5.1",
+            model_slug="gpt-5.1",
             model_provider="openai",
+            model_provider_slug="openai",
+            model_provider_id=0,
         ),
     )
 
@@ -56,7 +60,11 @@ async def test_text_f1_score():
         judge_type=JudgeType.F1_SCORE,
         model_completion_config=ModelConfig(
             model_name="gpt-5.1",
+            model_id="gpt-5.1",
+            model_slug="gpt-5.1",
             model_provider="openai",
+            model_provider_slug="openai",
+            model_provider_id=0,
         ),
     )
 
@@ -78,11 +86,19 @@ async def test_text_llm_judge():
         guideline_names=["humor"],
         model_completion_config=ModelConfig(
             model_name="gpt-4o-mini",
+            model_id="gpt-4o-mini",
+            model_slug="gpt-4o-mini",
             model_provider="openai",
+            model_provider_slug="openai",
+            model_provider_id=0,
         ),
         judge_config=ModelConfig(
             model_name="gpt-4o",
+            model_id="gpt-4o",
+            model_slug="gpt-4o",
             model_provider="openai",
+            model_provider_slug="openai",
+            model_provider_id=0,
         ),
     )
 

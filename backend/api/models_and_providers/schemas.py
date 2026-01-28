@@ -10,6 +10,7 @@ class ProviderBase(BaseModel):
     """Base provider schema."""
 
     name: str
+    slug: str | None = None
     base_url: str
 
 
@@ -53,6 +54,7 @@ class ModelBase(BaseModel):
     display_name: str
     developer: str
     api_name: str
+    slug: str | None = None
 
 
 class ModelCreate(ModelBase):

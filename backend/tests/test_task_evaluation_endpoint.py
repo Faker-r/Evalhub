@@ -33,11 +33,19 @@ async def test_task_evaluation_service():
         ),
         model_completion_config=ModelConfig(
             model_name="deepseek-ai/DeepSeek-V3.2",
+            model_id="deepseek-ai/DeepSeek-V3.2",
+            model_slug="deepseek-ai/DeepSeek-V3.2",
             model_provider="baseten",
+            model_provider_slug="baseten",
+            model_provider_id=0,
         ),
         judge_config=ModelConfig(
             model_name="gpt-4o",
+            model_id="gpt-4o",
+            model_slug="gpt-4o",
             model_provider="openai",
+            model_provider_slug="openai",
+            model_provider_id=0,
         ),
     )
     print(f"✓ Request prepared: task={request.task_name}, samples={request.dataset_config.n_samples}")
@@ -52,20 +60,16 @@ async def test_task_evaluation_service():
         service = EvaluationService(session, user_id)
         
         try:
-            response = await service.run_task_evaluation(request)
-            print("✓ Evaluation completed")
-            
+            trace = await service._create_task_trace(request)
+
+            await EvaluationService._run_task_evaluation_background(trace.id, request)
+
+            print("✓ Evaluation started")
+
             # Step 5: Display results
             print("\n5. Results:")
-            print(f"   Trace ID: {response.trace_id}")
-            print(f"   Status: {response.status}")
-            print(f"   Task Name: {response.task_name}")
-            print(f"   Sample Count: {response.sample_count}")
-            print(f"   Guideline Names: {response.guideline_names}")
-            print(f"   Completion Model: {response.completion_model}")
-            print(f"   Model Provider: {response.model_provider}")
-            print(f"   Judge Model: {response.judge_model}")
-            print(f"   Created At: {response.created_at}")
+            print(f"   Trace ID: {trace.id}")
+            print("   Status: running")
             
             print("\n✓ Test completed successfully!")
             

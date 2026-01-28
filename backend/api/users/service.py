@@ -76,9 +76,9 @@ class UserService:
             raise NotFoundException(f"Provider with ID {provider_id} not found")
 
         try:
-            return self.s3.download_api_key(user_id, provider.name)
+            return self.s3.download_api_key(user_id, provider.slug)
         except FileNotFoundError:
-            raise NotFoundException(f"API key not found for provider: {provider.name}")
+            raise NotFoundException(f"API key not found for provider: {provider.slug}")
 
     async def list_api_keys(self, user_id: str) -> list[ApiKeyResponse]:
         """List all API key providers for a user.
@@ -135,8 +135,8 @@ class UserService:
         if not provider:
             raise NotFoundException(f"Provider with ID {provider_id} not found")
 
-        if not self.s3.api_key_exists(user_id, provider.name):
-            raise NotFoundException(f"API key not found for provider: {provider.name}")
+        if not self.s3.api_key_exists(user_id, provider.slug):
+            raise NotFoundException(f"API key not found for provider: {provider.slug}")
 
-        self.s3.delete_api_key(user_id, provider.name)
+        self.s3.delete_api_key(user_id, provider.slug)
         logger.info(f"Deleted API key for user {user_id}, provider {provider.name}")

@@ -299,12 +299,20 @@ class ApiClient {
     guideline_names: string[];
     model_completion_config: {
       model_name: string;
+      model_id: string;
+      model_slug: string;
       model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
       api_base?: string;
     };
     judge_config: {
       model_name: string;
+      model_id: string;
+      model_slug: string;
       model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
       api_base?: string;
     };
   }) {
@@ -323,12 +331,20 @@ class ApiClient {
     };
     model_completion_config: {
       model_name: string;
+      model_id: string;
+      model_slug: string;
       model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
       api_base?: string;
     };
     judge_config?: {
       model_name: string;
+      model_id: string;
+      model_slug: string;
       model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
       api_base?: string;
     };
   }) {
@@ -348,12 +364,20 @@ class ApiClient {
     guideline_names?: string[];
     model_completion_config: {
       model_name: string;
+      model_id: string;
+      model_slug: string;
       model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
       api_base?: string;
     };
     judge_config?: {
       model_name: string;
+      model_id: string;
+      model_slug: string;
       model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
       api_base?: string;
     };
   }) {
@@ -512,6 +536,7 @@ class ApiClient {
       providers: {
         id: number;
         name: string;
+        slug: string | null;
         base_url: string;
         created_at: string;
       }[];
@@ -532,15 +557,20 @@ class ApiClient {
     return this.request<{
       models: {
         id: number;
-        provider_id: number;
         display_name: string;
+        developer: string;
         api_name: string;
-        created_at: string;
+        slug: string | null;
+        providers: {
+          id: number;
+          name: string;
+          slug: string | null;
+          base_url: string;
+        }[];
       }[];
       total: number;
       page: number;
       page_size: number;
-      total_pages: number;
     }>(`/models-and-providers/models${query ? '?' + query : ''}`);
   }
 

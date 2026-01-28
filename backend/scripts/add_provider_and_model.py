@@ -40,11 +40,25 @@ async def main() -> None:
 async def backfill_providers():
     async with async_session() as session:
         service = ModelsAndProvidersService(session)
-        _ = await service.create_provider(
-            ProviderCreate(name="baseten", base_url="https://inference.baseten.co/v1")
-        )
-        _ = await service.create_provider(
-            ProviderCreate(name="openai", base_url="https://api.openai.com/v1")
+        # _ = await service.create_provider(
+        #     ProviderCreate(name="baseten", base_url="https://inference.baseten.co/v1")
+        # )
+        # _ = await service.create_provider(
+        #     ProviderCreate(name="openai", base_url="https://api.openai.com/v1")
+        # )
+
+        provider = await service.get_provider_by_name("Baseten")
+
+        if not provider:
+            raise ValueError("Provider not found")
+
+        await service.create_model(
+            ModelCreate(
+                display_name="DeepSeek V3.2",
+                developer="DeepSeek",
+                api_name="deepseek-ai/DeepSeek-V3.2",
+                provider_ids=[provider.id],
+            )
         )
         
 

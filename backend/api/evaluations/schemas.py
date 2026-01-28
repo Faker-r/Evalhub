@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -105,9 +105,13 @@ class DatasetConfig(BaseModel):
 class ModelConfig(BaseModel):
     """Request schema for running a task evaluation."""
 
+    api_source: Literal["standard", "openrouter"]
     model_name: str
+    model_id: int
+    model_slug: str
     model_provider: str
-    api_base: str | None = None
+    model_provider_slug: str
+    model_provider_id: int
 
 
 class EvaluationRequest(BaseModel):
