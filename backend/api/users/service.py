@@ -46,8 +46,8 @@ class UserService:
             raise NotFoundException(f"Provider with ID {api_key_data.provider_id} not found")
 
         # Store API key using provider name
-        self.s3.upload_api_key(user_id, provider.name, api_key_data.api_key)
-        logger.info(f"Stored API key for user {user_id}, provider {provider.name}")
+        self.s3.upload_api_key(user_id, provider.slug, api_key_data.api_key)
+        logger.info(f"Stored API key for user {user_id}, provider {provider.slug}")
 
         return ApiKeyResponse(provider_id=provider.id, provider_name=provider.name)
 
@@ -98,7 +98,7 @@ class UserService:
         # Map provider names to provider IDs
         api_keys = []
         for provider_name in provider_names:
-            stmt = select(Provider).where(Provider.name == provider_name)
+            stmt = select(Provider).where(Provider.slug == provider_name)
             result = await self.session.execute(stmt)
             provider = result.scalar_one_or_none()
 

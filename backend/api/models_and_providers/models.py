@@ -23,6 +23,7 @@ class Provider(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True, index=True)
+    slug = Column(String)
     base_url = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -44,6 +45,7 @@ class Model(Base):
     display_name = Column(String, nullable=False)
     developer = Column(String, nullable=False)
     api_name = Column(String, nullable=False, index=True)
+    slug = Column(String)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
