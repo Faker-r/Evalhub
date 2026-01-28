@@ -219,6 +219,19 @@ def clean_description(description: str | None) -> str | None:
     """
     if not description:
         return None
+
+    # Filter out placeholder text from HuggingFace
+    placeholder_patterns = [
+        "more information needed",
+        "add a description",
+        "no description",
+        "todo",
+        "tbd",
+        "coming soon",
+    ]
+    desc_lower = description.lower().strip()
+    if any(pattern in desc_lower for pattern in placeholder_patterns) and len(description) < 100:
+        return None
     
     # Remove "Dataset Card for X" headers
     text = re.sub(r'^#*\s*Dataset Card for[^\n]*\n*', '', description, flags=re.IGNORECASE | re.MULTILINE)

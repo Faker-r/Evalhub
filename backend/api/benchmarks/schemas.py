@@ -17,7 +17,6 @@ class BenchmarkResponse(BaseModel):
     author: Optional[str] = None
     downloads: Optional[int] = None
     tags: Optional[list[str]] = None
-    estimated_input_tokens: Optional[int] = None
     repo_type: Optional[str] = None
     created_at_hf: Optional[datetime] = None
     private: Optional[bool] = None
@@ -25,6 +24,9 @@ class BenchmarkResponse(BaseModel):
     files: Optional[list[str]] = None
     created_at: datetime
     updated_at: datetime
+    # Default task info (from first task)
+    default_dataset_size: Optional[int] = None
+    default_estimated_input_tokens: Optional[int] = None
 
 
 class BenchmarkListResponse(BaseModel):
@@ -41,3 +43,25 @@ class TaskDetailsResponse(BaseModel):
 
     task_name: str
     task_details_nested_dict: Optional[dict] = None
+
+
+class BenchmarkTaskResponse(BaseModel):
+    """Response schema for benchmark task (per-task size/tokens)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    benchmark_id: int
+    task_name: str
+    hf_subset: Optional[str] = None
+    evaluation_splits: Optional[list[str]] = None
+    dataset_size: Optional[int] = None
+    estimated_input_tokens: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class BenchmarkTasksListResponse(BaseModel):
+    """Response schema for listing benchmark tasks."""
+
+    tasks: list[BenchmarkTaskResponse]

@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ExternalLink, Search, ChevronLeft, ChevronRight, ChevronDown, Download, Box, ChevronUp } from "lucide-react";
+import { ExternalLink, Search, ChevronLeft, ChevronRight, ChevronDown, Download, Box, ChevronUp, Database } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const VALID_BENCHMARK_TAGS = [
   "bias", "biology", "biomedical", "chemistry", "classification", "code-generation",
@@ -82,17 +83,21 @@ export default function Benchmarks() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<string>("downloads");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showAllLanguages, setShowAllLanguages] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [selectedBenchmark, setSelectedBenchmark] = useState<any>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
+  const [benchmarkTasks, setBenchmarkTasks] = useState<Record<number, any[]>>({});
+  const [loadingBenchmarkTasks, setLoadingBenchmarkTasks] = useState<Set<number>>(new Set());
 
   const ITEMS_PER_PAGE = 12;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['benchmarks', searchQuery, selectedLanguages, selectedTags],
+    queryKey: ['benchmarks', searchQuery, selectedLanguages, selectedTags, sortBy, sortOrder],
     queryFn: () => {
       const languageTags = selectedLanguages.map(code => `language:${code}`);
       const allTags = [...languageTags, ...selectedTags];
@@ -102,21 +107,61 @@ export default function Benchmarks() {
         page_size: 100,
         search: searchQuery || undefined,
         tags: allTags.length > 0 ? allTags : undefined,
+        sort_by: sortBy,
+        sort_order: sortOrder,
       });
     },
   });
 
-  const allBenchmarks = data?.benchmarks || [];
-  const totalPages = Math.max(1, Math.ceil(allBenchmarks.length / ITEMS_PER_PAGE));
-  
+  // Sort benchmarks - server handles downloads/dataset_name, client handles default_dataset_size
+  const sortedBenchmarks = useMemo(() => {
+    const benchmarks = data?.benchmarks || [];
+
+    // Client-side sorting for computed field (default_dataset_size)
+    if (sortBy === "default_dataset_size") {
+      return [...benchmarks].sort((a, b) => {
+        const aVal = a.default_dataset_size ?? 0;
+        const bVal = b.default_dataset_size ?? 0;
+        return sortOrder === "desc" ? bVal - aVal : aVal - bVal;
+      });
+    }
+
+    // Server already sorted for other fields
+    return benchmarks;
+  }, [data?.benchmarks, sortBy, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedBenchmarks.length / ITEMS_PER_PAGE));
+
   const currentBenchmarks = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return allBenchmarks.slice(start, start + ITEMS_PER_PAGE);
-  }, [allBenchmarks, currentPage]);
+    return sortedBenchmarks.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedBenchmarks, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedLanguages, selectedTags, searchQuery]);
+
+  // Fetch benchmark tasks when modal opens
+  useEffect(() => {
+    const fetchBenchmarkTasks = async () => {
+      if (selectedBenchmark && !benchmarkTasks[selectedBenchmark.id] && !loadingBenchmarkTasks.has(selectedBenchmark.id)) {
+        setLoadingBenchmarkTasks(prev => new Set(prev).add(selectedBenchmark.id));
+        try {
+          const response = await apiClient.getBenchmarkTasks(selectedBenchmark.id);
+          setBenchmarkTasks(prev => ({ ...prev, [selectedBenchmark.id]: response.tasks }));
+        } catch (error) {
+          console.error('Failed to fetch benchmark tasks:', error);
+        } finally {
+          setLoadingBenchmarkTasks(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(selectedBenchmark.id);
+            return newSet;
+          });
+        }
+      }
+    };
+    fetchBenchmarkTasks();
+  }, [selectedBenchmark]);
 
   const toggleLanguage = (code: string) => {
     setSelectedLanguages(prev =>
@@ -238,7 +283,7 @@ export default function Benchmarks() {
             Browse tasks by language, tags and search the task descriptions.
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            {allBenchmarks.length} tasks
+            {sortedBenchmarks.length} tasks
           </p>
         </div>
 
@@ -259,6 +304,43 @@ export default function Benchmarks() {
                     className="text-sm pl-9"
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-medium">Sort by</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup
+                  defaultValue="most_popular"
+                  onValueChange={(value) => {
+                    if (value === "most_popular") {
+                      setSortBy("downloads");
+                      setSortOrder("desc");
+                    } else if (value === "largest_dataset") {
+                      setSortBy("default_dataset_size");
+                      setSortOrder("desc");
+                    } else if (value === "alphabetical") {
+                      setSortBy("dataset_name");
+                      setSortOrder("asc");
+                    }
+                  }}
+                  className="space-y-3"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="most_popular" id="sort-popular" />
+                    <Label htmlFor="sort-popular" className="text-sm font-normal leading-none cursor-pointer">Most Popular</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="largest_dataset" id="sort-largest" />
+                    <Label htmlFor="sort-largest" className="text-sm font-normal leading-none cursor-pointer">Largest Dataset</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="alphabetical" id="sort-alpha" />
+                    <Label htmlFor="sort-alpha" className="text-sm font-normal leading-none cursor-pointer">Alphabetical</Label>
+                  </div>
+                </RadioGroup>
               </CardContent>
             </Card>
 
@@ -343,7 +425,7 @@ export default function Benchmarks() {
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
                 <p className="mt-4 text-muted-foreground">Loading benchmarks...</p>
               </div>
-            ) : allBenchmarks.length === 0 ? (
+            ) : sortedBenchmarks.length === 0 ? (
               <Card>
                 <CardContent className="pt-12 pb-12 text-center">
                   <p className="text-muted-foreground">No benchmarks found matching your filters.</p>
@@ -402,18 +484,24 @@ export default function Benchmarks() {
                           )}
                         
                           <div className="mt-auto space-y-2 flex-shrink-0">
-                            {(benchmark.downloads || benchmark.estimated_input_tokens) && (
+                            {(benchmark.downloads || benchmark.default_dataset_size || benchmark.default_estimated_input_tokens) && (
                               <div className="flex items-center gap-4 text-xs text-muted-foreground pb-2">
                                 {benchmark.downloads && (
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1" title="Downloads">
                                     <Download className="w-3 h-3" />
                                     <span>{benchmark.downloads.toLocaleString()}</span>
                                   </div>
                                 )}
-                                {benchmark.estimated_input_tokens && (
-                                  <div className="flex items-center gap-1">
+                                {benchmark.default_dataset_size && (
+                                  <div className="flex items-center gap-1" title="Dataset Size">
+                                    <Database className="w-3 h-3" />
+                                    <span>{benchmark.default_dataset_size.toLocaleString()}</span>
+                                  </div>
+                                )}
+                                {benchmark.default_estimated_input_tokens && (
+                                  <div className="flex items-center gap-1" title="Estimated Tokens">
                                     <Box className="w-3 h-3" />
-                                    <span>{benchmark.estimated_input_tokens.toLocaleString()} tokens</span>
+                                    <span>~{benchmark.default_estimated_input_tokens.toLocaleString()}</span>
                                   </div>
                                 )}
                               </div>
@@ -542,22 +630,14 @@ export default function Benchmarks() {
                         </p>
                       </div>
 
-                      {(selectedBenchmark.downloads || selectedBenchmark.estimated_input_tokens) && (
+                      {selectedBenchmark.downloads && (
                         <div>
                           <h3 className="text-sm font-semibold mb-2">Metrics</h3>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            {selectedBenchmark.downloads && (
-                              <div className="flex items-center gap-2">
-                                <Download className="w-4 h-4" />
-                                <span>{selectedBenchmark.downloads.toLocaleString()} downloads</span>
-                              </div>
-                            )}
-                            {selectedBenchmark.estimated_input_tokens && (
-                              <div className="flex items-center gap-2">
-                                <Box className="w-4 h-4" />
-                                <span>{selectedBenchmark.estimated_input_tokens.toLocaleString()} tokens</span>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                              <Download className="w-4 h-4" />
+                              <span>{selectedBenchmark.downloads.toLocaleString()} downloads</span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -581,6 +661,31 @@ export default function Benchmarks() {
                                 </button>
                                 {expandedTasks.has(task) && (
                                   <div className="px-3 pb-3 border-t border-gray-100">
+                                    {/* Task-specific size and tokens */}
+                                    {(() => {
+                                      const taskData = benchmarkTasks[selectedBenchmark.id]?.find(
+                                        (t: any) => t.task_name === task
+                                      );
+                                      if (taskData && (taskData.dataset_size || taskData.estimated_input_tokens)) {
+                                        return (
+                                          <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2 mb-2 py-2 px-2 bg-gray-50 rounded">
+                                            {taskData.dataset_size && (
+                                              <div className="flex items-center gap-1">
+                                                <Database className="w-3 h-3" />
+                                                <span>{taskData.dataset_size.toLocaleString()} samples</span>
+                                              </div>
+                                            )}
+                                            {taskData.estimated_input_tokens && (
+                                              <div className="flex items-center gap-1">
+                                                <Box className="w-3 h-3" />
+                                                <span>~{taskData.estimated_input_tokens.toLocaleString()} tokens</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                     {loadingTasks.has(task) ? (
                                       <div className="text-xs text-gray-500 py-2">Loading task details...</div>
                                     ) : taskDetails[task] ? (

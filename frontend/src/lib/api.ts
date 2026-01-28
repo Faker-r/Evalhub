@@ -8,8 +8,39 @@ interface ApiError {
   detail: string | { msg: string }[];
 }
 
+type OpenRouterModel = {
+  id: string;
+  name: string;
+  description?: string;
+  pricing?: unknown;
+  context_length?: number;
+  canonical_slug?: string;
+  top_provider?: unknown;
+};
+
+type OpenRouterProvider = {
+  name: string;
+  slug: string;
+  privacy_policy_url?: string | null;
+  terms_of_service_url?: string | null;
+  status_page_url?: string | null;
+};
+
+type OpenRouterModelsResponse = { data: OpenRouterModel[] };
+type OpenRouterProvidersResponse = { data: OpenRouterProvider[] };
+type OpenRouterModelEndpointsResponse = {
+  data: {
+    endpoints: {
+      provider_name?: string;
+    }[];
+  };
+};
+
 class ApiClient {
   private token: string | null = null;
+  private openRouterHostedModelsByProviderSlugPromise: Promise<
+    Record<string, OpenRouterModel[]>
+  > | null = null;
 
   constructor() {
     // Load token from localStorage on initialization
@@ -71,6 +102,70 @@ class ApiClient {
     return response.json();
   }
 
+  private async getOpenRouterHostedModelsByProviderSlug(): Promise<Record<string, OpenRouterModel[]>> {
+    if (!this.openRouterHostedModelsByProviderSlugPromise) {
+      this.openRouterHostedModelsByProviderSlugPromise = (async () => {
+        const [providersResp, modelsResp] = await Promise.all([
+          fetch('https://openrouter.ai/api/v1/providers'),
+          fetch('https://openrouter.ai/api/v1/models'),
+        ]);
+        if (!providersResp.ok) throw new Error('Failed to fetch OpenRouter providers');
+        if (!modelsResp.ok) throw new Error('Failed to fetch OpenRouter models');
+
+        const providersJson = (await providersResp.json()) as OpenRouterProvidersResponse;
+        const modelsJson = (await modelsResp.json()) as OpenRouterModelsResponse;
+
+        const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+        const slugByNormalizedName: Record<string, string> = {};
+        for (const p of providersJson.data) {
+          slugByNormalizedName[normalize(p.name)] = p.slug;
+          slugByNormalizedName[normalize(p.slug)] = p.slug;
+        }
+
+        const modelIdsByProviderSlug: Record<string, Set<string>> = {};
+
+        await Promise.all(
+          modelsJson.data.map(async (m) => {
+            const modelId = m.id;
+            const [author, slug] = modelId.split('/', 2);
+            if (!author || !slug) return;
+
+            const resp = await fetch(
+              `https://openrouter.ai/api/v1/models/${encodeURIComponent(
+                author
+              )}/${encodeURIComponent(slug)}/endpoints`
+            );
+            if (!resp.ok) return;
+
+            const json = (await resp.json()) as OpenRouterModelEndpointsResponse;
+            for (const endpoint of json.data.endpoints) {
+              const providerName = endpoint.provider_name;
+              if (!providerName) continue;
+              const providerSlug = slugByNormalizedName[normalize(providerName)];
+              if (!providerSlug) continue;
+              (modelIdsByProviderSlug[providerSlug] ||= new Set()).add(modelId);
+            }
+          })
+        );
+
+        const modelById: Record<string, OpenRouterModel> = {};
+        for (const m of modelsJson.data) modelById[m.id] = m;
+
+        const modelsByProviderSlug: Record<string, OpenRouterModel[]> = {};
+        for (const [providerSlug, ids] of Object.entries(modelIdsByProviderSlug)) {
+          modelsByProviderSlug[providerSlug] = Array.from(ids)
+            .map((id) => modelById[id])
+            .filter(Boolean);
+        }
+
+        return modelsByProviderSlug;
+      })();
+    }
+
+    return this.openRouterHostedModelsByProviderSlugPromise;
+  }
+
   // Auth endpoints
   async register(email: string, password: string) {
     return this.request<{ id: number; email: string }>('/auth/register', {
@@ -105,21 +200,24 @@ class ApiClient {
     return this.request<{ id: number; email: string }>('/users/me');
   }
 
-  async createApiKey(provider: string, apiKey: string) {
-    return this.request<{ provider: string }>('/users/api-keys', {
+  async createApiKey(providerId: number, apiKey: string) {
+    return this.request<{ provider_id: number; provider_name: string }>(
+      '/users/api-keys',
+      {
       method: 'POST',
-      body: JSON.stringify({ provider, api_key: apiKey }),
-    });
+        body: JSON.stringify({ provider_id: providerId, api_key: apiKey }),
+      }
+    );
   }
 
   async getApiKeys() {
     return this.request<{
-      api_key_providers: { provider: string }[];
+      api_key_providers: { provider_id: number; provider_name: string }[];
     }>('/users/api-keys');
   }
 
-  async deleteApiKey(provider: string) {
-    return this.request(`/users/api-keys/${provider}`, {
+  async deleteApiKey(providerId: number) {
+    return this.request(`/users/api-keys/${providerId}`, {
       method: 'DELETE',
     });
   }
@@ -205,12 +303,20 @@ class ApiClient {
     guideline_names: string[];
     model_completion_config: {
       model_name: string;
+      model_id: string;
+      model_slug: string;
       model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
       api_base?: string;
     };
     judge_config: {
       model_name: string;
+      model_id: string;
+      model_slug: string;
       model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
       api_base?: string;
     };
   }) {
@@ -229,16 +335,57 @@ class ApiClient {
     };
     model_completion_config: {
       model_name: string;
+      model_id: string;
+      model_slug: string;
       model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
       api_base?: string;
     };
     judge_config?: {
       model_name: string;
+      model_id: string;
+      model_slug: string;
       model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
       api_base?: string;
     };
   }) {
     return this.request('/evaluations/tasks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async createFlexibleEvaluation(data: {
+    dataset_name: string;
+    input_field: string;
+    output_type: 'text' | 'multiple_choice';
+    text_config?: { gold_answer_field?: string };
+    mc_config?: { choices_field: string; gold_answer_field: string };
+    judge_type: 'llm_as_judge' | 'f1_score' | 'exact_match';
+    guideline_names?: string[];
+    model_completion_config: {
+      model_name: string;
+      model_id: string;
+      model_slug: string;
+      model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
+      api_base?: string;
+    };
+    judge_config?: {
+      model_name: string;
+      model_id: string;
+      model_slug: string;
+      model_provider: string;
+      model_provider_slug: string;
+      model_provider_id: number;
+      api_base?: string;
+    };
+  }) {
+    return this.request('/evaluations/flexible', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -321,7 +468,6 @@ class ApiClient {
         author: string | null;
         downloads: number | null;
         tags: string[] | null;
-        estimated_input_tokens: number | null;
         repo_type: string | null;
         created_at_hf: string | null;
         private: boolean | null;
@@ -329,6 +475,8 @@ class ApiClient {
         files: string[] | null;
         created_at: string;
         updated_at: string;
+        default_dataset_size: number | null;
+        default_estimated_input_tokens: number | null;
       }[];
       total: number;
       page: number;
@@ -347,7 +495,6 @@ class ApiClient {
       author: string | null;
       downloads: number | null;
       tags: string[] | null;
-      estimated_input_tokens: number | null;
       repo_type: string | null;
       created_at_hf: string | null;
       private: boolean | null;
@@ -358,12 +505,146 @@ class ApiClient {
     }>(`/benchmarks/${benchmarkId}`);
   }
 
+  async getBenchmarkTasks(benchmarkId: number) {
+    return this.request<{
+      tasks: {
+        id: number;
+        benchmark_id: number;
+        task_name: string;
+        hf_subset: string | null;
+        evaluation_splits: string[] | null;
+        dataset_size: number | null;
+        estimated_input_tokens: number | null;
+        created_at: string;
+        updated_at: string;
+      }[];
+    }>(`/benchmarks/${benchmarkId}/tasks`);
+  }
+
   async getTaskDetails(taskName: string) {
     const response = await this.request<{
       task_name: string;
       task_details_nested_dict: Record<string, any> | null;
     }>(`/benchmarks/task-details/${encodeURIComponent(taskName)}`);
     return response.task_details_nested_dict || {};
+  }
+
+  // Models and Providers endpoints
+  async getProviders(params?: { page?: number; page_size?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+
+    const query = queryParams.toString();
+    return this.request<{
+      providers: {
+        id: number;
+        name: string;
+        slug: string | null;
+        base_url: string;
+        created_at: string;
+      }[];
+      total: number;
+      page: number;
+      page_size: number;
+      total_pages: number;
+    }>(`/models-and-providers/providers${query ? '?' + query : ''}`);
+  }
+
+  async getModels(params?: { page?: number; page_size?: number; provider_id?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+    if (params?.provider_id) queryParams.append('provider_id', params.provider_id.toString());
+
+    const query = queryParams.toString();
+    return this.request<{
+      models: {
+        id: number;
+        display_name: string;
+        developer: string;
+        api_name: string;
+        slug: string | null;
+        providers: {
+          id: number;
+          name: string;
+          slug: string | null;
+          base_url: string;
+        }[];
+      }[];
+      total: number;
+      page: number;
+      page_size: number;
+    }>(`/models-and-providers/models${query ? '?' + query : ''}`);
+  }
+
+  // OpenRouter endpoints
+  async getOpenRouterModels() {
+    const response = await fetch('https://openrouter.ai/api/v1/models');
+    if (!response.ok) throw new Error('Failed to fetch OpenRouter models');
+
+    const json = (await response.json()) as OpenRouterModelsResponse;
+    return {
+      models: json.data.map((m) => ({
+        id: m.id,
+        name: m.name,
+        description: m.description,
+        pricing: m.pricing,
+        context_length: m.context_length,
+      })),
+    };
+  }
+
+  async getOpenRouterProviders() {
+    const providersResp = await fetch('https://openrouter.ai/api/v1/providers');
+    if (!providersResp.ok) throw new Error('Failed to fetch OpenRouter providers');
+    const providersJson = (await providersResp.json()) as OpenRouterProvidersResponse;
+
+    const hostedModelsByProviderSlug = await this.getOpenRouterHostedModelsByProviderSlug();
+    const providers = providersJson.data
+      .map((p) => ({
+        name: p.name,
+        slug: p.slug,
+        model_count: hostedModelsByProviderSlug[p.slug]?.length || 0,
+      }))
+      .filter((p) => p.model_count > 0)
+      .sort((a, b) => b.model_count - a.model_count);
+    return {
+      providers,
+    };
+  }
+
+  async getOpenRouterModelsByProvider(providerName: string) {
+    const hostedModelsByProviderSlug = await this.getOpenRouterHostedModelsByProviderSlug();
+    const models = (hostedModelsByProviderSlug[providerName] || []).map((m) => ({
+      id: m.id,
+      name: m.name,
+      description: m.description,
+      pricing: m.pricing,
+      context_length: m.context_length,
+    }));
+
+    return { models };
+  }
+
+  async getOpenRouterProvidersByModel(modelId: string) {
+    const [author, slug] = modelId.split('/', 2);
+    if (!author || !slug) return { model_id: modelId, providers: [] };
+
+    const response = await fetch(
+      `https://openrouter.ai/api/v1/models/${encodeURIComponent(author)}/${encodeURIComponent(
+        slug
+      )}/endpoints`
+    );
+    if (!response.ok) return { model_id: modelId, providers: [] };
+
+    const json = (await response.json()) as OpenRouterModelEndpointsResponse;
+    return {
+      model_id: modelId,
+      providers: json.data.endpoints
+        .map((e) => e.provider_name)
+        .filter((x): x is string => Boolean(x)),
+    };
   }
 
   // Health check

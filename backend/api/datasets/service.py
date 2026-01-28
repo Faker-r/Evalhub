@@ -103,10 +103,11 @@ class DatasetService:
                             detail=f"Line {line_num}: Each line must be a JSON object",
                         )
                     if "input" not in data:
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Line {line_num}: Missing required 'input' field",
-                        )
+                        pass
+                        # raise HTTPException(
+                        #     status_code=status.HTTP_400_BAD_REQUEST,
+                        #     detail=f"Line {line_num}: Missing required 'input' field",
+                        # )
                     validated_count += 1
                 except json.JSONDecodeError as e:
                     raise HTTPException(

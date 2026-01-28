@@ -52,7 +52,7 @@ def main() -> None:
             )
 
     subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", "-e", str(repo_dir)],
+        [sys.executable, "-m", "pip", "install", "-e", f"{repo_dir}[extended_tasks,multilingual]"],
         env=os.environ.copy(),
     )
 

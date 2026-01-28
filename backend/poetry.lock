@@ -1863,6 +1863,21 @@ files = [
 referencing = ">=0.31.0"
 
 [[package]]
+name = "langdetect"
+version = "1.0.9"
+description = "Language detection library ported from Google's language-detection."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "langdetect-1.0.9-py2-none-any.whl", hash = "sha256:7cbc0746252f19e76f77c0b1690aadf01963be835ef0cd4b56dddf2a8f1dfc2a"},
+    {file = "langdetect-1.0.9.tar.gz", hash = "sha256:cbc1fef89f8d062739774bd51eda3da3274006b3661d199c2655f6b3f6d605a0"},
+]
+
+[package.dependencies]
+six = "*"
+
+[[package]]
 name = "litellm"
 version = "1.81.1"
 description = "Library to easily interface with LLM API providers"
@@ -4989,4 +5004,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0.0"
-content-hash = "13dbaa7ddae1bd5f062ca4551ca3e1bc8eaf881d02aea32ddf0f73381260c1c8"
+content-hash = "792d563802fa8a1f60f006e3949c7f4a048d653cf00be9cd9b8089bcd291bf4f"

@@ -14,7 +14,11 @@ async def debug_task_evaluation():
         },
         "model_completion_config": {
             "model_name": "deepseek-ai/DeepSeek-V3.2",
-            "model_provider": "baseten"
+            "model_id": "deepseek-ai/DeepSeek-V3.2",
+            "model_slug": "deepseek-ai/DeepSeek-V3.2",
+            "model_provider": "baseten",
+            "model_provider_slug": "baseten",
+            "model_provider_id": 0,
             # "model_name":"openai/gpt-4.1",
             # "model_provider":"openai"
         }
@@ -40,11 +44,19 @@ async def debug_dataset_evaluation():
         ],
         "model_completion_config": {
             "model_name": "gpt-3.5-turbo",
-            "model_provider": "openai"
+            "model_id": "gpt-3.5-turbo",
+            "model_slug": "gpt-3.5-turbo",
+            "model_provider": "openai",
+            "model_provider_slug": "openai",
+            "model_provider_id": 0,
         },
         "judge_config": {
             "model_name": "deepseek-ai/DeepSeek-V3.2",
-            "model_provider": "baseten"
+            "model_id": "deepseek-ai/DeepSeek-V3.2",
+            "model_slug": "deepseek-ai/DeepSeek-V3.2",
+            "model_provider": "baseten",
+            "model_provider_slug": "baseten",
+            "model_provider_id": 0,
         }
     }
 

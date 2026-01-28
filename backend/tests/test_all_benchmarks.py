@@ -173,7 +173,11 @@ def create_evaluation_request(
         ),
         model_completion_config=ModelConfig(
             model_name=model_name,
+            model_id=model_name,
+            model_slug=model_name,
             model_provider=model_provider,
+            model_provider_slug=model_provider,
+            model_provider_id=0,
         ),
         judge_config=None,  # Use default metrics, no judge needed for lighteval tasks
     )
@@ -693,12 +697,18 @@ async def main():
         type=str,
         help="Comma-separated list of dataset names to run (e.g. 'gsm8k,mmlu'). Supersedes --limit.",
     )
+    parser.add_argument(
+        "--n-samples",
+        type=int,
+        default=5,
+        help="Number of samples to run for each benchmark",
+    )
 
     args = parser.parse_args()
 
     # Configuration
     user_id = "e01da140-64b2-4ab9-b379-4f55dcaf0b22"
-    n_samples = 5
+    n_samples = args.n_samples
     timestamp = datetime.now().isoformat(timespec="seconds").replace(":", "-")
     output_path = f"./tests/benchmark_test_report_{timestamp}.md"
 

@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { User, Key, Plus, Trash2, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,10 +32,25 @@ export default function Profile() {
   const queryClient = useQueryClient();
   const [addKeyModalOpen, setAddKeyModalOpen] = useState(false);
   const [newKey, setNewKey] = useState({
-    provider: "openai",
+    providerId: "",
     apiKey: "",
   });
   const [showKey, setShowKey] = useState(false);
+
+  // Fetch providers
+  const { data: providersData } = useQuery({
+    queryKey: ["providers"],
+    queryFn: () => apiClient.getProviders({ page: 1, page_size: 100 }),
+    enabled: isAuthenticated,
+  });
+
+  const providers = providersData?.providers || [];
+
+  useEffect(() => {
+    if (!newKey.providerId && providers.length > 0) {
+      setNewKey((prev) => ({ ...prev, providerId: providers[0].id.toString() }));
+    }
+  }, [newKey.providerId, providers]);
 
   // Fetch API keys
   const { data: apiKeysData, isLoading } = useQuery({
@@ -48,12 +63,12 @@ export default function Profile() {
 
   // Add API key mutation
   const addKeyMutation = useMutation({
-    mutationFn: (data: { provider: string; apiKey: string }) =>
-      apiClient.createApiKey(data.provider, data.apiKey),
+    mutationFn: (data: { providerId: string; apiKey: string }) =>
+      apiClient.createApiKey(Number(data.providerId), data.apiKey),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       setAddKeyModalOpen(false);
-      setNewKey({ provider: "openai", apiKey: "" });
+      setNewKey({ providerId: providers[0]?.id?.toString() || "", apiKey: "" });
       toast({
         title: "Success",
         description: "API key added successfully",
@@ -70,7 +85,7 @@ export default function Profile() {
 
   // Delete API key mutation
   const deleteKeyMutation = useMutation({
-    mutationFn: (provider: string) => apiClient.deleteApiKey(provider),
+    mutationFn: (providerId: number) => apiClient.deleteApiKey(providerId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       toast({
@@ -168,21 +183,20 @@ export default function Profile() {
                     <div className="space-y-2">
                       <Label htmlFor="provider">Provider</Label>
                       <Select
-                        value={newKey.provider}
+                        value={newKey.providerId}
                         onValueChange={(value) =>
-                          setNewKey({ ...newKey, provider: value })
+                          setNewKey({ ...newKey, providerId: value })
                         }
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="openai">OpenAI</SelectItem>
-                          <SelectItem value="anthropic">Anthropic</SelectItem>
-                          <SelectItem value="groq">Groq</SelectItem>
-                          <SelectItem value="together">Together AI</SelectItem>
-                          <SelectItem value="replicate">Replicate</SelectItem>
-                          <SelectItem value="baseten">Baseten</SelectItem>
+                          {providers.map((provider) => (
+                            <SelectItem key={provider.id} value={provider.id.toString()}>
+                              {provider.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -253,7 +267,7 @@ export default function Profile() {
               <div className="space-y-3">
                 {apiKeys.map((key) => (
                   <div
-                    key={key.provider}
+                    key={key.provider_id}
                     className="flex items-center justify-between p-4 border rounded-lg"
                   >
                     <div className="flex items-center gap-3">
@@ -261,7 +275,7 @@ export default function Profile() {
                         <Key className="w-5 h-5 text-mint-600" />
                       </div>
                       <div>
-                        <p className="font-medium capitalize">{key.provider}</p>
+                        <p className="font-medium">{key.provider_name}</p>
                         <p className="text-sm text-muted-foreground">
                           API key configured
                         </p>
@@ -272,7 +286,7 @@ export default function Profile() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => deleteKeyMutation.mutate(key.provider)}
+                        onClick={() => deleteKeyMutation.mutate(key.provider_id)}
                         disabled={deleteKeyMutation.isPending}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />

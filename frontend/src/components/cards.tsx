@@ -36,7 +36,7 @@ export function DatasetCard({ title, category, samples, tokens, description }: D
         </div>
         <div className="flex items-center gap-1">
           <FileText className="w-3 h-3" />
-          {tokens}
+          ~{tokens}
         </div>
       </CardFooter>
     </Card>

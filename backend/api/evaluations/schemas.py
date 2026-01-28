@@ -1,6 +1,27 @@
 from datetime import datetime
-from typing import Optional
+from enum import Enum
+from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict
+
+
+class OutputType(str, Enum):
+    TEXT = "text"
+    MULTIPLE_CHOICE = "multiple_choice"
+
+
+class JudgeType(str, Enum):
+    LLM_AS_JUDGE = "llm_as_judge"
+    F1_SCORE = "f1_score"
+    EXACT_MATCH = "exact_match"
+
+
+class TextOutputConfig(BaseModel):
+    gold_answer_field: str | None = None
+
+
+class MultipleChoiceConfig(BaseModel):
+    choices_field: str
+    gold_answer_field: str
 
 
 class CategoricalScoreDistribution(BaseModel):
@@ -84,9 +105,13 @@ class DatasetConfig(BaseModel):
 class ModelConfig(BaseModel):
     """Request schema for running a task evaluation."""
 
+    api_source: Literal["standard", "openrouter"]
     model_name: str
+    model_id: int
+    model_slug: str
     model_provider: str
-    api_base: str | None = None
+    model_provider_slug: str
+    model_provider_id: int
 
 
 class EvaluationRequest(BaseModel):
@@ -119,3 +144,17 @@ class TaskEvaluationResponse(BaseModel):
     model_provider: str
     judge_model: str
     created_at: datetime
+
+
+class FlexibleEvaluationRequest(BaseModel):
+    """Request schema for running a flexible evaluation."""
+
+    dataset_name: str
+    input_field: str
+    output_type: OutputType
+    text_config: TextOutputConfig | None = None
+    mc_config: MultipleChoiceConfig | None = None
+    judge_type: JudgeType
+    guideline_names: list[str] | None = None
+    model_completion_config: ModelConfig
+    judge_config: ModelConfig | None = None
