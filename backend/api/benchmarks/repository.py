@@ -1,4 +1,5 @@
 """Repository for handling benchmark database operations."""
+
 import functools
 from dataclasses import asdict
 from typing import Callable, Optional
@@ -58,7 +59,7 @@ class BenchmarkRepository:
         benchmark = await self.get_by_id(benchmark_id)
         for key, value in update_data.items():
             setattr(benchmark, key, value)
-        
+
         await self.session.commit()
         await self.session.refresh(benchmark)
 
@@ -95,57 +96,57 @@ class BenchmarkRepository:
         if tag_filter:
             for tag in tag_filter:
                 query = query.where(Benchmark.tags.contains([tag]))
-        
+
         if author_filter:
             query = query.where(Benchmark.author == author_filter)
-        
+
         if search_query:
             # Check if search query matches a language name and convert to language code
             search_lower = search_query.lower().strip()
             normalized_code = normalize_language_code(search_lower)
-            
+
             if normalized_code:
                 # Search for the language code in tags
                 search_pattern = f"%language:{normalized_code}%"
             else:
                 # Regular search pattern
                 search_pattern = f"%{search_query}%"
-            
+
             query = query.where(
-                (Benchmark.dataset_name.ilike(search_pattern)) |
-                (Benchmark.hf_repo.ilike(search_pattern)) |
-                (cast(Benchmark.tags, String).ilike(search_pattern))
+                (Benchmark.dataset_name.ilike(search_pattern))
+                | (Benchmark.hf_repo.ilike(search_pattern))
+                | (cast(Benchmark.tags, String).ilike(search_pattern))
             )
 
         # Build count query with same filters for efficiency
         count_query = select(func.count(Benchmark.id))
-        
+
         # Apply same filters as main query
         if tag_filter:
             for tag in tag_filter:
                 count_query = count_query.where(Benchmark.tags.contains([tag]))
-        
+
         if author_filter:
             count_query = count_query.where(Benchmark.author == author_filter)
-        
+
         if search_query:
             # Check if search query matches a language name and convert to language code
             search_lower = search_query.lower().strip()
             normalized_code = normalize_language_code(search_lower)
-            
+
             if normalized_code:
                 # Search for the language code in tags
                 search_pattern = f"%language:{normalized_code}%"
             else:
                 # Regular search pattern
                 search_pattern = f"%{search_query}%"
-            
+
             count_query = count_query.where(
-                (Benchmark.dataset_name.ilike(search_pattern)) |
-                (Benchmark.hf_repo.ilike(search_pattern)) |
-                (cast(Benchmark.tags, String).ilike(search_pattern))
+                (Benchmark.dataset_name.ilike(search_pattern))
+                | (Benchmark.hf_repo.ilike(search_pattern))
+                | (cast(Benchmark.tags, String).ilike(search_pattern))
             )
-        
+
         # Get total count
         total_result = await self.session.execute(count_query)
         total = total_result.scalar()
@@ -253,7 +254,7 @@ class BenchmarkRepository:
         task_obj = task_map.get(task_name, None) or task_map.get(f"{task_name}|0", None)
         if not task_obj:
             return None
-        
+
         return self._generate_task_details_dict(task_obj.config)
 
     async def upsert_task(self, benchmark_id: int, task_data: dict) -> BenchmarkTask:
@@ -271,7 +272,7 @@ class BenchmarkRepository:
         # Check if task already exists
         query = select(BenchmarkTask).where(
             BenchmarkTask.benchmark_id == benchmark_id,
-            BenchmarkTask.task_name == task_name
+            BenchmarkTask.task_name == task_name,
         )
         result = await self.session.execute(query)
         existing = result.scalar_one_or_none()

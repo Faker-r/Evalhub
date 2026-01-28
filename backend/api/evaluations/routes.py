@@ -59,7 +59,9 @@ async def run_task_evaluation(
 
 
 @router.post(
-    "/flexible", response_model=TaskEvaluationResponse, status_code=status.HTTP_201_CREATED
+    "/flexible",
+    response_model=TaskEvaluationResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 async def run_flexible_evaluation(
     request: FlexibleEvaluationRequest,

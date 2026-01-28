@@ -26,10 +26,14 @@ class Benchmark(Base):
     gated = Column(Boolean, nullable=True)
     files = Column(JSONB, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationship to tasks
-    tasks_rel = relationship("BenchmarkTask", back_populates="benchmark", cascade="all, delete-orphan")
+    tasks_rel = relationship(
+        "BenchmarkTask", back_populates="benchmark", cascade="all, delete-orphan"
+    )
 
 
 class BenchmarkTask(Base):
@@ -38,14 +42,22 @@ class BenchmarkTask(Base):
     __tablename__ = "benchmark_tasks"
 
     id = Column(Integer, primary_key=True)
-    benchmark_id = Column(Integer, ForeignKey("benchmarks.id", ondelete="CASCADE"), nullable=False)
+    benchmark_id = Column(
+        Integer, ForeignKey("benchmarks.id", ondelete="CASCADE"), nullable=False
+    )
     task_name = Column(String, nullable=False)  # e.g., "math:algebra", "gpqa:diamond"
     hf_subset = Column(String, nullable=True)  # HuggingFace subset/config used
-    evaluation_splits = Column(JSONB, nullable=True)  # List of splits used for evaluation
+    evaluation_splits = Column(
+        JSONB, nullable=True
+    )  # List of splits used for evaluation
     dataset_size = Column(Integer, nullable=True)  # Number of rows in evaluation splits
-    estimated_input_tokens = Column(Integer, nullable=True)  # Total tokens for this task
+    estimated_input_tokens = Column(
+        Integer, nullable=True
+    )  # Total tokens for this task
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationship back to benchmark
     benchmark = relationship("Benchmark", back_populates="tasks_rel")

@@ -23,7 +23,9 @@ async def add_guideline(
     current_user: CurrentUser = Depends(get_current_user),
 ) -> GuidelineResponse:
     """Add a new guideline."""
-    logger.debug(f"Adding guideline: {guideline_data.name} by user {current_user.email}")
+    logger.debug(
+        f"Adding guideline: {guideline_data.name} by user {current_user.email}"
+    )
     return await GuidelineService(session).create_guideline(guideline_data)
 
 
@@ -36,5 +38,3 @@ async def get_guidelines(
     logger.debug(f"Getting all guidelines for user {current_user.email}")
     guidelines = await GuidelineService(session).get_all_guidelines()
     return GuidelineListResponse(guidelines=guidelines)
-
-

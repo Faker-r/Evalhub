@@ -34,4 +34,3 @@ class LeaderboardResponse(BaseModel):
     dataset_name: str
     sample_count: int
     entries: list[LeaderboardEntry]
-

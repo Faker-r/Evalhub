@@ -26,7 +26,9 @@ router = APIRouter(prefix="/models-and-providers", tags=["models-and-providers"]
 # ==================== Provider Endpoints ====================
 
 
-@router.post("/providers", response_model=ProviderResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/providers", response_model=ProviderResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_provider(
     provider_data: ProviderCreate,
     session: AsyncSession = Depends(get_session),
@@ -95,7 +97,9 @@ async def update_provider(
     Requires authentication.
     """
     logger.debug(f"Updating provider: {provider_id}")
-    return await ModelsAndProvidersService(session).update_provider(provider_id, provider_data)
+    return await ModelsAndProvidersService(session).update_provider(
+        provider_id, provider_data
+    )
 
 
 @router.delete("/providers/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -115,7 +119,9 @@ async def delete_provider(
 # ==================== Model Endpoints ====================
 
 
-@router.post("/models", response_model=ModelResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/models", response_model=ModelResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_model(
     model_data: ModelCreate,
     session: AsyncSession = Depends(get_session),
@@ -142,8 +148,12 @@ async def list_models(
     Optionally filter by provider ID.
     Requires authentication.
     """
-    logger.debug(f"Listing models: page={page}, page_size={page_size}, provider_id={provider_id}")
-    return await ModelsAndProvidersService(session).list_models(page, page_size, provider_id)
+    logger.debug(
+        f"Listing models: page={page}, page_size={page_size}, provider_id={provider_id}"
+    )
+    return await ModelsAndProvidersService(session).list_models(
+        page, page_size, provider_id
+    )
 
 
 @router.get("/models/{model_id}", response_model=ModelResponse)

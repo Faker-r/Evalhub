@@ -11,8 +11,18 @@ from api.core.database import Base
 model_provider_association = Table(
     "model_provider_association",
     Base.metadata,
-    Column("model_id", Integer, ForeignKey("models.id", ondelete="CASCADE"), primary_key=True),
-    Column("provider_id", Integer, ForeignKey("providers.id", ondelete="CASCADE"), primary_key=True),
+    Column(
+        "model_id",
+        Integer,
+        ForeignKey("models.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "provider_id",
+        Integer,
+        ForeignKey("providers.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
 )
 
 
@@ -26,7 +36,9 @@ class Provider(Base):
     slug = Column(String)
     base_url = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     models = relationship(
@@ -47,7 +59,9 @@ class Model(Base):
     api_name = Column(String, nullable=False, index=True)
     slug = Column(String)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     providers = relationship(

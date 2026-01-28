@@ -32,15 +32,15 @@ async def run(user_id: str, trace_id: int) -> None:
                 "sample_id": event.sample_id,
                 "guideline_name": event.guideline_name,
                 "data": event.data,
-                "created_at": event.created_at.isoformat() if event.created_at else None,
+                "created_at": (
+                    event.created_at.isoformat() if event.created_at else None
+                ),
             }
             line = {key: value for key, value in line.items() if value is not None}
             file.write(json.dumps(line) + "\n")
 
     s3_path = next(
-        event.data["s3_path"]
-        for event in events
-        if event.event_type == "sampling"
+        event.data["s3_path"] for event in events if event.event_type == "sampling"
     )
 
     s3 = S3Storage()

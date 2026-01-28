@@ -244,7 +244,11 @@ class ModelsAndProvidersService:
         Raises:
             NotFoundException: If model not found
         """
-        stmt = select(Model).options(selectinload(Model.providers)).where(Model.id == model_id)
+        stmt = (
+            select(Model)
+            .options(selectinload(Model.providers))
+            .where(Model.id == model_id)
+        )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
 
@@ -294,7 +298,9 @@ class ModelsAndProvidersService:
             page_size=page_size,
         )
 
-    async def update_model(self, model_id: int, model_data: ModelUpdate) -> ModelResponse:
+    async def update_model(
+        self, model_id: int, model_data: ModelUpdate
+    ) -> ModelResponse:
         """Update a model.
 
         Args:
@@ -307,7 +313,11 @@ class ModelsAndProvidersService:
         Raises:
             NotFoundException: If model or any provider not found
         """
-        stmt = select(Model).options(selectinload(Model.providers)).where(Model.id == model_id)
+        stmt = (
+            select(Model)
+            .options(selectinload(Model.providers))
+            .where(Model.id == model_id)
+        )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
 
@@ -315,7 +325,9 @@ class ModelsAndProvidersService:
             raise NotFoundException(f"Model with ID {model_id} not found")
 
         # Update fields
-        update_data = model_data.model_dump(exclude_unset=True, exclude={"provider_ids"})
+        update_data = model_data.model_dump(
+            exclude_unset=True, exclude={"provider_ids"}
+        )
         for key, value in update_data.items():
             setattr(model, key, value)
 

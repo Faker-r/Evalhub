@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.benchmarks.schemas import BenchmarkListResponse, BenchmarkResponse, BenchmarkTasksListResponse, TaskDetailsResponse
+from api.benchmarks.schemas import (
+    BenchmarkListResponse,
+    BenchmarkResponse,
+    BenchmarkTasksListResponse,
+    TaskDetailsResponse,
+)
 from api.benchmarks.service import BenchmarkService
 from api.core.database import get_session
 from api.core.logging import get_logger
@@ -17,7 +22,9 @@ async def get_benchmarks(
     page_size: int = Query(50, ge=1, le=100, description="Number of items per page"),
     sort_by: str = Query("downloads", description="Field to sort by"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
-    tag: list[str] | None = Query(None, description="Filter by tag (supports multiple)"),
+    tag: list[str] | None = Query(
+        None, description="Filter by tag (supports multiple)"
+    ),
     author: str | None = Query(None, description="Filter by author"),
     search: str | None = Query(None, description="Search in dataset_name or hf_repo"),
     session: AsyncSession = Depends(get_session),
@@ -32,7 +39,9 @@ async def get_benchmarks(
     - **author**: Filter by author
     - **search**: Search in dataset_name or hf_repo
     """
-    logger.debug(f"Getting benchmarks: page={page}, page_size={page_size}, sort_by={sort_by}")
+    logger.debug(
+        f"Getting benchmarks: page={page}, page_size={page_size}, sort_by={sort_by}"
+    )
     return await BenchmarkService(session).get_all_benchmarks(
         page=page,
         page_size=page_size,

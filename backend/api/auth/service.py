@@ -56,7 +56,9 @@ class AuthService:
             # Check if email confirmation is required
             if response.session is None:
                 # Email confirmation is enabled - user needs to verify email
-                logger.info(f"User registered, email confirmation required: {user_data.email}")
+                logger.info(
+                    f"User registered, email confirmation required: {user_data.email}"
+                )
                 raise BadRequestException(
                     "Registration successful! Please check your email to confirm your account."
                 )

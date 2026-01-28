@@ -37,4 +37,3 @@ class LeaderboardRepository:
         query = select(Dataset).where(Dataset.name == name)
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
-

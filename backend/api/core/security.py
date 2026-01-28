@@ -29,7 +29,7 @@ class CurrentUser:
 @lru_cache()
 def get_jwks_client() -> PyJWKClient:
     """Get a cached JWKS client for Supabase.
-    
+
     Supabase exposes public keys at: {SUPABASE_URL}/auth/v1/.well-known/jwks.json
     """
     jwks_url = f"{settings.SUPABASE_URL}/auth/v1/.well-known/jwks.json"

@@ -167,7 +167,9 @@ class S3Storage:
             return content
         except ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchKey":
-                raise FileNotFoundError(f"API key not found for user {user_id}, provider {provider}")
+                raise FileNotFoundError(
+                    f"API key not found for user {user_id}, provider {provider}"
+                )
             logger.error(f"Failed to download API key from S3: {e}")
             raise
 
@@ -298,7 +300,7 @@ class S3Storage:
                     relative_path = os.path.relpath(local_path, directory)
                     s3_key = f"{s3_prefix}/{relative_path}"
 
-                    with open(local_path, 'rb') as f:
+                    with open(local_path, "rb") as f:
                         self.client.put_object(
                             Bucket=self.bucket,
                             Key=s3_key,
@@ -311,4 +313,3 @@ class S3Storage:
         except ClientError as e:
             logger.error(f"Failed to upload eval results to S3: {e}")
             raise
-

@@ -200,9 +200,17 @@ class WrappedJudgeLM(JudgeLM):
 
         return scores, prompts, responses
 
-    def evaluate_answer(self, question: str, answer: str, options: list[str] | None = None, gold: str | None = None):
+    def evaluate_answer(
+        self,
+        question: str,
+        answer: str,
+        options: list[str] | None = None,
+        gold: str | None = None,
+    ):
         judge_function = self._lazy_load_client()
-        prompt = self.template(question=question, options=options, answer=answer, gold=gold)
+        prompt = self.template(
+            question=question, options=options, answer=answer, gold=gold
+        )
         response = judge_function(prompt)
         score = self.process_judge_response(response)
 
@@ -210,19 +218,21 @@ class WrappedJudgeLM(JudgeLM):
 
     def _lazy_load_client(self):
         if self.client is None:
-            self.client = OpenAI(
-                api_key=self.api_key, base_url=self.url
-            )
+            self.client = OpenAI(api_key=self.api_key, base_url=self.url)
         return self._call_api_parallel
 
     def _call_api_parallel(self, prompts):
         results = []
         with ThreadPoolExecutor(10) as executor:
-            for entry in tqdm(executor.map(self._call_api, prompts), total=len(prompts)):
+            for entry in tqdm(
+                executor.map(self._call_api, prompts), total=len(prompts)
+            ):
                 results.append(entry)
 
         if None in results:
-            raise ValueError("Some entries are not annotated due to errors in annotate_p, please inspect and retry.")
+            raise ValueError(
+                "Some entries are not annotated due to errors in annotate_p, please inspect and retry."
+            )
 
         return results
 
@@ -260,7 +270,6 @@ class WrappedJudgeLM(JudgeLM):
             except Exception as e:
                 logger.warning(f"{type(e), e}")
                 time.sleep(self.API_RETRY_SLEEP)
-
 
         raise Exception("Failed to get response from the API")
 

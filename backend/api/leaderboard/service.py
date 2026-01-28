@@ -63,9 +63,7 @@ class LeaderboardService:
             entries=entries,
         )
 
-    def _build_entry(
-        self, trace, guidelines: dict
-    ) -> LeaderboardEntry | None:
+    def _build_entry(self, trace, guidelines: dict) -> LeaderboardEntry | None:
         """Build a leaderboard entry from a trace."""
         if not trace.summary or "scores" not in trace.summary:
             logger.warning(f"Trace {trace.id} has no summary scores, skipping")
@@ -153,5 +151,9 @@ class LeaderboardService:
         elif guideline.scoring_scale == "percentage":
             return 100
         elif guideline.scoring_scale == "custom_category":
-            return len(guideline.scoring_scale_config.get("categories", [])) - 1 if guideline.scoring_scale_config.get("categories") else 1
+            return (
+                len(guideline.scoring_scale_config.get("categories", [])) - 1
+                if guideline.scoring_scale_config.get("categories")
+                else 1
+            )
         return 1

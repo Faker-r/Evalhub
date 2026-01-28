@@ -77,7 +77,9 @@ def _describe_normalizer(fn: Any) -> str:
         return "no text normalization"
     name = getattr(fn, "__name__", "")
     if name == "helm_normalizer":
-        return "lowercase, remove punctuation/articles, normalize whitespace and numbers"
+        return (
+            "lowercase, remove punctuation/articles, normalize whitespace and numbers"
+        )
     if name == "harness_triviaqa_normalizer":
         return "lowercase and remove punctuation (TriviaQA normalization)"
     if name == "bigbench_normalizer":
@@ -134,7 +136,9 @@ def _describe_sampling_score_fn(metric: SamplingMetric) -> str:
         return "exact match on full string"
 
     score_fn = getattr(metric, "compute_score", None)
-    if isinstance(score_fn, types.MethodType) and isinstance(score_fn.__self__, SampleLevelComputation):
+    if isinstance(score_fn, types.MethodType) and isinstance(
+        score_fn.__self__, SampleLevelComputation
+    ):
         sample_desc = _describe_sample_level_fn(score_fn.__self__, "")
         return sample_desc.measure
 
@@ -187,10 +191,14 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
             f"else 0. Normalization: {normalization}."
         )
         corpus_level = "Average accuracy over samples."
-        return MetricDescription(measure, sample_level, corpus_level, "LoglikelihoodAcc")
+        return MetricDescription(
+            measure, sample_level, corpus_level, "LoglikelihoodAcc"
+        )
 
     if isinstance(sample_fn, NormalizedMultiChoiceProbability):
-        normalization = _describe_logprob_normalization(sample_fn.log_prob_normalization)
+        normalization = _describe_logprob_normalization(
+            sample_fn.log_prob_normalization
+        )
         measure = "Normalized gold-choice probability"
         sample_level = (
             "Exponentiate (optionally normalized) logprobs, normalize by the sum over all choices, "
@@ -198,10 +206,14 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
             f"Normalization: {normalization}."
         )
         corpus_level = "Average normalized probabilities over samples."
-        return MetricDescription(measure, sample_level, corpus_level, "NormalizedMultiChoiceProbability")
+        return MetricDescription(
+            measure, sample_level, corpus_level, "NormalizedMultiChoiceProbability"
+        )
 
     if isinstance(sample_fn, Probability):
-        normalization = _describe_logprob_normalization(sample_fn.log_prob_normalization)
+        normalization = _describe_logprob_normalization(
+            sample_fn.log_prob_normalization
+        )
         measure = "Gold-choice probability"
         sample_level = (
             "Exponentiate (optionally normalized) logprobs and aggregate probabilities for gold choices "
@@ -212,27 +224,23 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
 
     if isinstance(sample_fn, Recall):
         measure = f"Recall@{sample_fn.recall_depth} over ranked choices"
-        sample_level = (
-            "Rank choices by logprob and return 1 if any gold index appears in the top-k, else 0."
-        )
+        sample_level = "Rank choices by logprob and return 1 if any gold index appears in the top-k, else 0."
         corpus_level = "Average recall over samples."
         return MetricDescription(measure, sample_level, corpus_level, "Recall")
 
     if isinstance(sample_fn, MRR):
         measure = "Mean reciprocal rank of the best gold choice"
-        sample_level = (
-            "Rank choices by logprob (optionally length-normalized) and return 1/(rank of best gold + 1)."
-        )
+        sample_level = "Rank choices by logprob (optionally length-normalized) and return 1/(rank of best gold + 1)."
         corpus_level = "Average reciprocal rank over samples."
         return MetricDescription(measure, sample_level, corpus_level, "MRR")
 
     if isinstance(sample_fn, AccGoldLikelihood):
         measure = "Argmax-logit accuracy over gold targets"
-        sample_level = (
-            "Return 1 if any gold target is the argmax of logits, else 0."
-        )
+        sample_level = "Return 1 if any gold target is the argmax of logits, else 0."
         corpus_level = "Average accuracy over samples."
-        return MetricDescription(measure, sample_level, corpus_level, "AccGoldLikelihood")
+        return MetricDescription(
+            measure, sample_level, corpus_level, "AccGoldLikelihood"
+        )
 
     if isinstance(sample_fn, ROUGE):
         measure = f"ROUGE-{metric_name.replace('rouge', '')} overlap score"
@@ -252,9 +260,7 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
             measure = "BERTScore recall"
         else:
             measure = "BERTScore F1"
-        sample_level = (
-            "Compute BERTScore using a DeBERTa-based scorer, comparing token embeddings between prediction and gold."
-        )
+        sample_level = "Compute BERTScore using a DeBERTa-based scorer, comparing token embeddings between prediction and gold."
         corpus_level = "Average BERTScore across samples."
         return MetricDescription(measure, sample_level, corpus_level, "BertScore")
 
@@ -265,33 +271,25 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
             measure = "Extractive density of summary from source"
         else:
             measure = "Compression ratio of summary relative to source"
-        sample_level = (
-            "Compute extractive statistics (coverage, density, compression) by aligning summary fragments to the source text."
-        )
+        sample_level = "Compute extractive statistics (coverage, density, compression) by aligning summary fragments to the source text."
         corpus_level = "Average extractiveness statistics over samples."
         return MetricDescription(measure, sample_level, corpus_level, "Extractiveness")
 
     if isinstance(sample_fn, Faithfulness):
         measure = "Summary faithfulness (SummaCZS)"
-        sample_level = (
-            "Use the SummaCZS model to score whether the summary is supported by the source text."
-        )
+        sample_level = "Use the SummaCZS model to score whether the summary is supported by the source text."
         corpus_level = "Average faithfulness scores over samples."
         return MetricDescription(measure, sample_level, corpus_level, "Faithfulness")
 
     if isinstance(sample_fn, BLEURT):
         measure = "BLEURT semantic similarity score"
-        sample_level = (
-            "Score prediction vs gold using the BLEURT-tiny model; if only one prediction is given, it is paired with each gold."
-        )
+        sample_level = "Score prediction vs gold using the BLEURT-tiny model; if only one prediction is given, it is paired with each gold."
         corpus_level = "Average BLEURT scores over samples."
         return MetricDescription(measure, sample_level, corpus_level, "BLEURT")
 
     if isinstance(sample_fn, BLEU):
         measure = f"Sentence-level BLEU-{sample_fn.n_gram}"
-        sample_level = (
-            "Compute sentence BLEU against all golds using NLTK, then average across predictions."
-        )
+        sample_level = "Compute sentence BLEU against all golds using NLTK, then average across predictions."
         corpus_level = "Average BLEU scores over samples."
         return MetricDescription(measure, sample_level, corpus_level, "BLEU")
 
@@ -302,10 +300,10 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
             measure = "Token-level edit distance"
         else:
             measure = "Normalized edit similarity"
-        sample_level = (
-            "Tokenize prediction and reference, truncate reference to prediction length, then compute the requested string distance."
+        sample_level = "Tokenize prediction and reference, truncate reference to prediction length, then compute the requested string distance."
+        corpus_level = (
+            "Aggregate string distance scores with the configured corpus function."
         )
-        corpus_level = "Aggregate string distance scores with the configured corpus function."
         return MetricDescription(measure, sample_level, corpus_level, "StringDistance")
 
     if isinstance(sample_fn, DropMetrics):
@@ -330,7 +328,9 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
             "For MC2, sum normalized probabilities assigned to all true answers."
         )
         corpus_level = "Average TruthfulQA scores over samples."
-        return MetricDescription(measure, sample_level, corpus_level, "TruthfulqaMCMetrics")
+        return MetricDescription(
+            measure, sample_level, corpus_level, "TruthfulqaMCMetrics"
+        )
 
     if isinstance(sample_fn, MultilingualExtractiveMatchMetric):
         measure = "Extractive match after answer extraction"
@@ -340,7 +340,9 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
             "compare extracted values with symbolic/numeric matching (SymPy) and count a match if any gold matches."
         )
         corpus_level = "Average extractive-match scores over samples."
-        return MetricDescription(measure, sample_level, corpus_level, "MultilingualExtractiveMatchMetric")
+        return MetricDescription(
+            measure, sample_level, corpus_level, "MultilingualExtractiveMatchMetric"
+        )
 
     if isinstance(sample_fn, SamplingMetric):
         normalization = _describe_sampling_normalization(sample_fn)
@@ -385,25 +387,21 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
 
     if isinstance(sample_fn, JudgeLLMSimpleQA):
         measure = "LLM-judge score for SimpleQA"
-        sample_level = (
-            "Use a judge LLM to compare the model answer against gold and options; return the judge score and metadata."
-        )
+        sample_level = "Use a judge LLM to compare the model answer against gold and options; return the judge score and metadata."
         corpus_level = "Average judge scores over samples."
-        return MetricDescription(measure, sample_level, corpus_level, "JudgeLLMSimpleQA")
+        return MetricDescription(
+            measure, sample_level, corpus_level, "JudgeLLMSimpleQA"
+        )
 
     if isinstance(sample_fn, JudgeLLMMTBench):
         measure = "LLM-judge score for MT-Bench turns"
-        sample_level = (
-            "Use a judge LLM to score the model response for turn 1 (turn 2 is currently a placeholder)."
-        )
+        sample_level = "Use a judge LLM to score the model response for turn 1 (turn 2 is currently a placeholder)."
         corpus_level = "Average judge scores over samples."
         return MetricDescription(measure, sample_level, corpus_level, "JudgeLLMMTBench")
 
     if isinstance(sample_fn, JudgeLLMMixEval):
         measure = "LLM-judge score for MixEval"
-        sample_level = (
-            "Use a judge LLM to score the response against the prompt and options; output a judge score per sample."
-        )
+        sample_level = "Use a judge LLM to score the response against the prompt and options; output a judge score per sample."
         corpus_level = "Aggregate judge scores with the configured corpus function."
         return MetricDescription(measure, sample_level, corpus_level, "JudgeLLMMixEval")
 
@@ -450,25 +448,23 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
             "Parse the model output into an emotion label, compare against the gold label, "
             "and emit exact-match plus parsing-failure indicators."
         )
-        corpus_level = "Aggregate accuracy and failure rates with the configured corpus function."
+        corpus_level = (
+            "Aggregate accuracy and failure rates with the configured corpus function."
+        )
         return MetricDescription(measure, sample_level, corpus_level, class_name)
 
     if class_name == "TinyCorpusAggregator":
         measure = "TinyBenchmarks IRT-based score"
-        sample_level = "Compute per-sample accuracy or exact match to feed the IRT model."
-        corpus_level = (
-            "Fit an item-response-theory model using precomputed parameters and return IRT, PIRt, or GPIrt."
+        sample_level = (
+            "Compute per-sample accuracy or exact match to feed the IRT model."
         )
+        corpus_level = "Fit an item-response-theory model using precomputed parameters and return IRT, PIRt, or GPIrt."
         return MetricDescription(measure, sample_level, corpus_level, class_name)
 
     if class_name == "JudgeLLMHLE":
         measure = "HLE judge metrics"
-        sample_level = (
-            "Use a judge LLM to extract the model answer, assess correctness, and estimate confidence."
-        )
-        corpus_level = (
-            "Compute accuracy, confidence interval half-width, and calibration error from judge outputs."
-        )
+        sample_level = "Use a judge LLM to extract the model answer, assess correctness, and estimate confidence."
+        corpus_level = "Compute accuracy, confidence interval half-width, and calibration error from judge outputs."
         return MetricDescription(measure, sample_level, corpus_level, class_name)
 
     if isinstance(sample_fn, JudgeLLM):
@@ -479,35 +475,35 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
 
     if isinstance(sample_fn, GenerativePreparator):
         measure = "Corpus-level generative metric"
-        sample_level = (
-            "Collect predictions and golds into a corpus input object; scoring happens at corpus level."
-        )
+        sample_level = "Collect predictions and golds into a corpus input object; scoring happens at corpus level."
         corpus_level = "Computed by the corpus-level metric implementation."
-        return MetricDescription(measure, sample_level, corpus_level, "GenerativePreparator")
+        return MetricDescription(
+            measure, sample_level, corpus_level, "GenerativePreparator"
+        )
 
     if isinstance(sample_fn, LoglikelihoodPreparator):
         measure = "Corpus-level loglikelihood metric"
-        sample_level = (
-            "Collect gold indices and the argmax logprob choice into a corpus input object; scoring happens at corpus level."
-        )
+        sample_level = "Collect gold indices and the argmax logprob choice into a corpus input object; scoring happens at corpus level."
         corpus_level = "Computed by the corpus-level metric implementation."
-        return MetricDescription(measure, sample_level, corpus_level, "LoglikelihoodPreparator")
+        return MetricDescription(
+            measure, sample_level, corpus_level, "LoglikelihoodPreparator"
+        )
 
     if isinstance(sample_fn, PerplexityPreparator):
         measure = "Perplexity over prompt"
-        sample_level = (
-            "Sum logprobs for the prompt and count units (words or bytes) for corpus-level perplexity."
-        )
+        sample_level = "Sum logprobs for the prompt and count units (words or bytes) for corpus-level perplexity."
         corpus_level = "Computed by the corpus-level perplexity implementation."
-        return MetricDescription(measure, sample_level, corpus_level, "PerplexityPreparator")
+        return MetricDescription(
+            measure, sample_level, corpus_level, "PerplexityPreparator"
+        )
 
     if isinstance(sample_fn, TargetPerplexityPreparator):
         measure = "Perplexity over target answers"
-        sample_level = (
-            "Sum logprobs for the target answers and count units (words or bytes) for corpus-level perplexity."
-        )
+        sample_level = "Sum logprobs for the target answers and count units (words or bytes) for corpus-level perplexity."
         corpus_level = "Computed by the corpus-level perplexity implementation."
-        return MetricDescription(measure, sample_level, corpus_level, "TargetPerplexityPreparator")
+        return MetricDescription(
+            measure, sample_level, corpus_level, "TargetPerplexityPreparator"
+        )
 
     # Fallback
     return MetricDescription(
@@ -521,7 +517,9 @@ def _describe_sample_level_fn(sample_fn: Any, metric_name: str) -> MetricDescrip
 def _describe_corpus_fn(corpus_fn: Any, metric_name: str) -> str:
     if isinstance(corpus_fn, CorpusLevelComputation):
         if isinstance(corpus_fn, CorpusLevelTranslationMetric):
-            return f"Compute corpus-level {corpus_fn.metric_type.upper()} via sacrebleu."
+            return (
+                f"Compute corpus-level {corpus_fn.metric_type.upper()} via sacrebleu."
+            )
         if isinstance(corpus_fn, CorpusLevelPerplexityMetric):
             if corpus_fn.metric_type == "perplexity":
                 return "Exponentiate the negative mean logprob."
@@ -562,7 +560,9 @@ def _describe_corpus_fn(corpus_fn: Any, metric_name: str) -> str:
     return "Custom corpus-level aggregation."
 
 
-def _describe_metric(metric: Any, metric_name: str, corpus_fn: Any) -> MetricDescription:
+def _describe_metric(
+    metric: Any, metric_name: str, corpus_fn: Any
+) -> MetricDescription:
     base_desc = _describe_sample_level_fn(metric.sample_level_fn, metric_name)
     corpus_desc = _describe_corpus_fn(corpus_fn, metric_name)
 
@@ -581,19 +581,31 @@ def _describe_metric(metric: Any, metric_name: str, corpus_fn: Any) -> MetricDes
         )
     elif metric_name == "ter":
         base_desc = base_desc.__class__(
-            "Translation edit rate (TER)", base_desc.sample_level, corpus_desc, base_desc.source
+            "Translation edit rate (TER)",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "summac":
         base_desc = base_desc.__class__(
-            "Summary faithfulness (SummaCZS)", base_desc.sample_level, corpus_desc, base_desc.source
+            "Summary faithfulness (SummaCZS)",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "word_perplexity":
         base_desc = base_desc.__class__(
-            "Word-level weighted perplexity", base_desc.sample_level, corpus_desc, base_desc.source
+            "Word-level weighted perplexity",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "byte_perplexity":
         base_desc = base_desc.__class__(
-            "Byte-level weighted perplexity", base_desc.sample_level, corpus_desc, base_desc.source
+            "Byte-level weighted perplexity",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "bits_per_byte":
         base_desc = base_desc.__class__(
@@ -605,15 +617,24 @@ def _describe_metric(metric: Any, metric_name: str, corpus_fn: Any) -> MetricDes
         )
     elif metric_name == "loglikelihood_f1":
         base_desc = base_desc.__class__(
-            "Classification F1 from log-likelihoods", base_desc.sample_level, corpus_desc, base_desc.source
+            "Classification F1 from log-likelihoods",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "mcc":
         base_desc = base_desc.__class__(
-            "Matthews correlation coefficient", base_desc.sample_level, corpus_desc, base_desc.source
+            "Matthews correlation coefficient",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "mf1":
         base_desc = base_desc.__class__(
-            "Multi-class F1 (micro average)", base_desc.sample_level, corpus_desc, base_desc.source
+            "Multi-class F1 (micro average)",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "accuracy":
         base_desc = base_desc.__class__(
@@ -621,7 +642,10 @@ def _describe_metric(metric: Any, metric_name: str, corpus_fn: Any) -> MetricDes
         )
     elif metric_name == "confidence_half_width":
         base_desc = base_desc.__class__(
-            "95% confidence interval half-width", base_desc.sample_level, corpus_desc, base_desc.source
+            "95% confidence interval half-width",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "calibration_error":
         base_desc = base_desc.__class__(
@@ -629,19 +653,31 @@ def _describe_metric(metric: Any, metric_name: str, corpus_fn: Any) -> MetricDes
         )
     elif metric_name == "exact_match":
         base_desc = base_desc.__class__(
-            "Exact-match classification accuracy", base_desc.sample_level, corpus_desc, base_desc.source
+            "Exact-match classification accuracy",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "unknown_prediction":
         base_desc = base_desc.__class__(
-            "Parsing failure rate (unknown predictions)", base_desc.sample_level, corpus_desc, base_desc.source
+            "Parsing failure rate (unknown predictions)",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "total_samples":
         base_desc = base_desc.__class__(
-            "Total samples processed", base_desc.sample_level, corpus_desc, base_desc.source
+            "Total samples processed",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "verifiable_reward":
         base_desc = base_desc.__class__(
-            "Verifiable reward accuracy", base_desc.sample_level, corpus_desc, base_desc.source
+            "Verifiable reward accuracy",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name in {"irt", "pirt", "gpirt"}:
         base_desc = base_desc.__class__(
@@ -652,11 +688,17 @@ def _describe_metric(metric: Any, metric_name: str, corpus_fn: Any) -> MetricDes
         )
     elif metric_name.startswith("llm_judge_mixeval"):
         base_desc = base_desc.__class__(
-            "MixEval LLM-judge score", base_desc.sample_level, corpus_desc, base_desc.source
+            "MixEval LLM-judge score",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name in {"judge_score_turn_1", "judge_score_turn_2"}:
         base_desc = base_desc.__class__(
-            f"MT-Bench {metric_name.replace('_', ' ')}", base_desc.sample_level, corpus_desc, base_desc.source
+            f"MT-Bench {metric_name.replace('_', ' ')}",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name.startswith("pass@k") or metric_name.startswith("gpqa_pass@k"):
         base_desc = base_desc.__class__(
@@ -664,15 +706,24 @@ def _describe_metric(metric: Any, metric_name: str, corpus_fn: Any) -> MetricDes
         )
     elif metric_name.startswith("avg@n"):
         base_desc = base_desc.__class__(
-            "Average over sampled generations", base_desc.sample_level, corpus_desc, base_desc.source
+            "Average over sampled generations",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name.startswith("maj@n"):
         base_desc = base_desc.__class__(
-            "Majority-vote accuracy over sampled generations", base_desc.sample_level, corpus_desc, base_desc.source
+            "Majority-vote accuracy over sampled generations",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name.startswith("em:"):
         base_desc = base_desc.__class__(
-            "Exact match (parameterized)", base_desc.sample_level, corpus_desc, base_desc.source
+            "Exact match (parameterized)",
+            base_desc.sample_level,
+            corpus_desc,
+            base_desc.source,
         )
     elif metric_name == "em":
         base_desc = base_desc.__class__(
@@ -682,14 +733,19 @@ def _describe_metric(metric: Any, metric_name: str, corpus_fn: Any) -> MetricDes
         if isinstance(corpus_fn, CorpusLevelF1Score):
             avg = corpus_fn.average
             base_desc = base_desc.__class__(
-                f"Classification F1 (average={avg})", base_desc.sample_level, corpus_desc, base_desc.source
+                f"Classification F1 (average={avg})",
+                base_desc.sample_level,
+                corpus_desc,
+                base_desc.source,
             )
         else:
             base_desc = base_desc.__class__(
                 "F1 score", base_desc.sample_level, corpus_desc, base_desc.source
             )
 
-    return MetricDescription(base_desc.measure, base_desc.sample_level, corpus_desc, base_desc.source)
+    return MetricDescription(
+        base_desc.measure, base_desc.sample_level, corpus_desc, base_desc.source
+    )
 
 
 def _get_metric_names(metric: Any) -> list[str]:

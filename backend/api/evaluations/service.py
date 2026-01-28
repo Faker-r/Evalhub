@@ -38,7 +38,10 @@ from api.evaluations.eval_pipeline.guideline_judge import GuidelineJudgeMetric
 from api.evaluations.eval_pipeline.metric_doc_generator import MetricDocGenerator
 
 from lighteval.logging.evaluation_tracker import EvaluationTracker
-from lighteval.models.endpoints.openai_model import OpenAICompatibleModelConfig, OpenAICompatibleClient
+from lighteval.models.endpoints.openai_model import (
+    OpenAICompatibleModelConfig,
+    OpenAICompatibleClient,
+)
 from lighteval.tasks.registry import Registry
 from lighteval.pipeline import ParallelismManager, Pipeline, PipelineParameters
 from lighteval.models.model_input import GenerationParameters
@@ -136,7 +139,9 @@ class EvaluationService:
             except Exception as e:
                 logger.error("Evaluation failed: %s", e)
                 await repository.update_trace_status(
-                    trace_id, "failed", {"error": str(e), "traceback": traceback.format_exc()}
+                    trace_id,
+                    "failed",
+                    {"error": str(e), "traceback": traceback.format_exc()},
                 )
             finally:
                 await session.close()
@@ -200,7 +205,9 @@ class EvaluationService:
                 # Finalize
                 summary = service._extract_task_summary(pipeline_output)
                 await repository.update_trace_status(
-                    trace_id, "completed", {"scores": summary, "metric_docs": metric_docs}
+                    trace_id,
+                    "completed",
+                    {"scores": summary, "metric_docs": metric_docs},
                 )
 
                 # Upload trace to S3
@@ -210,7 +217,9 @@ class EvaluationService:
             except Exception as e:
                 logger.error("Evaluation failed: %s", e)
                 await repository.update_trace_status(
-                    trace_id, "failed", {"error": str(e), "traceback": traceback.format_exc()}
+                    trace_id,
+                    "failed",
+                    {"error": str(e), "traceback": traceback.format_exc()},
                 )
             finally:
                 await session.close()
@@ -257,7 +266,10 @@ class EvaluationService:
                 dataset_content = service._load_dataset_content(request.dataset_name)
 
                 guidelines = []
-                if request.judge_type == JudgeType.LLM_AS_JUDGE and request.guideline_names:
+                if (
+                    request.judge_type == JudgeType.LLM_AS_JUDGE
+                    and request.guideline_names
+                ):
                     guidelines = await service._load_guidelines(request.guideline_names)
 
                 pipeline_output = await service._run_flexible_lighteval_pipeline(
@@ -271,7 +283,9 @@ class EvaluationService:
                     trace, request, pipeline_output, metric_names
                 )
 
-                summary = service._extract_flexible_summary(pipeline_output, request, guidelines)
+                summary = service._extract_flexible_summary(
+                    pipeline_output, request, guidelines
+                )
                 await repository.update_trace_status(
                     trace_id, "completed", {"scores": summary}
                 )
@@ -282,7 +296,9 @@ class EvaluationService:
             except Exception as e:
                 logger.error("Flexible evaluation failed: %s", e)
                 await repository.update_trace_status(
-                    trace_id, "failed", {"error": str(e), "traceback": traceback.format_exc()}
+                    trace_id,
+                    "failed",
+                    {"error": str(e), "traceback": traceback.format_exc()},
                 )
             finally:
                 await session.close()
@@ -411,10 +427,8 @@ class EvaluationService:
             )
 
         return model_config
-    
-    async def _create_judge_client_parameters(
-        self, judge_config: ModelConfig
-    ) -> dict:
+
+    async def _create_judge_client_parameters(self, judge_config: ModelConfig) -> dict:
         if judge_config.api_source == "standard":
             model_api_key = self.s3.download_api_key(
                 self.user_id, judge_config.model_provider_slug
@@ -437,11 +451,11 @@ class EvaluationService:
                 "base_url": OPENROUTER_API_BASE,
                 "api_key": model_api_key,
                 "extra_body": {
-                        "provider": {
-                            "order": [judge_config.model_provider_slug],
-                            "allow_fallbacks": False,
-                        }
-                    },
+                    "provider": {
+                        "order": [judge_config.model_provider_slug],
+                        "allow_fallbacks": False,
+                    }
+                },
             }
 
     async def _run_lighteval_pipeline(
@@ -487,7 +501,9 @@ class EvaluationService:
         registry.task_to_configs = {request.dataset_name: [task.config]}
 
         # Create model client
-        model_config = await self._create_openai_compatible_client(request.model_completion_config)
+        model_config = await self._create_openai_compatible_client(
+            request.model_completion_config
+        )
         model = OpenAICompatibleClient(model_config)
 
         # Initialize registry on model cache
@@ -520,7 +536,9 @@ class EvaluationService:
 
         return {**results, "temp_dir": temp_dir}
 
-    async def _run_lighteval_task_pipeline(self, request: TaskEvaluationRequest) -> dict:
+    async def _run_lighteval_task_pipeline(
+        self, request: TaskEvaluationRequest
+    ) -> dict:
         """Run an evaluation on a task using lighteval.
 
         Returns:
@@ -540,7 +558,9 @@ class EvaluationService:
         )
 
         # Create model config
-        model_config = await self._create_openai_compatible_client(request.model_completion_config)
+        model_config = await self._create_openai_compatible_client(
+            request.model_completion_config
+        )
 
         task_name = self._build_task_name(request)
 
@@ -619,7 +639,9 @@ class EvaluationService:
         registry._task_registry[request.dataset_name] = task.config
         registry.task_to_configs = {request.dataset_name: [task.config]}
 
-        model_config = await self._create_openai_compatible_client(request.model_completion_config)
+        model_config = await self._create_openai_compatible_client(
+            request.model_completion_config
+        )
         model = OpenAICompatibleClient(model_config)
 
         if hasattr(model, "_cache") and model._cache is not None:

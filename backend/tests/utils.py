@@ -8,7 +8,7 @@ from api.core.database import get_session
 
 async def get_test_session() -> AsyncGenerator[AsyncSession, None]:
     """Get a test database session.
-    
+
     Yields:
         AsyncSession: Test database session
     """
@@ -18,7 +18,7 @@ async def get_test_session() -> AsyncGenerator[AsyncSession, None]:
 
 def get_test_user_id() -> str:
     """Get a test user ID.
-    
+
     Returns:
         str: Test user ID (UUID)
     """

@@ -11,10 +11,11 @@ from api.evaluations.schemas import TaskEvaluationRequest, DatasetConfig, ModelC
 
 load_dotenv()
 
+
 async def test_task_evaluation_service():
     """Test the task evaluation service."""
     print("Starting task evaluation service test...")
-    
+
     # Step 1: Get user ID
     print("\n1. Loading user ID...")
     user_id = "e01da140-64b2-4ab9-b379-4f55dcaf0b22"
@@ -22,7 +23,7 @@ async def test_task_evaluation_service():
         print("⚠ No USER_ID found in environment. Please set it to test the service.")
         return
     print(f"✓ User ID loaded: {user_id}")
-    
+
     # Step 2: Prepare request
     print("\n2. Preparing evaluation request...")
     request = TaskEvaluationRequest(
@@ -48,17 +49,19 @@ async def test_task_evaluation_service():
             model_provider_id=0,
         ),
     )
-    print(f"✓ Request prepared: task={request.task_name}, samples={request.dataset_config.n_samples}")
-    
+    print(
+        f"✓ Request prepared: task={request.task_name}, samples={request.dataset_config.n_samples}"
+    )
+
     # Step 3: Create database session
     print("\n3. Creating database session...")
     async for session in get_session():
         print("✓ Database session created")
-        
+
         # Step 4: Run evaluation
         print("\n4. Running task evaluation...")
         service = EvaluationService(session, user_id)
-        
+
         try:
             trace = await service._create_task_trace(request)
 
@@ -70,14 +73,15 @@ async def test_task_evaluation_service():
             print("\n5. Results:")
             print(f"   Trace ID: {trace.id}")
             print("   Status: running")
-            
+
             print("\n✓ Test completed successfully!")
-            
+
         except Exception as e:
             print(f"✗ Evaluation failed: {e}")
             raise
-        
+
         break
+
 
 if __name__ == "__main__":
     asyncio.run(test_task_evaluation_service())

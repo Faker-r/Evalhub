@@ -12,7 +12,7 @@ NOTES:
 
 Usage:
     python -m scripts.populate_benchmarks [--limit N] [--hf-token TOKEN]
-    
+
     The script will automatically use HF_TOKEN from .env if available.
     Use --hf-token to override the .env token.
 """
@@ -36,7 +36,7 @@ from api.core.logging import get_logger, setup_logging
 from scripts.benchmark_utils import (
     clean_description,
     filter_benchmark_tags,
-    infer_tags_from_task_info
+    infer_tags_from_task_info,
 )
 
 setup_logging()
@@ -132,7 +132,9 @@ def get_dataset_info(hf_repo: str, token: Optional[str] = None) -> dict:
             "type": repo_type,
             "author": getattr(repo_info, "author", None),
             "created_at": (
-                repo_info.created_at.isoformat() if hasattr(repo_info, "created_at") and repo_info.created_at else None
+                repo_info.created_at.isoformat()
+                if hasattr(repo_info, "created_at") and repo_info.created_at
+                else None
             ),
             "private": getattr(repo_info, "private", None),
             "gated": getattr(repo_info, "gated", None),
@@ -156,11 +158,13 @@ def get_dataset_info(hf_repo: str, token: Optional[str] = None) -> dict:
 # Global tokenizer cache to avoid reloading
 _tokenizer_cache = None
 
+
 def get_tokenizer():
     """Get cached tokenizer instance."""
     global _tokenizer_cache
     if _tokenizer_cache is None:
         from transformers import AutoTokenizer
+
         _tokenizer_cache = AutoTokenizer.from_pretrained("gpt2")
     return _tokenizer_cache
 
@@ -168,7 +172,8 @@ def get_tokenizer():
 def cancel_alarm():
     """Cancel alarm if on Unix system."""
     import signal
-    if hasattr(signal, 'SIGALRM'):
+
+    if hasattr(signal, "SIGALRM"):
         signal.alarm(0)
 
 
@@ -176,7 +181,7 @@ def get_dataset_size(
     hf_repo: str,
     hf_subset: Optional[str],
     evaluation_splits: list[str],
-    token: Optional[str] = None
+    token: Optional[str] = None,
 ) -> Optional[int]:
     """
     Get the total number of samples in the evaluation splits of a dataset.
@@ -201,12 +206,16 @@ def get_dataset_size(
             # If it fails, try with trust_remote_code for datasets that require it
             error_msg = str(e).lower()
             if "trust_remote_code" in error_msg or "custom code" in error_msg:
-                builder = load_dataset_builder(hf_repo, hf_subset, token=token, trust_remote_code=True)
+                builder = load_dataset_builder(
+                    hf_repo, hf_subset, token=token, trust_remote_code=True
+                )
             else:
                 raise
 
         if not builder or not builder.info or not builder.info.splits:
-            logger.warning(f"No split info available for {hf_repo} (subset: {hf_subset})")
+            logger.warning(
+                f"No split info available for {hf_repo} (subset: {hf_subset})"
+            )
             return None
 
         # Sum up only the evaluation splits
@@ -220,10 +229,14 @@ def get_dataset_size(
                     splits_found.append(split_name)
 
         if total_size > 0:
-            logger.info(f"Dataset size for {hf_repo}: {total_size} samples (splits: {', '.join(splits_found)})")
+            logger.info(
+                f"Dataset size for {hf_repo}: {total_size} samples (splits: {', '.join(splits_found)})"
+            )
             return total_size
 
-        logger.warning(f"No evaluation splits found for {hf_repo}. Requested: {evaluation_splits}, Available: {list(builder.info.splits.keys())}")
+        logger.warning(
+            f"No evaluation splits found for {hf_repo}. Requested: {evaluation_splits}, Available: {list(builder.info.splits.keys())}"
+        )
         return None
     except Exception as e:
         logger.warning(f"Could not get dataset size for {hf_repo}: {e}")
@@ -236,7 +249,7 @@ def estimate_avg_tokens_per_sample(
     evaluation_splits: list[str],
     token: Optional[str] = None,
     max_samples: int = 50,
-    timeout: int = 30
+    timeout: int = 30,
 ) -> Optional[int]:
     """
     Estimate the average number of input tokens per sample by tokenizing samples
@@ -262,7 +275,7 @@ def estimate_avg_tokens_per_sample(
             raise TimeoutError(f"Token estimation timed out after {timeout}s")
 
         # Only set alarm on Unix systems
-        if hasattr(signal, 'SIGALRM'):
+        if hasattr(signal, "SIGALRM"):
             signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(timeout)
 
@@ -272,7 +285,9 @@ def estimate_avg_tokens_per_sample(
         # Try each evaluation split until one works
         for split in evaluation_splits:
             try:
-                dataset = load_dataset(hf_repo, hf_subset, split=split, streaming=True, token=token)
+                dataset = load_dataset(
+                    hf_repo, hf_subset, split=split, streaming=True, token=token
+                )
                 split_used = split
                 break
             except Exception as e:
@@ -285,7 +300,9 @@ def estimate_avg_tokens_per_sample(
 
         # If no evaluation split worked, give up
         if dataset is None:
-            logger.warning(f"Could not load dataset {hf_repo} (subset: {hf_subset}): no evaluation splits available")
+            logger.warning(
+                f"Could not load dataset {hf_repo} (subset: {hf_subset}): no evaluation splits available"
+            )
             cancel_alarm()
             return None
 
@@ -337,7 +354,9 @@ def estimate_avg_tokens_per_sample(
             )
             return avg_tokens
         else:
-            logger.warning(f"Could not estimate tokens for {hf_repo}: no text content found")
+            logger.warning(
+                f"Could not estimate tokens for {hf_repo}: no text content found"
+            )
             return None
 
     except TimeoutError as e:
@@ -350,10 +369,12 @@ def estimate_avg_tokens_per_sample(
         return None
 
 
-async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[str] = None):
+async def populate_benchmarks(
+    limit: Optional[int] = None, hf_token: Optional[str] = None
+):
     """
     Populate the benchmarks table with lighteval tasks.
-    
+
     Tasks are grouped by their HuggingFace repository, so multiple task variants
     (e.g., gpqa:diamond, gpqa:extended) are stored as a single benchmark entry
     with all tasks in the tasks array.
@@ -371,10 +392,14 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
     generative_tasks = {
         task: task_config
         for task, task_config in all_tasks.items()
-        if all(str(m.category) == "SamplingMethod.GENERATIVE" for m in task_config.metrics)
+        if all(
+            str(m.category) == "SamplingMethod.GENERATIVE" for m in task_config.metrics
+        )
     }
 
-    logger.info(f"Found {len(generative_tasks)} generative tasks out of {len(all_tasks)} total tasks")
+    logger.info(
+        f"Found {len(generative_tasks)} generative tasks out of {len(all_tasks)} total tasks"
+    )
 
     # Group tasks by repository (normalize repo names and skip invalid ones)
     repo_to_tasks = defaultdict(list)
@@ -387,35 +412,46 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
         repo_to_tasks[normalized_repo].append((task_name, task_config))
 
     if skipped_repos:
-        logger.info(f"Skipped {len(skipped_repos)} repos with invalid names: {', '.join(skipped_repos)}")
+        logger.info(
+            f"Skipped {len(skipped_repos)} repos with invalid names: {', '.join(skipped_repos)}"
+        )
     logger.info(f"Grouped into {len(repo_to_tasks)} unique repositories")
 
     # Get download counts for each unique repo to sort by popularity
     logger.info("Fetching download counts to prioritize popular datasets...")
     repo_downloads = {}
-    
+
     for repo in repo_to_tasks.keys():
         dataset_info = get_dataset_info(repo, hf_token)
-        downloads = dataset_info.get("repo_info", {}).get("downloads", 0) if not dataset_info.get("error") else 0
+        downloads = (
+            dataset_info.get("repo_info", {}).get("downloads", 0)
+            if not dataset_info.get("error")
+            else 0
+        )
         repo_downloads[repo] = downloads or 0  # Treat None as 0
-    
+
     # Filter out repos with too few downloads
     filtered_repos = {
-        repo: tasks for repo, tasks in repo_to_tasks.items()
+        repo: tasks
+        for repo, tasks in repo_to_tasks.items()
         if repo_downloads.get(repo, 0) >= MIN_DOWNLOADS
     }
     low_download_repos = len(repo_to_tasks) - len(filtered_repos)
     if low_download_repos > 0:
-        logger.info(f"Filtered out {low_download_repos} repos with < {MIN_DOWNLOADS} downloads")
+        logger.info(
+            f"Filtered out {low_download_repos} repos with < {MIN_DOWNLOADS} downloads"
+        )
 
     # Sort repositories by download count (descending)
     sorted_repos = sorted(
         filtered_repos.items(),
         key=lambda item: repo_downloads.get(item[0], 0),
-        reverse=True
+        reverse=True,
     )
 
-    logger.info(f"Processing {len(sorted_repos)} repositories (sorted by download count)")
+    logger.info(
+        f"Processing {len(sorted_repos)} repositories (sorted by download count)"
+    )
 
     if limit:
         sorted_repos = sorted_repos[:limit]
@@ -438,18 +474,22 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
     for i, (hf_repo, tasks) in enumerate(sorted_repos, 1):
         # Use the first task as the primary task
         primary_task_name, primary_task_config = tasks[0]
-        
+
         # Collect all task names for this repo (sorted alphabetically)
         all_task_names = sorted([task_name for task_name, _ in tasks])
-        
-        logger.info(f"Processing {i}/{len(sorted_repos)}: {hf_repo} ({len(tasks)} tasks: {', '.join(all_task_names)})")
+
+        logger.info(
+            f"Processing {i}/{len(sorted_repos)}: {hf_repo} ({len(tasks)} tasks: {', '.join(all_task_names)})"
+        )
 
         try:
             # Get dataset info from HF (once per repo, not per task)
             dataset_info = get_dataset_info(hf_repo, hf_token)
 
             if dataset_info.get("error"):
-                logger.warning(f"Error fetching info for {hf_repo}: {dataset_info['error']}")
+                logger.warning(
+                    f"Error fetching info for {hf_repo}: {dataset_info['error']}"
+                )
                 repo_info = {}
             else:
                 repo_info = dataset_info.get("repo_info", {})
@@ -471,33 +511,36 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
                 gated = True
             else:
                 gated = False
-            
+
             # Get HuggingFace tags and filter to only benchmark type tags
             raw_tags = repo_info.get("tags", [])
             hf_tags = filter_benchmark_tags(raw_tags)
-            
+
             # Get description from HuggingFace or card data and clean it
             raw_description = repo_info.get("description")
             if not raw_description and repo_info.get("card_data"):
                 # Try to extract description from card_data if available
                 card_data = repo_info.get("card_data")
                 if isinstance(card_data, dict):
-                    raw_description = card_data.get("description") or card_data.get("summary")
-            
+                    raw_description = card_data.get("description") or card_data.get(
+                        "summary"
+                    )
+
             # Clean the description to remove markdown formatting and extract summary
             description = clean_description(raw_description)
 
             # Infer additional tags from task name/description
-            inferred_tags = infer_tags_from_task_info(primary_task_name or hf_repo, description)
+            inferred_tags = infer_tags_from_task_info(
+                primary_task_name or hf_repo, description
+            )
             if inferred_tags:
                 logger.debug(f"Inferred tags for {hf_repo}: {inferred_tags}")
                 for tag in inferred_tags:
                     if tag not in hf_tags:
                         hf_tags.append(tag)
-            
-            
-            dataset_name = hf_repo.split('/')[-1] if '/' in hf_repo else hf_repo
-            
+
+            dataset_name = hf_repo.split("/")[-1] if "/" in hf_repo else hf_repo
+
             benchmark_data = {
                 "dataset_name": dataset_name,  # Use repo name as title
                 "hf_repo": hf_repo,
@@ -506,7 +549,9 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
                 "downloads": repo_info.get("downloads"),
                 "tags": hf_tags,
                 "repo_type": repo_info.get("type"),
-                "created_at_hf": created_at_hf.replace(tzinfo=None) if created_at_hf else None,
+                "created_at_hf": (
+                    created_at_hf.replace(tzinfo=None) if created_at_hf else None
+                ),
                 "private": repo_info.get("private"),
                 "gated": gated,
                 "files": repo_info.get("siblings", []),
@@ -545,12 +590,17 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
                             task_size, task_tokens = task_cache[cache_key]
                         else:
                             # Calculate size and tokens for this specific task
-                            task_size = get_dataset_size(hf_repo, task_subset, task_eval_splits, token=hf_token)
+                            task_size = get_dataset_size(
+                                hf_repo, task_subset, task_eval_splits, token=hf_token
+                            )
 
                             task_tokens = None
                             if not (args and args.skip_tokens):
                                 task_avg_tokens = estimate_avg_tokens_per_sample(
-                                    hf_repo, task_subset, task_eval_splits, token=hf_token
+                                    hf_repo,
+                                    task_subset,
+                                    task_eval_splits,
+                                    token=hf_token,
                                 )
                                 if task_avg_tokens and task_size:
                                     task_tokens = task_avg_tokens * task_size
@@ -578,7 +628,7 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
             continue
 
     await engine.dispose()
-    
+
     # Log summary
     logger.info("=" * 60)
     logger.info("Finished populating benchmarks")
@@ -592,10 +642,11 @@ async def populate_benchmarks(limit: Optional[int] = None, hf_token: Optional[st
     logger.info("=" * 60)
 
 
-
 def main():
     """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description="Populate benchmarks table with lighteval tasks")
+    parser = argparse.ArgumentParser(
+        description="Populate benchmarks table with lighteval tasks"
+    )
     parser.add_argument(
         "--limit",
         type=int,
@@ -625,12 +676,16 @@ def main():
 
     # Use command line token if provided, otherwise use token from .env
     hf_token = args.hf_token or settings.HF_TOKEN
-    
+
     if hf_token:
-        logger.info("Using HuggingFace token for authenticated requests (higher rate limits)")
+        logger.info(
+            "Using HuggingFace token for authenticated requests (higher rate limits)"
+        )
     else:
-        logger.info("No HuggingFace token provided - using unauthenticated requests (lower rate limits)")
-    
+        logger.info(
+            "No HuggingFace token provided - using unauthenticated requests (lower rate limits)"
+        )
+
     if args.skip_tokens:
         logger.info("⚡ FAST MODE: Skipping token estimation")
 

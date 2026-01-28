@@ -29,7 +29,9 @@ def main() -> None:
             )
             current_url = result.stdout.strip()
             if current_url == target_url:
-                subprocess.check_call(["git", "-C", str(repo_dir), "pull", "origin", "main"])
+                subprocess.check_call(
+                    ["git", "-C", str(repo_dir), "pull", "origin", "main"]
+                )
             else:
                 shutil.rmtree(repo_dir)
                 subprocess.check_call(
@@ -52,12 +54,17 @@ def main() -> None:
             )
 
     subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", "-e", f"{repo_dir}[extended_tasks,multilingual]"],
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "-e",
+            f"{repo_dir}[extended_tasks,multilingual]",
+        ],
         env=os.environ.copy(),
     )
 
 
 if __name__ == "__main__":
     main()
-
-

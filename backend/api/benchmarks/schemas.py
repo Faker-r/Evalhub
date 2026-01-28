@@ -38,6 +38,7 @@ class BenchmarkListResponse(BaseModel):
     page_size: int
     total_pages: int
 
+
 class TaskDetailsResponse(BaseModel):
     """Response schema for task details."""
 

@@ -3,6 +3,7 @@ Test script to verify the flexible evaluation service works end-to-end.
 """
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 import asyncio
@@ -31,7 +32,9 @@ async def test_text_exact_match():
         dataset_name="mmlu_college_chem_test",  # Uses "question" field from mtbench
         input_field="question",  # Use first turn as input
         output_type=OutputType.MULTIPLE_CHOICE,
-        mc_config=MultipleChoiceConfig(choices_field="choices", gold_answer_field="answer"),
+        mc_config=MultipleChoiceConfig(
+            choices_field="choices", gold_answer_field="answer"
+        ),
         judge_type=JudgeType.EXACT_MATCH,
         model_completion_config=ModelConfig(
             model_name="gpt-5.1",
@@ -135,14 +138,18 @@ async def run_evaluation(request: FlexibleEvaluationRequest, test_name: str):
         except Exception as e:
             print(f"\n✗ Evaluation failed: {e}")
             import traceback
+
             traceback.print_exc()
 
         break
 
 
-async def wait_for_completion(service: EvaluationService, trace_id: int, timeout: int = 300):
+async def wait_for_completion(
+    service: EvaluationService, trace_id: int, timeout: int = 300
+):
     """Wait for evaluation to complete and display final results."""
     import time
+
     start_time = time.time()
 
     while time.time() - start_time < timeout:

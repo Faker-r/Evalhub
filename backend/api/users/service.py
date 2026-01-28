@@ -21,7 +21,9 @@ class UserService:
 
     # ==================== API Key Methods ====================
 
-    async def create_api_key(self, user_id: str, api_key_data: ApiKeyCreate) -> ApiKeyResponse:
+    async def create_api_key(
+        self, user_id: str, api_key_data: ApiKeyCreate
+    ) -> ApiKeyResponse:
         """Store an API key for a user.
 
         Args:
@@ -43,7 +45,9 @@ class UserService:
         provider = result.scalar_one_or_none()
 
         if not provider:
-            raise NotFoundException(f"Provider with ID {api_key_data.provider_id} not found")
+            raise NotFoundException(
+                f"Provider with ID {api_key_data.provider_id} not found"
+            )
 
         # Store API key using provider name
         self.s3.upload_api_key(user_id, provider.slug, api_key_data.api_key)
@@ -91,7 +95,7 @@ class UserService:
         """
         if not self.session:
             raise ValueError("Database session required for API key operations")
-        
+
         # Get provider names from S3
         provider_names = self.s3.list_user_api_keys(user_id)
 

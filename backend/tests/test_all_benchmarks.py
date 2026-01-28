@@ -57,6 +57,7 @@ PROVIDER_CONFIGS = {
 @dataclass
 class BenchmarkResult:
     """Result of a single benchmark test."""
+
     dataset_name: str
     task_name: str
     status: str  # "success", "error", "silent_failure", "timeout"
@@ -71,6 +72,7 @@ class BenchmarkResult:
 @dataclass
 class TestReport:
     """Full test report for all benchmarks."""
+
     started_at: datetime
     completed_at: Optional[datetime] = None
     total_benchmarks: int = 0
@@ -84,7 +86,9 @@ def fetch_benchmarks_from_supabase() -> list[dict]:
     """Fetch all benchmarks from the Supabase benchmarks table, sorted by downloads descending."""
     print("Fetching benchmarks from Supabase...")
     client = get_supabase_client()
-    response = client.table("benchmarks").select("*").order("downloads", desc=True).execute()
+    response = (
+        client.table("benchmarks").select("*").order("downloads", desc=True).execute()
+    )
     benchmarks = response.data
     print(f"Found {len(benchmarks)} benchmarks in Supabase (sorted by downloads)")
     return benchmarks
@@ -94,7 +98,9 @@ def fetch_benchmarks_by_names(names: list[str]) -> list[dict]:
     """Fetch specific benchmarks from Supabase by dataset_name."""
     print(f"Fetching specific benchmarks: {names}")
     client = get_supabase_client()
-    response = client.table("benchmarks").select("*").in_("dataset_name", names).execute()
+    response = (
+        client.table("benchmarks").select("*").in_("dataset_name", names).execute()
+    )
     benchmarks = response.data
     # Sort by downloads like the main fetcher
     benchmarks.sort(key=lambda x: x.get("downloads", 0), reverse=True)
@@ -123,7 +129,8 @@ def fetch_benchmarks_from_json(filepath: str = "benchmarks_rows.json") -> list[d
 
     if not resolved_path:
         raise FileNotFoundError(
-            f"Could not find {filepath}. Tried:\n" + "\n".join(f"  - {p}" for p in possible_paths)
+            f"Could not find {filepath}. Tried:\n"
+            + "\n".join(f"  - {p}" for p in possible_paths)
         )
 
     print(f"Found file at: {resolved_path}")
@@ -311,7 +318,9 @@ async def run_single_benchmark(
 
         # Step 2: Poll for completion
         print(f"  Polling for completion...")
-        final_status, summary, error_msg, error_tb = await poll_trace_completion(trace_id)
+        final_status, summary, error_msg, error_tb = await poll_trace_completion(
+            trace_id
+        )
 
         duration = (datetime.now() - start_time).total_seconds()
 
@@ -333,10 +342,9 @@ async def run_single_benchmark(
 
             full_error = error_msg or "Unknown error"
             if error_events:
-                event_errors = "\n".join([
-                    f"  - {e['event_type']}: {e['data']}"
-                    for e in error_events
-                ])
+                event_errors = "\n".join(
+                    [f"  - {e['event_type']}: {e['data']}" for e in error_events]
+                )
                 full_error = f"{full_error}\n\nTrace Events:\n{event_errors}"
 
             print(f"✗ {dataset_name}: FAILED")
@@ -423,7 +431,9 @@ async def run_all_benchmarks(
     """Run all benchmarks and generate a report."""
     report = TestReport(
         started_at=datetime.now(),
-        total_benchmarks=len(benchmarks) if limit is None else min(limit, len(benchmarks)),
+        total_benchmarks=(
+            len(benchmarks) if limit is None else min(limit, len(benchmarks))
+        ),
     )
 
     benchmarks_to_test = benchmarks[:limit] if limit else benchmarks
@@ -459,10 +469,16 @@ async def run_all_benchmarks(
     return report
 
 
-def generate_markdown_report(report: TestReport, output_path: str = "benchmark_test_report.md"):
+def generate_markdown_report(
+    report: TestReport, output_path: str = "benchmark_test_report.md"
+):
     """Generate a markdown report from the test results."""
 
-    duration = (report.completed_at - report.started_at).total_seconds() if report.completed_at else 0
+    duration = (
+        (report.completed_at - report.started_at).total_seconds()
+        if report.completed_at
+        else 0
+    )
 
     lines = [
         "# Benchmark Compatibility Test Report",
@@ -489,95 +505,115 @@ def generate_markdown_report(report: TestReport, output_path: str = "benchmark_t
         lines.append("")
 
     # Successful benchmarks
-    lines.extend([
-        "## ✓ Successful Benchmarks",
-        "",
-    ])
+    lines.extend(
+        [
+            "## ✓ Successful Benchmarks",
+            "",
+        ]
+    )
 
     if report.successful:
         lines.append("| Dataset | Task | Trace ID | Duration (s) | Scores |")
         lines.append("|---------|------|----------|--------------|--------|")
         for result in report.successful:
             scores_summary = _format_scores_summary(result.scores)
-            lines.append(f"| {result.dataset_name} | {result.task_name} | {result.trace_id or 'N/A'} | {result.duration_seconds:.1f} | {scores_summary} |")
+            lines.append(
+                f"| {result.dataset_name} | {result.task_name} | {result.trace_id or 'N/A'} | {result.duration_seconds:.1f} | {scores_summary} |"
+            )
     else:
         lines.append("_No successful benchmarks_")
     lines.append("")
 
     # Failed benchmarks with error traces
-    lines.extend([
-        "## ✗ Failed Benchmarks",
-        "",
-    ])
+    lines.extend(
+        [
+            "## ✗ Failed Benchmarks",
+            "",
+        ]
+    )
 
     if report.failed:
         for result in report.failed:
-            lines.extend([
-                f"### {result.dataset_name}",
-                "",
-                f"**Task:** `{result.task_name}`",
-                f"**Trace ID:** {result.trace_id or 'N/A'}",
-                f"**Duration:** {result.duration_seconds:.1f}s",
-                "",
-                "**Error Message:**",
-                "```",
-                result.error_message or "No error message",
-                "```",
-                "",
-            ])
-            if result.error_traceback:
-                lines.extend([
-                    "**Full Traceback:**",
-                    "```python",
-                    result.error_traceback,
+            lines.extend(
+                [
+                    f"### {result.dataset_name}",
+                    "",
+                    f"**Task:** `{result.task_name}`",
+                    f"**Trace ID:** {result.trace_id or 'N/A'}",
+                    f"**Duration:** {result.duration_seconds:.1f}s",
+                    "",
+                    "**Error Message:**",
+                    "```",
+                    result.error_message or "No error message",
                     "```",
                     "",
-                ])
+                ]
+            )
+            if result.error_traceback:
+                lines.extend(
+                    [
+                        "**Full Traceback:**",
+                        "```python",
+                        result.error_traceback,
+                        "```",
+                        "",
+                    ]
+                )
     else:
         lines.append("_No failed benchmarks_")
     lines.append("")
 
     # Timeouts
-    lines.extend([
-        "## ⏱ Timeouts",
-        "",
-    ])
+    lines.extend(
+        [
+            "## ⏱ Timeouts",
+            "",
+        ]
+    )
 
     if report.timeouts:
         lines.append("| Dataset | Task | Trace ID | Duration (s) |")
         lines.append("|---------|------|----------|--------------|")
         for result in report.timeouts:
-            lines.append(f"| {result.dataset_name} | {result.task_name} | {result.trace_id or 'N/A'} | {result.duration_seconds:.1f} |")
+            lines.append(
+                f"| {result.dataset_name} | {result.task_name} | {result.trace_id or 'N/A'} | {result.duration_seconds:.1f} |"
+            )
     else:
         lines.append("_No timeouts_")
     lines.append("")
 
     # Silent failures
-    lines.extend([
-        "## ⚠ Silent Failures",
-        "",
-        "_These benchmarks completed but returned suspicious results (e.g., all zeros)_",
-        "",
-    ])
+    lines.extend(
+        [
+            "## ⚠ Silent Failures",
+            "",
+            "_These benchmarks completed but returned suspicious results (e.g., all zeros)_",
+            "",
+        ]
+    )
 
     if report.silent_failures:
         for result in report.silent_failures:
-            lines.extend([
-                f"### {result.dataset_name}",
-                "",
-                f"**Task:** `{result.task_name}`",
-                f"**Trace ID:** {result.trace_id or 'N/A'}",
-                f"**Issue:** {result.error_message or 'Unknown issue'}",
-                "",
-            ])
-            if result.scores:
-                lines.extend([
-                    "**Scores:**",
-                    "```json",
-                    json.dumps(result.scores, indent=2),
-                    "```",
+            lines.extend(
+                [
+                    f"### {result.dataset_name}",
                     "",
-                ])
+                    f"**Task:** `{result.task_name}`",
+                    f"**Trace ID:** {result.trace_id or 'N/A'}",
+                    f"**Issue:** {result.error_message or 'Unknown issue'}",
+                    "",
+                ]
+            )
+            if result.scores:
+                lines.extend(
+                    [
+                        "**Scores:**",
+                        "```json",
+                        json.dumps(result.scores, indent=2),
+                        "```",
+                        "",
+                    ]
+                )
             if result.warnings:
                 lines.append("**Warnings:**")
                 for warning in result.warnings:
@@ -590,24 +626,28 @@ def generate_markdown_report(report: TestReport, output_path: str = "benchmark_t
     # Full Error Details section - all tracebacks in one place for easy debugging
     failed_with_tracebacks = [r for r in report.failed if r.error_traceback]
     if failed_with_tracebacks:
-        lines.extend([
-            "---",
-            "",
-            "## 📋 Full Error Tracebacks",
-            "",
-            "_Complete stack traces for all failed benchmarks for debugging purposes._",
-            "",
-        ])
+        lines.extend(
+            [
+                "---",
+                "",
+                "## 📋 Full Error Tracebacks",
+                "",
+                "_Complete stack traces for all failed benchmarks for debugging purposes._",
+                "",
+            ]
+        )
 
         for result in failed_with_tracebacks:
-            lines.extend([
-                f"### {result.dataset_name} (`{result.task_name}`)",
-                "",
-                "```python",
-                result.error_traceback,
-                "```",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### {result.dataset_name} (`{result.task_name}`)",
+                    "",
+                    "```python",
+                    result.error_traceback,
+                    "```",
+                    "",
+                ]
+            )
 
     # Write report
     report_content = "\n".join(lines)
@@ -661,7 +701,11 @@ def print_summary(report: TestReport):
     if report.failed:
         print(f"\nFailed benchmarks:")
         for result in report.failed:
-            error_preview = (result.error_message[:80] + "...") if result.error_message and len(result.error_message) > 80 else (result.error_message or "Unknown error")
+            error_preview = (
+                (result.error_message[:80] + "...")
+                if result.error_message and len(result.error_message) > 80
+                else (result.error_message or "Unknown error")
+            )
             print(f"  - {result.dataset_name}: {error_preview}")
 
     if report.timeouts:
@@ -721,11 +765,13 @@ async def main():
     # Fetch benchmarks
     if args.datasets:
         dataset_names = [d.strip() for d in args.datasets.split(",") if d.strip()]
-        
+
         if args.from_json:
             all_benchmarks = fetch_benchmarks_from_json()
             # Filter locally
-            benchmarks = [b for b in all_benchmarks if b.get("dataset_name") in dataset_names]
+            benchmarks = [
+                b for b in all_benchmarks if b.get("dataset_name") in dataset_names
+            ]
             print(f"Filtered to {len(benchmarks)} benchmarks from JSON")
         else:
             try:
@@ -734,7 +780,9 @@ async def main():
                 print(f"Failed to fetch specific benchmarks from Supabase: {e}")
                 print("Falling back to JSON file...")
                 all_benchmarks = fetch_benchmarks_from_json()
-                benchmarks = [b for b in all_benchmarks if b.get("dataset_name") in dataset_names]
+                benchmarks = [
+                    b for b in all_benchmarks if b.get("dataset_name") in dataset_names
+                ]
 
     elif args.from_json:
         benchmarks = fetch_benchmarks_from_json()
@@ -752,7 +800,7 @@ async def main():
 
     # Run tests
     # Run tests
-    # If datasets are specified, ignore limit unless explicitly desired? 
+    # If datasets are specified, ignore limit unless explicitly desired?
     # Usually valid to just run what was requested. args.limit applies if set.
     report = await run_all_benchmarks(
         benchmarks=benchmarks,

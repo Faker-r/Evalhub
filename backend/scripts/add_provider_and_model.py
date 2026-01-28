@@ -32,10 +32,12 @@ async def main() -> None:
         print(provider.model_dump())
         print(model.model_dump())
 
+
 """
 "openai": "https://api.openai.com/v1",
     "baseten": "https://inference.baseten.co/v1",
 """
+
 
 async def backfill_providers():
     async with async_session() as session:
@@ -60,7 +62,6 @@ async def backfill_providers():
                 provider_ids=[provider.id],
             )
         )
-        
 
 
 if __name__ == "__main__":

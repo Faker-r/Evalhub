@@ -40,7 +40,9 @@ async def add_api_key(
     session: AsyncSession = Depends(get_session),
 ) -> ApiKeyResponse:
     """Add an API key for the current user."""
-    logger.debug(f"Adding API key for user {current_user.id}, provider_id {api_key_data.provider_id}")
+    logger.debug(
+        f"Adding API key for user {current_user.id}, provider_id {api_key_data.provider_id}"
+    )
     return await UserService(session).create_api_key(current_user.id, api_key_data)
 
 
@@ -62,5 +64,7 @@ async def delete_api_key(
     session: AsyncSession = Depends(get_session),
 ) -> None:
     """Delete an API key for the current user."""
-    logger.debug(f"Deleting API key for user {current_user.id}, provider_id {provider_id}")
+    logger.debug(
+        f"Deleting API key for user {current_user.id}, provider_id {provider_id}"
+    )
     await UserService(session).delete_api_key(current_user.id, provider_id)

@@ -1,4 +1,5 @@
 """Entry point for running the FastAPI development server."""
+
 import uvicorn
 
 
@@ -14,4 +15,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

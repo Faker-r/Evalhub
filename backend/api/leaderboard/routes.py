@@ -30,4 +30,3 @@ async def get_leaderboard(
     """
     logger.debug(f"Getting leaderboard for dataset: {dataset_name}")
     return await LeaderboardService(session).get_leaderboard(dataset_name)
-

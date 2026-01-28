@@ -81,4 +81,3 @@ class GuidelineRepository:
         query = select(Guideline).where(Guideline.name == name)
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
-

@@ -4,7 +4,13 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.benchmarks.repository import BenchmarkRepository
-from api.benchmarks.schemas import BenchmarkListResponse, BenchmarkResponse, BenchmarkTaskResponse, BenchmarkTasksListResponse, TaskDetailsResponse
+from api.benchmarks.schemas import (
+    BenchmarkListResponse,
+    BenchmarkResponse,
+    BenchmarkTaskResponse,
+    BenchmarkTasksListResponse,
+    TaskDetailsResponse,
+)
 from api.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -65,7 +71,9 @@ class BenchmarkService:
             if b.tasks_rel:
                 first_task = b.tasks_rel[0]
                 response.default_dataset_size = first_task.dataset_size
-                response.default_estimated_input_tokens = first_task.estimated_input_tokens
+                response.default_estimated_input_tokens = (
+                    first_task.estimated_input_tokens
+                )
             benchmark_responses.append(response)
 
         return BenchmarkListResponse(
@@ -88,7 +96,9 @@ class BenchmarkService:
         benchmark = await self.repository.get_by_id(benchmark_id)
         return BenchmarkResponse.model_validate(benchmark)
 
-    async def get_benchmark_by_dataset_name(self, dataset_name: str) -> Optional[BenchmarkResponse]:
+    async def get_benchmark_by_dataset_name(
+        self, dataset_name: str
+    ) -> Optional[BenchmarkResponse]:
         """Get benchmark by dataset name.
 
         Args:
@@ -117,7 +127,9 @@ class BenchmarkService:
             response.task_details_nested_dict = task_details_nested_dict
         return response
 
-    async def get_benchmark_tasks(self, benchmark_id: int) -> BenchmarkTasksListResponse:
+    async def get_benchmark_tasks(
+        self, benchmark_id: int
+    ) -> BenchmarkTasksListResponse:
         """Get all tasks for a benchmark.
 
         Args:
