@@ -16,14 +16,15 @@ class UserResponse(BaseModel):
 class ApiKeyCreate(BaseModel):
     """API key creation schema."""
 
-    provider: str
+    provider_id: int
     api_key: str
 
 
 class ApiKeyResponse(BaseModel):
     """API key response schema (without the actual key)."""
 
-    provider: str
+    provider_id: int
+    provider_name: str
 
 
 class ApiKeyListResponse(BaseModel):

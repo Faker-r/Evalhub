@@ -13,6 +13,7 @@ import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { ModelSelection } from "@/components/model-selection";
 
 interface ProviderComboboxProps {
   value: string;
@@ -116,10 +117,16 @@ export default function Submit() {
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
   
   // Model configuration
-  const [completionModel, setCompletionModel] = useState("gpt-3.5-turbo");
-  const [judgeModel, setJudgeModel] = useState("gpt-3.5-turbo");
-  const [modelProvider, setModelProvider] = useState("openai");
-  const [judgeProvider, setJudgeProvider] = useState("openai");
+  const [completionModelConfig, setCompletionModelConfig] = useState({
+    provider: "openai",
+    model: "gpt-3.5-turbo",
+    apiBase: undefined as string | undefined,
+  });
+  const [judgeModelConfig, setJudgeModelConfig] = useState({
+    provider: "openai",
+    model: "gpt-3.5-turbo",
+    apiBase: undefined as string | undefined,
+  });
 
   // Fetch datasets
   const { data: datasetsData } = useQuery({
@@ -166,12 +173,14 @@ export default function Submit() {
         judge_type: judgeType!,
         guideline_names: judgeType === "llm_as_judge" ? selectedGuidelines : undefined,
         model_completion_config: {
-          model_name: completionModel,
-          model_provider: modelProvider,
+          model_name: completionModelConfig.model,
+          model_provider: completionModelConfig.provider,
+          api_base: completionModelConfig.apiBase,
         },
         judge_config: judgeType === "llm_as_judge" ? {
-          model_name: judgeModel,
-          model_provider: judgeProvider,
+          model_name: judgeModelConfig.model,
+          model_provider: judgeModelConfig.provider,
+          api_base: judgeModelConfig.apiBase,
         } : undefined,
       }),
     onSuccess: () => {
@@ -201,8 +210,9 @@ export default function Submit() {
           n_samples: numSamples,
         },
         model_completion_config: {
-          model_name: completionModel,
-          model_provider: modelProvider,
+          model_name: completionModelConfig.model,
+          model_provider: completionModelConfig.provider,
+          api_base: completionModelConfig.apiBase,
         },
       }),
     onSuccess: () => {
@@ -873,50 +883,18 @@ export default function Submit() {
                     "grid gap-6",
                     judgeType === "llm_as_judge" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
                   )}>
-                    {/* Completion Model Section */}
-                    <div className="space-y-4">
-                      <h3 className="font-semibold text-lg">Completion Model</h3>
-                      <div className="space-y-2">
-                        <Label>Model Provider</Label>
-                        <ProviderCombobox
-                          value={modelProvider}
-                          onChange={setModelProvider}
-                          placeholder="Select or type provider..."
-                          predefinedOptions={["openai", "anthropic", "baseten"]}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Model Name</Label>
-                        <Input
-                          value={completionModel}
-                          onChange={(e) => setCompletionModel(e.target.value)}
-                          placeholder="e.g., gpt-3.5-turbo"
-                        />
-                      </div>
-                    </div>
+                    <ModelSelection
+                      value={completionModelConfig}
+                      onChange={setCompletionModelConfig}
+                      label="Completion Model"
+                    />
 
-                    {/* Judge Section - Only for LLM as Judge */}
                     {judgeType === "llm_as_judge" && (
-                      <div className="space-y-4">
-                        <h3 className="font-semibold text-lg">Judge Model</h3>
-                        <div className="space-y-2">
-                          <Label>Judge Provider</Label>
-                          <ProviderCombobox
-                            value={judgeProvider}
-                            onChange={setJudgeProvider}
-                            placeholder="Select or type provider..."
-                            predefinedOptions={["openai", "anthropic", "baseten"]}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Judge Model</Label>
-                          <Input
-                            value={judgeModel}
-                            onChange={(e) => setJudgeModel(e.target.value)}
-                            placeholder="e.g., gpt-4"
-                          />
-                        </div>
-                      </div>
+                      <ModelSelection
+                        value={judgeModelConfig}
+                        onChange={setJudgeModelConfig}
+                        label="Judge Model"
+                      />
                     )}
                   </div>
                 )}
@@ -977,12 +955,18 @@ export default function Submit() {
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Judge Model:</span>
-                                  <span className="font-medium">{judgeModel}</span>
+                                  <span className="font-medium">{judgeModelConfig.model}</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-muted-foreground">Judge Provider:</span>
-                                  <span className="font-medium">{judgeProvider}</span>
+                                  <span className="font-medium">{judgeModelConfig.provider}</span>
                                 </div>
+                                {judgeModelConfig.apiBase && (
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Judge API Base:</span>
+                                    <span className="font-medium text-xs">{judgeModelConfig.apiBase}</span>
+                                  </div>
+                                )}
                               </>
                             )}
                           </>
@@ -1009,18 +993,24 @@ export default function Submit() {
                         
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Completion Model:</span>
-                          <span className="font-medium">{completionModel}</span>
+                          <span className="font-medium">{completionModelConfig.model}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Completion Provider:</span>
-                          <span className="font-medium">{modelProvider}</span>
+                          <span className="font-medium">{completionModelConfig.provider}</span>
                         </div>
+                        {completionModelConfig.apiBase && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Completion API Base:</span>
+                            <span className="font-medium text-xs">{completionModelConfig.apiBase}</span>
+                          </div>
+                        )}
                       </div>
                       {apiKeys.length === 0 && (
                         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                           <p className="text-sm text-yellow-800">
                             Warning: No API keys configured. Please add your{" "}
-                            {modelProvider} API key in your profile settings.
+                            {completionModelConfig.provider} API key in your profile settings.
                           </p>
                         </div>
                       )}

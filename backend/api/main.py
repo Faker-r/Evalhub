@@ -8,6 +8,7 @@ from api.datasets.routes import router as datasets_router
 from api.evaluations.routes import router as evaluations_router
 from api.guidelines.routes import router as guidelines_router
 from api.leaderboard.routes import router as leaderboard_router
+from api.models_and_providers.routes import router as models_and_providers_router
 from api.users.routes import router as users_router
 from api.utils.migrations import run_migrations
 
@@ -34,6 +35,7 @@ api_router.include_router(guidelines_router)
 api_router.include_router(evaluations_router)
 api_router.include_router(leaderboard_router)
 api_router.include_router(benchmarks_router)
+api_router.include_router(models_and_providers_router)
 
 # Include the API router in the main app
 app.include_router(api_router)
