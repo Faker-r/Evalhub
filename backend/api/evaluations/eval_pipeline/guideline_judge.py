@@ -8,7 +8,15 @@ from lighteval.models.model_output import ModelResponse
 from lighteval.tasks.requests import Doc, SamplingMethod
 from lighteval.metrics.utils.llm_as_judge import JudgeLM
 from lighteval.metrics import Metric
+from lighteval.utils.utils import as_list
 from api.guidelines.schemas import GuidelineScoringScale
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from tqdm import tqdm
+from openai import OpenAI
+import time
+
+logger = logging.getLogger(__name__)
 
 
 class BooleanScoreResponse(BaseModel):
@@ -133,9 +141,128 @@ def generate_get_judge_prompt_function(
     return fn
 
 
-def process_judge_response(response: str) -> float | int | str:
+def process_judge_response(response: BaseModel | str) -> float | int | str:
     """Process the judge response to extract the score."""
+    if isinstance(response, BaseModel):
+        return response.score
     return json.loads(response)["score"]
+
+
+class WrappedJudgeLM(JudgeLM):
+    """
+    A wrapper around JudgeLM that specifically supports the OpenAI backend
+    and allows passing an `extra_body` parameter to the OpenAI client.
+    """
+
+    def __init__(
+        self,
+        model: str,
+        templates: Callable,
+        process_judge_response: Callable,
+        url: str | None = None,
+        api_key: str | None = None,
+        max_tokens: int | None = None,
+        response_format: BaseModel | None = None,
+        extra_body: dict | None = None,
+    ):
+        super().__init__(
+            model=model,
+            templates=templates,
+            process_judge_response=process_judge_response,
+            judge_backend="openai",
+            url=url,
+            api_key=api_key,
+            max_tokens=max_tokens,
+            response_format=response_format,
+        )
+        self.extra_body = extra_body
+
+    def evaluate_answer_batch(
+        self,
+        questions: list[str],
+        answers: list[str],
+        options: list[list[str]] | list[None],
+        golds: list[str] | list[None],
+        **kwargs,
+    ):
+        judge_function = self._lazy_load_client()
+
+        kwargss = self.dict_of_lists_to_list_of_dicts(kwargs)
+        if kwargss is None:
+            kwargss = [{} for _ in range(len(questions))]
+
+        prompts = [
+            self.template(question=q, answer=a, options=o, gold=g, **k)
+            for q, a, o, g, k in zip(questions, answers, options, golds, kwargss)
+        ]
+        responses = judge_function(prompts)
+        scores = [self.process_judge_response(response) for response in responses]
+
+        return scores, prompts, responses
+
+    def evaluate_answer(self, question: str, answer: str, options: list[str] | None = None, gold: str | None = None):
+        judge_function = self._lazy_load_client()
+        prompt = self.template(question=question, options=options, answer=answer, gold=gold)
+        response = judge_function(prompt)
+        score = self.process_judge_response(response)
+
+        return score, prompt, response
+
+    def _lazy_load_client(self):
+        if self.client is None:
+            self.client = OpenAI(
+                api_key=self.api_key, base_url=self.url
+            )
+        return self._call_api_parallel
+
+    def _call_api_parallel(self, prompts):
+        results = []
+        with ThreadPoolExecutor(10) as executor:
+            for entry in tqdm(executor.map(self._call_api, prompts), total=len(prompts)):
+                results.append(entry)
+
+        if None in results:
+            raise ValueError("Some entries are not annotated due to errors in annotate_p, please inspect and retry.")
+
+        return results
+
+    def _call_api(self, prompt):
+        for _ in range(self.API_MAX_RETRY):
+            try:
+                # Base model
+                response = self.client.beta.chat.completions.parse(
+                    model=self.model,
+                    messages=as_list(prompt),
+                    response_format=self.response_format,
+                    max_tokens=self.max_tokens,
+                    temperature=0.0,
+                    n=1,
+                    extra_body=self.extra_body,
+                )
+                answer = response.choices[0].message.parsed
+                return answer
+            except TypeError:
+                try:
+                    # Finetune
+                    response = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=as_list(prompt),
+                        response_format=self.response_format,
+                        max_tokens=self.max_tokens,
+                        n=1,
+                        extra_body=self.extra_body,
+                    )
+                    text = response.choices[0].message.content
+                    return text
+                except Exception as e:
+                    logger.warning(f"{type(e), e}")
+                    time.sleep(self.API_RETRY_SLEEP)
+            except Exception as e:
+                logger.warning(f"{type(e), e}")
+                time.sleep(self.API_RETRY_SLEEP)
+
+
+        raise Exception("Failed to get response from the API")
 
 
 class GuidelineJudgeMetric(Metric):
@@ -147,6 +274,7 @@ class GuidelineJudgeMetric(Metric):
         model: str,
         url: str,
         api_key: str,
+        extra_body: dict | None = None,
     ):
         self.guideline = guideline
         self.guideline_scoring_scale = self._init_guideline_scoring_scale()
@@ -161,7 +289,7 @@ class GuidelineJudgeMetric(Metric):
             in (GuidelineScoringScale.NUMERIC, GuidelineScoringScale.PERCENTAGE)
             else False
         )
-        self.judge = JudgeLM(
+        self.judge = WrappedJudgeLM(
             model=model,
             templates=generate_get_judge_prompt_function(
                 guideline, self.guideline_scoring_scale
@@ -172,7 +300,7 @@ class GuidelineJudgeMetric(Metric):
             response_format=self.guideline_scoring_scale.generate_response_class(
                 guideline
             ),
-            judge_backend="litellm",
+            extra_body=extra_body,
         )
 
     def _init_guideline_scoring_scale(self) -> GuidelineScoringScaleAbstract:

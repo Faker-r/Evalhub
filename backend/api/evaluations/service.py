@@ -412,6 +412,38 @@ class EvaluationService:
 
         return model_config
     
+    async def _create_judge_client_parameters(
+        self, judge_config: ModelConfig
+    ) -> dict:
+        if judge_config.api_source == "standard":
+            model_api_key = self.s3.download_api_key(
+                self.user_id, judge_config.model_provider_slug
+            )
+            model_name, model_url = await self._get_model_api_name_and_base_url(
+                judge_config.model_provider_id,
+                judge_config.model_id,
+            )
+            return {
+                "model_name": model_name,
+                "base_url": model_url,
+                "api_key": model_api_key,
+            }
+        else:
+            model_api_key = self.s3.download_api_key(
+                self.user_id, OPENROUTER_PROVIDER_SLUG
+            )
+            return {
+                "model_name": judge_config.model_slug,
+                "base_url": OPENROUTER_API_BASE,
+                "api_key": model_api_key,
+                "extra_body": {
+                        "provider": {
+                            "order": [judge_config.model_provider_slug],
+                            "allow_fallbacks": False,
+                        }
+                    },
+            }
+
     async def _run_lighteval_pipeline(
         self,
         request: EvaluationRequest,
@@ -424,14 +456,8 @@ class EvaluationService:
             dict with keys: summary, scores, sample_count, temp_dir
         """
         # Get API key for judge model
-        judge_api_key = self.s3.download_api_key(
-            self.user_id, request.judge_config.model_provider_slug
-        )
-        judge_url = request.judge_config.api_base or DEFAULT_API_BASES.get(
-            request.judge_config.model_provider_slug, DEFAULT_API_BASES["openai"]
-        )
-        judge_model_name = (
-            f"{request.judge_config.model_provider_slug}/{request.judge_config.model_name}"
+        judge_client_parameters = await self._create_judge_client_parameters(
+            request.judge_config
         )
 
         # Create judge metrics from guidelines
@@ -440,9 +466,10 @@ class EvaluationService:
             guideline_dict = self._convert_guideline_to_dict(guideline)
             metric = GuidelineJudgeMetric(
                 guideline=guideline_dict,
-                model=judge_model_name,
-                url=judge_url,
-                api_key=judge_api_key,
+                model=judge_client_parameters["model_name"],
+                url=judge_client_parameters["base_url"],
+                api_key=judge_client_parameters["api_key"],
+                extra_body=judge_client_parameters.get("extra_body", {}),
             )
             metrics.append(metric)
 
@@ -561,23 +588,18 @@ class EvaluationService:
         """Run flexible evaluation using lighteval pipeline."""
         guideline_metrics = []
         if request.judge_type == JudgeType.LLM_AS_JUDGE and request.judge_config:
-            judge_api_key = self.s3.download_api_key(
-                self.user_id, request.judge_config.model_provider_slug
-            )
-            judge_url = request.judge_config.api_base or DEFAULT_API_BASES.get(
-                request.judge_config.model_provider_slug, DEFAULT_API_BASES["openai"]
-            )
-            judge_model_name = (
-                f"{request.judge_config.model_provider_slug}/{request.judge_config.model_name}"
+            judge_client_parameters = await self._create_judge_client_parameters(
+                request.judge_config
             )
 
             for guideline in guidelines:
                 guideline_dict = self._convert_guideline_to_dict(guideline)
                 metric = GuidelineJudgeMetric(
                     guideline=guideline_dict,
-                    model=judge_model_name,
-                    url=judge_url,
-                    api_key=judge_api_key,
+                    model=judge_client_parameters["model_name"],
+                    url=judge_client_parameters["base_url"],
+                    api_key=judge_client_parameters["api_key"],
+                    extra_body=judge_client_parameters.get("extra_body", {}),
                 )
                 guideline_metrics.append(metric)
 

@@ -43,21 +43,17 @@ type ApiSource = 'standard' | 'openrouter';
 type OpenRouterTab = 'by-provider' | 'by-model';
 
 export function ModelSelection({ value, onChange, label = 'Model Selection' }: ModelSelectionProps) {
-  // API Source selection
-  const [apiSource, setApiSource] = useState<ApiSource>('standard');
+  // Derive API source from value prop
+  const apiSource: ApiSource = value.is_openrouter ? 'openrouter' : 'standard';
   const [openRouterTab, setOpenRouterTab] = useState<OpenRouterTab>('by-provider');
 
   // Standard providers state
   const [standardProviders, setStandardProviders] = useState<any[]>([]);
   const [standardModels, setStandardModels] = useState<any[]>([]);
-  const [selectedStandardProvider, setSelectedStandardProvider] = useState<number | null>(null);
-  const [selectedStandardModel, setSelectedStandardModel] = useState<number | null>(null);
 
   // OpenRouter state
   const [openRouterProviders, setOpenRouterProviders] = useState<any[]>([]);
   const [openRouterModels, setOpenRouterModels] = useState<any[]>([]);
-  const [selectedOpenRouterProvider, setSelectedOpenRouterProvider] = useState<string>('');
-  const [selectedOpenRouterModel, setSelectedOpenRouterModel] = useState<string>('');
   const [openRouterProvidersByModel, setOpenRouterProvidersByModel] = useState<any[]>([]);
 
   // Loading states
@@ -90,24 +86,24 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
 
   // Fetch standard models when provider changes
   useEffect(() => {
-    if (selectedStandardProvider) {
-      fetchStandardModels(selectedStandardProvider);
+    if (value.provider_id && !value.is_openrouter) {
+      fetchStandardModels(value.provider_id);
     }
-  }, [selectedStandardProvider]);
+  }, [value.provider_id]);
 
   // Fetch OpenRouter models when provider changes
   useEffect(() => {
-    if (selectedOpenRouterProvider && openRouterTab === 'by-provider') {
-      fetchOpenRouterModelsByProvider(selectedOpenRouterProvider);
+    if (value.openrouter_provider_slug && openRouterTab === 'by-provider' && value.is_openrouter) {
+      fetchOpenRouterModelsByProvider(value.openrouter_provider_slug);
     }
-  }, [selectedOpenRouterProvider]);
+  }, [value.openrouter_provider_slug, openRouterTab]);
 
   // Fetch providers by model when OpenRouter model changes
   useEffect(() => {
-    if (selectedOpenRouterModel && openRouterTab === 'by-model') {
-      fetchOpenRouterProvidersByModel(selectedOpenRouterModel);
+    if (value.openrouter_model_id && openRouterTab === 'by-model' && value.is_openrouter) {
+      fetchOpenRouterProvidersByModel(value.openrouter_model_id);
     }
-  }, [selectedOpenRouterModel]);
+  }, [value.openrouter_model_id, openRouterTab]);
 
   const fetchStandardProviders = async () => {
     setLoadingStandardProviders(true);
@@ -189,21 +185,29 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
 
   const handleStandardProviderChange = (providerId: string) => {
     const id = parseInt(providerId);
-    setSelectedStandardProvider(id);
-    setSelectedStandardModel(null);
+    const provider = standardProviders.find((p) => p.id === id);
+
+    if (provider) {
+      // Reset to provider-only config, clear model selection
+      onChange({
+        provider_id: provider.id,
+        provider_name: provider.name,
+        provider_slug: provider.slug || provider.name,
+        is_openrouter: false,
+      });
+    }
     setStandardModels([]);
   };
 
   const handleStandardModelChange = (modelId: string) => {
     const id = parseInt(modelId);
-    setSelectedStandardModel(id);
 
     // Find the selected model
     const model = standardModels.find((m) => m.id === id);
 
     if (model) {
       // Find the provider for this model from the model's providers array
-      const provider = model.providers.find((p: any) => p.id === selectedStandardProvider);
+      const provider = model.providers.find((p: any) => p.id === value.provider_id);
 
       if (provider) {
         onChange({
@@ -221,14 +225,15 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
   };
 
   const handleOpenRouterProviderChange = (providerName: string) => {
-    setSelectedOpenRouterProvider(providerName);
-    setSelectedOpenRouterModel('');
+    // Reset to provider-only config, clear model selection
+    onChange({
+      is_openrouter: true,
+      openrouter_provider_slug: providerName,
+    });
     setOpenRouterModels([]);
   };
 
   const handleOpenRouterModelChange = (modelId: string) => {
-    setSelectedOpenRouterModel(modelId);
-
     // Find the model to get its name
     const model = openRouterModels.find((m) => m.id === modelId);
 
@@ -237,7 +242,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
       is_openrouter: true,
       openrouter_model_id: modelId,
       openrouter_model_name: model?.name || modelId,
-      openrouter_provider_slug: selectedOpenRouterProvider || undefined,
+      openrouter_provider_slug: value.openrouter_provider_slug || undefined,
     });
   };
 
@@ -251,16 +256,26 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
         {/* Step 1: API Source Selection */}
         <div className="space-y-3">
           <Label>API Source</Label>
-          <RadioGroup value={apiSource} onValueChange={(val) => setApiSource(val as ApiSource)}>
+          <RadioGroup
+            value={apiSource}
+            onValueChange={(val) => {
+              // Reset config when switching API source
+              if (val === 'openrouter') {
+                onChange({ is_openrouter: true });
+              } else {
+                onChange({ is_openrouter: false });
+              }
+            }}
+          >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="standard" id="standard" />
-              <Label htmlFor="standard" className="font-normal cursor-pointer">
+              <RadioGroupItem value="standard" id={`standard-${label}`} />
+              <Label htmlFor={`standard-${label}`} className="font-normal cursor-pointer">
                 Standard Providers
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="openrouter" id="openrouter" />
-              <Label htmlFor="openrouter" className="font-normal cursor-pointer">
+              <RadioGroupItem value="openrouter" id={`openrouter-${label}`} />
+              <Label htmlFor={`openrouter-${label}`} className="font-normal cursor-pointer">
                 OpenRouter
               </Label>
             </div>
@@ -277,7 +292,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
                 <Skeleton className="h-10 w-full" />
               ) : (
                 <Select
-                  value={selectedStandardProvider?.toString() || ''}
+                  value={value.provider_id?.toString() || ''}
                   onValueChange={handleStandardProviderChange}
                 >
                   <SelectTrigger>
@@ -301,14 +316,14 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
             </div>
 
             {/* Model Selection */}
-            {selectedStandardProvider && (
+            {value.provider_id && (
               <div className="space-y-2">
                 <Label>Model</Label>
                 {loadingStandardModels ? (
                   <Skeleton className="h-10 w-full" />
                 ) : (
                   <Select
-                    value={selectedStandardModel?.toString() || ''}
+                    value={value.model_id?.toString() || ''}
                     onValueChange={handleStandardModelChange}
                   >
                     <SelectTrigger>
@@ -351,7 +366,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
                   <Skeleton className="h-10 w-full" />
                 ) : (
                   <Select
-                    value={selectedOpenRouterProvider}
+                    value={value.openrouter_provider_slug || ''}
                     onValueChange={handleOpenRouterProviderChange}
                   >
                     <SelectTrigger>
@@ -375,14 +390,14 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
               </div>
 
               {/* Model Selection */}
-              {selectedOpenRouterProvider && (
+              {value.openrouter_provider_slug && (
                 <div className="space-y-2">
                   <Label>Model</Label>
                   {loadingOpenRouterModels ? (
                     <Skeleton className="h-10 w-full" />
                   ) : (
                     <Select
-                      value={selectedOpenRouterModel}
+                      value={value.openrouter_model_id || ''}
                       onValueChange={handleOpenRouterModelChange}
                     >
                       <SelectTrigger>
@@ -423,7 +438,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
                   <Skeleton className="h-10 w-full" />
                 ) : (
                   <Select
-                    value={selectedOpenRouterModel}
+                    value={value.openrouter_model_id || ''}
                     onValueChange={handleOpenRouterModelChange}
                   >
                     <SelectTrigger>
@@ -450,7 +465,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
               </div>
 
               {/* Show available providers for selected model */}
-              {selectedOpenRouterModel && (
+              {value.openrouter_model_id && (
                 <div className="space-y-2">
                   <Label>Available Providers</Label>
                   {loadingOpenRouterProvidersByModel ? (
