@@ -349,6 +349,8 @@ class ApiClient {
         files: string[] | null;
         created_at: string;
         updated_at: string;
+        default_dataset_size: number | null;
+        default_estimated_input_tokens: number | null;
       }[];
       total: number;
       page: number;

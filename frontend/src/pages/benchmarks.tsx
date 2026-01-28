@@ -113,13 +113,29 @@ export default function Benchmarks() {
     },
   });
 
-  const allBenchmarks = data?.benchmarks || [];
-  const totalPages = Math.max(1, Math.ceil(allBenchmarks.length / ITEMS_PER_PAGE));
-  
+  // Sort benchmarks - server handles downloads/dataset_name, client handles default_dataset_size
+  const sortedBenchmarks = useMemo(() => {
+    const benchmarks = data?.benchmarks || [];
+
+    // Client-side sorting for computed field (default_dataset_size)
+    if (sortBy === "default_dataset_size") {
+      return [...benchmarks].sort((a, b) => {
+        const aVal = a.default_dataset_size ?? 0;
+        const bVal = b.default_dataset_size ?? 0;
+        return sortOrder === "desc" ? bVal - aVal : aVal - bVal;
+      });
+    }
+
+    // Server already sorted for other fields
+    return benchmarks;
+  }, [data?.benchmarks, sortBy, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedBenchmarks.length / ITEMS_PER_PAGE));
+
   const currentBenchmarks = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return allBenchmarks.slice(start, start + ITEMS_PER_PAGE);
-  }, [allBenchmarks, currentPage]);
+    return sortedBenchmarks.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedBenchmarks, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -267,7 +283,7 @@ export default function Benchmarks() {
             Browse tasks by language, tags and search the task descriptions.
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            {allBenchmarks.length} tasks
+            {sortedBenchmarks.length} tasks
           </p>
         </div>
 
@@ -303,10 +319,10 @@ export default function Benchmarks() {
                       setSortBy("downloads");
                       setSortOrder("desc");
                     } else if (value === "largest_dataset") {
-                      setSortBy("dataset_size");
+                      setSortBy("default_dataset_size");
                       setSortOrder("desc");
                     } else if (value === "alphabetical") {
-                      setSortBy("task_name");
+                      setSortBy("dataset_name");
                       setSortOrder("asc");
                     }
                   }}
@@ -409,7 +425,7 @@ export default function Benchmarks() {
                 <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
                 <p className="mt-4 text-muted-foreground">Loading benchmarks...</p>
               </div>
-            ) : allBenchmarks.length === 0 ? (
+            ) : sortedBenchmarks.length === 0 ? (
               <Card>
                 <CardContent className="pt-12 pb-12 text-center">
                   <p className="text-muted-foreground">No benchmarks found matching your filters.</p>
@@ -468,12 +484,26 @@ export default function Benchmarks() {
                           )}
                         
                           <div className="mt-auto space-y-2 flex-shrink-0">
-                            {benchmark.downloads && (
+                            {(benchmark.downloads || benchmark.default_dataset_size || benchmark.default_estimated_input_tokens) && (
                               <div className="flex items-center gap-4 text-xs text-muted-foreground pb-2">
-                                <div className="flex items-center gap-1" title="Downloads">
-                                  <Download className="w-3 h-3" />
-                                  <span>{benchmark.downloads.toLocaleString()}</span>
-                                </div>
+                                {benchmark.downloads && (
+                                  <div className="flex items-center gap-1" title="Downloads">
+                                    <Download className="w-3 h-3" />
+                                    <span>{benchmark.downloads.toLocaleString()}</span>
+                                  </div>
+                                )}
+                                {benchmark.default_dataset_size && (
+                                  <div className="flex items-center gap-1" title="Dataset Size">
+                                    <Database className="w-3 h-3" />
+                                    <span>{benchmark.default_dataset_size.toLocaleString()}</span>
+                                  </div>
+                                )}
+                                {benchmark.default_estimated_input_tokens && (
+                                  <div className="flex items-center gap-1" title="Estimated Tokens">
+                                    <Box className="w-3 h-3" />
+                                    <span>~{benchmark.default_estimated_input_tokens.toLocaleString()}</span>
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -648,7 +678,7 @@ export default function Benchmarks() {
                                             {taskData.estimated_input_tokens && (
                                               <div className="flex items-center gap-1">
                                                 <Box className="w-3 h-3" />
-                                                <span>{taskData.estimated_input_tokens.toLocaleString()} tokens</span>
+                                                <span>~{taskData.estimated_input_tokens.toLocaleString()} tokens</span>
                                               </div>
                                             )}
                                           </div>

@@ -236,7 +236,7 @@ def estimate_avg_tokens_per_sample(
     evaluation_splits: list[str],
     token: Optional[str] = None,
     max_samples: int = 50,
-    timeout: int = 60
+    timeout: int = 30
 ) -> Optional[int]:
     """
     Estimate the average number of input tokens per sample by tokenizing samples
