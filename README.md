@@ -1,8 +1,8 @@
 # backend
 
-- python 3.12
-- pip install -e .
-- python -m api
+- python 3.12 + poetry
+- bash bootstrap.sh
+- poetry run python -m api
 
 # frontend
 
