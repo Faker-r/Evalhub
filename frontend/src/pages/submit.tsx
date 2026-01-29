@@ -421,7 +421,7 @@ export default function Submit() {
 
   const NestedValue = ({ value, depth = 0 }: { value: any; depth?: number }) => {
     const [isExpanded, setIsExpanded] = useState(false);
-    
+
     if (value === null || value === undefined) {
       return <span className="text-gray-400 italic">null</span>;
     }
@@ -473,7 +473,6 @@ export default function Submit() {
             <div className="ml-4 pl-2 border-l-2 border-gray-200 space-y-1">
               {value.map((item, idx) => (
                 <div key={idx} className="text-xs">
-                  <span className="text-gray-500">[{idx}]:</span>{' '}
                   <NestedValue value={item} depth={depth + 1} />
                 </div>
               ))}

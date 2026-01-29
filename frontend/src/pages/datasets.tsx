@@ -333,16 +333,64 @@ export default function Datasets() {
                  <div className="flex justify-center p-8">
                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                  </div>
-              ) : previewData?.samples ? (
-                <div className="space-y-4">
-                  {previewData.samples.map((sample, idx) => (
-                    <Card key={idx} className="bg-muted/50">
-                      <CardContent className="p-4 overflow-x-auto">
-                        <pre className="text-xs">{JSON.stringify(sample, null, 2)}</pre>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
+              ) : previewData?.samples && previewData.samples.length > 0 ? (
+                <div className="overflow-x-auto">
+                  {(() => {
+                    // Get all unique keys from all samples
+                    const allKeys = Array.from(
+                      new Set(
+                        previewData.samples.flatMap((sample) => Object.keys(sample))
+                      )
+                    );
+
+                    return (
+                      <div className="border rounded-md">
+                        <Table>
+                          <TableHeader className="sticky top-0">
+                            <TableRow>
+                              <TableHead className="w-12">#</TableHead>
+                              {allKeys.map((key) => (
+                                <TableHead key={key}>{key}</TableHead>
+                              ))}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {previewData.samples.map((sample, idx) => (
+                              <TableRow key={idx}>
+                                <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                                {allKeys.map((key) => (
+                                  <TableCell key={key} className="max-w-md">
+                                    <div
+                                      className="truncate"
+                                      title={
+                                        typeof sample[key] === 'object'
+                                          ? JSON.stringify(sample[key], null, 2)
+                                          : String(sample[key] ?? '')
+                                      }
+                                    >
+                                      {sample[key] === undefined || sample[key] === null ? (
+                                        <span className="text-muted-foreground italic">—</span>
+                                      ) : typeof sample[key] === 'object' ? (
+                                        <span className="font-mono text-xs">
+                                          {Array.isArray(sample[key])
+                                            ? `[${sample[key].length} items]`
+                                            : `{${Object.keys(sample[key]).length} fields}`
+                                          }
+                                        </span>
+                                      ) : (
+                                        String(sample[key])
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    );
+                  })()}
+                </div>
               ) : (
                   <div className="text-center text-muted-foreground p-4">
                       No preview available
@@ -355,3 +403,4 @@ export default function Datasets() {
     </Layout>
   );
 }
+
