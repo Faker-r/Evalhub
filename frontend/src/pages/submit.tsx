@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server, ChevronDown } from "lucide-react";
+import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server, ChevronDown, Eye, Search } from "lucide-react";
 import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,7 @@ interface ModelConfig {
   openrouter_model_name?: string;
   openrouter_provider_slug?: string;
 }
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ProviderComboboxProps {
   value: string;
@@ -158,8 +159,10 @@ export default function Submit() {
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
   
   // Model configuration
-  const [completionModelConfig, setCompletionModelConfig] = useState<ModelConfig>({});
-  const [judgeModelConfig, setJudgeModelConfig] = useState<ModelConfig>({});
+  const [completionModel, setCompletionModel] = useState("gpt-3.5-turbo");
+  const [judgeModel, setJudgeModel] = useState("gpt-3.5-turbo");
+  const [modelProvider, setModelProvider] = useState("openai");
+  const [judgeProvider, setJudgeProvider] = useState("openai");
 
   // Fetch datasets
   const { data: datasetsData } = useQuery({
@@ -189,10 +192,27 @@ export default function Submit() {
     enabled: isAuthenticated,
   });
 
+  const { data: previewData, isLoading: isPreviewLoading } = useQuery({
+    queryKey: ['dataset-preview', previewDatasetId],
+    queryFn: () => previewDatasetId ? apiClient.getDatasetPreview(previewDatasetId) : null,
+    enabled: !!previewDatasetId && previewModalOpen,
+  });
+
   const datasets = datasetsData?.datasets || [];
   const benchmarks = benchmarksData?.benchmarks || [];
   const guidelines = guidelinesData?.guidelines || [];
   const apiKeys = apiKeysData?.api_key_providers || [];
+
+  // Filter datasets and benchmarks
+  const filteredDatasets = datasets.filter((ds: any) => 
+    ds.name.toLowerCase().includes(datasetSearch.toLowerCase()) || 
+    ds.category.toLowerCase().includes(datasetSearch.toLowerCase())
+  );
+
+  const filteredBenchmarks = benchmarks.filter((bm: any) => 
+    bm.dataset_name.toLowerCase().includes(benchmarkSearch.toLowerCase()) || 
+    (bm.description && bm.description.toLowerCase().includes(benchmarkSearch.toLowerCase()))
+  );
 
   // Submit flexible evaluation
   const submitFlexibleMutation = useMutation({
@@ -337,6 +357,12 @@ export default function Submit() {
     }
   };
 
+  const handlePreviewDataset = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPreviewDatasetId(id);
+    setPreviewModalOpen(true);
+  };
+
   const toggleGuideline = (guidelineName: string) => {
     if (selectedGuidelines.includes(guidelineName)) {
       setSelectedGuidelines(selectedGuidelines.filter((g) => g !== guidelineName));
@@ -395,7 +421,7 @@ export default function Submit() {
 
   const NestedValue = ({ value, depth = 0 }: { value: any; depth?: number }) => {
     const [isExpanded, setIsExpanded] = useState(false);
-    
+
     if (value === null || value === undefined) {
       return <span className="text-gray-400 italic">null</span>;
     }
@@ -447,7 +473,6 @@ export default function Submit() {
             <div className="ml-4 pl-2 border-l-2 border-gray-200 space-y-1">
               {value.map((item, idx) => (
                 <div key={idx} className="text-xs">
-                  <span className="text-gray-500">[{idx}]:</span>{' '}
                   <NestedValue value={item} depth={depth + 1} />
                 </div>
               ))}
@@ -531,28 +556,48 @@ export default function Submit() {
                 {currentStep === 1 && (
                   <div className="space-y-6">
                     <div className="space-y-4">
-                      <Label className="text-lg font-semibold">Select a Dataset</Label>
-                      {datasets.length === 0 ? (
+                      <div className="flex items-center justify-between">
+                         <Label className="text-lg font-semibold">Select a Dataset</Label>
+                         <div className="relative w-full max-w-xs">
+                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                             <Input 
+                               placeholder="Search datasets..." 
+                               className="pl-8"
+                               value={datasetSearch}
+                               onChange={(e) => setDatasetSearch(e.target.value)}
+                             />
+                         </div>
+                      </div>
+                      
+                      {filteredDatasets.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
-                          No datasets available. Please upload one first.
+                          {datasets.length === 0 ? "No datasets available. Please upload one first." : "No datasets match your search."}
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {datasets.map((ds) => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                          {filteredDatasets.map((ds: any) => (
                             <div
                               key={ds.id}
                               onClick={() => handleSelectDataset(ds)}
                               className={cn(
-                                "border p-4 rounded-lg cursor-pointer transition-all",
+                                "border p-4 rounded-lg cursor-pointer transition-all relative",
                                 selectedDataset === ds.name
                                   ? "border-mint-500 bg-mint-50/20"
                                   : "border-border hover:border-mint-300"
                               )}
                             >
-                              <div className="font-bold text-lg mb-1">{ds.name}</div>
+                              <div className="font-bold text-lg mb-1 pr-8">{ds.name}</div>
                               <div className="text-sm text-muted-foreground">
                                 {ds.category} • {ds.sample_count} samples
                               </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="absolute top-2 right-2 h-8 w-8 p-0"
+                                onClick={(e) => handlePreviewDataset(ds.id, e)}
+                              >
+                                <Eye className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                              </Button>
                             </div>
                           ))}
                         </div>
@@ -569,14 +614,26 @@ export default function Submit() {
                     </div>
 
                     <div className="space-y-4">
-                      <Label className="text-lg font-semibold">Select a Benchmark</Label>
-                      {benchmarks.length === 0 ? (
+                      <div className="flex items-center justify-between">
+                         <Label className="text-lg font-semibold">Select a Benchmark</Label>
+                         <div className="relative w-full max-w-xs">
+                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                             <Input 
+                               placeholder="Search benchmarks..." 
+                               className="pl-8"
+                               value={benchmarkSearch}
+                               onChange={(e) => setBenchmarkSearch(e.target.value)}
+                             />
+                         </div>
+                      </div>
+                      
+                      {filteredBenchmarks.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
-                          No benchmarks available.
+                           {benchmarks.length === 0 ? "No benchmarks available." : "No benchmarks match your search."}
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                          {benchmarks.map((benchmark) => (
+                          {filteredBenchmarks.map((benchmark: any) => (
                             <div
                               key={benchmark.id}
                               onClick={() => handleSelectBenchmark(benchmark)}
@@ -1078,6 +1135,96 @@ export default function Submit() {
           </div>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {previewModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Dataset Preview</h3>
+              <button
+                onClick={() => setPreviewModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {isPreviewLoading ? (
+              <div className="text-center py-4">
+                <svg role="status" className="inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600" viewBox="0 0 100 101" fill="none">
+                  <path d="M50 100C77.6142 100 100 77.6142 100 50C100 22.3858 77.6142 0 50 0C22.3858 0 0 22.3858 0 50C0 77.6142 22.3858 100 50 100Z" fill="currentColor"/>
+                  <path d="M93.9706 50C93.9706 73.7973 73.7973 93.9706 50 93.9706C26.2027 93.9706 6.02941 73.7973 6.02941 50C6.02941 26.2027 26.2027 6.02941 50 6.02941C73.7973 6.02941 93.9706 26.2027 93.9706 50Z" stroke="white" strokeWidth="2"/>
+                </svg>
+              </div>
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                {previewData?.fields?.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    No fields available for preview.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {previewData?.fields?.map((field: any, idx: number) => (
+                      <div key={idx} className="p-4 bg-gray-50 rounded-lg shadow-sm">
+                        <div className="font-semibold text-gray-800">{field.name}</div>
+                        <div className="text-sm text-gray-500">{field.type}</div>
+                        <div className="mt-2">
+                          <Label className="text-xs font-medium text-gray-700">Sample Values</Label>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {field.sample_values.length === 0 ? (
+                              <span className="text-gray-400 italic">No sample values</span>
+                            ) : (
+                              field.sample_values.map((value: any, valueIdx: number) => (
+                                <span key={valueIdx} className="text-xs bg-mint-50 text-mint-700 rounded-full px-3 py-1">
+                                  {String(value)}
+                                </span>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Preview Dialog */}
+      <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Dataset Content</DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto min-h-0 py-4">
+            {isPreviewLoading ? (
+               <div className="flex justify-center p-8">
+                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+               </div>
+            ) : previewData?.samples ? (
+              <div className="space-y-4">
+                {previewData.samples.map((sample: any, idx: number) => (
+                  <Card key={idx} className="bg-muted/50">
+                    <CardContent className="p-4 overflow-x-auto">
+                      <pre className="text-xs">{JSON.stringify(sample, null, 2)}</pre>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+                <div className="text-center text-muted-foreground p-4">
+                    No preview available
+                </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

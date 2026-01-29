@@ -259,6 +259,10 @@ class ApiClient {
     }>('/datasets');
   }
 
+  async getDatasetPreview(id: number) {
+    return this.request<{ samples: any[] }>(`/datasets/${id}/preview`);
+  }
+
   // Guideline endpoints
   async createGuideline(data: {
     name: string;

@@ -16,3 +16,9 @@ class DatasetListResponse(BaseModel):
     """Response schema for listing datasets."""
 
     datasets: list[DatasetResponse]
+
+
+class DatasetPreviewResponse(BaseModel):
+    """Response schema for dataset preview."""
+
+    samples: list[dict]
