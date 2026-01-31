@@ -163,6 +163,13 @@ export default function Submit() {
   const [judgeModel, setJudgeModel] = useState("gpt-3.5-turbo");
   const [modelProvider, setModelProvider] = useState("openai");
   const [judgeProvider, setJudgeProvider] = useState("openai");
+  const [completionModelConfig, setCompletionModelConfig] = useState<ModelConfig>({});
+  const [judgeModelConfig, setJudgeModelConfig] = useState<ModelConfig>({});
+
+  const [datasetSearch, setDatasetSearch] = useState("");
+  const [benchmarkSearch, setBenchmarkSearch] = useState("");
+  const [previewDatasetId, setPreviewDatasetId] = useState<number | null>(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   // Fetch datasets
   const { data: datasetsData } = useQuery({
@@ -205,12 +212,12 @@ export default function Submit() {
 
   // Filter datasets and benchmarks
   const filteredDatasets = datasets.filter((ds: any) => 
-    ds.name.toLowerCase().includes(datasetSearch.toLowerCase()) || 
-    ds.category.toLowerCase().includes(datasetSearch.toLowerCase())
+    (ds.name && ds.name.toLowerCase().includes(datasetSearch.toLowerCase())) || 
+    (ds.category && ds.category.toLowerCase().includes(datasetSearch.toLowerCase()))
   );
 
   const filteredBenchmarks = benchmarks.filter((bm: any) => 
-    bm.dataset_name.toLowerCase().includes(benchmarkSearch.toLowerCase()) || 
+    (bm.dataset_name && bm.dataset_name.toLowerCase().includes(benchmarkSearch.toLowerCase())) || 
     (bm.description && bm.description.toLowerCase().includes(benchmarkSearch.toLowerCase()))
   );
 
@@ -1161,32 +1168,38 @@ export default function Submit() {
               </div>
             ) : (
               <div className="max-h-80 overflow-y-auto">
-                {previewData?.fields?.length === 0 ? (
+                {!previewData?.samples?.length ? (
                   <div className="text-center py-4 text-gray-500">
-                    No fields available for preview.
+                    No samples available for preview.
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {previewData?.fields?.map((field: any, idx: number) => (
-                      <div key={idx} className="p-4 bg-gray-50 rounded-lg shadow-sm">
-                        <div className="font-semibold text-gray-800">{field.name}</div>
-                        <div className="text-sm text-gray-500">{field.type}</div>
-                        <div className="mt-2">
-                          <Label className="text-xs font-medium text-gray-700">Sample Values</Label>
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            {field.sample_values.length === 0 ? (
-                              <span className="text-gray-400 italic">No sample values</span>
-                            ) : (
-                              field.sample_values.map((value: any, valueIdx: number) => (
-                                <span key={valueIdx} className="text-xs bg-mint-50 text-mint-700 rounded-full px-3 py-1">
-                                  {String(value)}
-                                </span>
-                              ))
-                            )}
+                    {(() => {
+                      const samples = previewData.samples;
+                      const fieldNames = [...new Set(samples.flatMap((s: any) => Object.keys(s || {})))];
+                      return fieldNames.map((fieldName: string, idx: number) => {
+                        const sampleValues = samples.map((s: any) => s?.[fieldName]).filter((v: any) => v !== undefined);
+                        return (
+                          <div key={idx} className="p-4 bg-gray-50 rounded-lg shadow-sm">
+                            <div className="font-semibold text-gray-800">{fieldName}</div>
+                            <div className="mt-2">
+                              <Label className="text-xs font-medium text-gray-700">Sample Values</Label>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {sampleValues.length === 0 ? (
+                                  <span className="text-gray-400 italic">No sample values</span>
+                                ) : (
+                                  sampleValues.slice(0, 5).map((value: any, valueIdx: number) => (
+                                    <span key={valueIdx} className="text-xs bg-mint-50 text-mint-700 rounded-full px-3 py-1">
+                                      {String(value)}
+                                    </span>
+                                  ))
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    ))}
+                        );
+                      });
+                    })()}
                   </div>
                 )}
               </div>
