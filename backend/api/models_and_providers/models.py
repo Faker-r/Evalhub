@@ -57,7 +57,6 @@ class Model(Base):
     display_name = Column(String, nullable=False)
     developer = Column(String, nullable=False)
     api_name = Column(String, nullable=False, index=True)
-    slug = Column(String)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow

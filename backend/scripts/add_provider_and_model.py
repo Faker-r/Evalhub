@@ -56,9 +56,9 @@ async def backfill_providers():
 
         await service.create_model(
             ModelCreate(
-                display_name="DeepSeek V3.2",
-                developer="DeepSeek",
-                api_name="deepseek-ai/DeepSeek-V3.2",
+                display_name="OpenAI GPT 120B",
+                developer="OpenAI",
+                api_name="openai/gpt-oss-120b",
                 provider_ids=[provider.id],
             )
         )

@@ -271,7 +271,7 @@ class WrappedJudgeLM(JudgeLM):
                 logger.warning(f"{type(e), e}")
                 time.sleep(self.API_RETRY_SLEEP)
 
-        raise Exception("Failed to get response from the API")
+        raise Exception(f"LLM as Judge: Failed to get response from the API for model: {self.model} and url: {self.url}")
 
 
 class GuidelineJudgeMetric(Metric):

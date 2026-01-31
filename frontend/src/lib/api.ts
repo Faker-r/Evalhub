@@ -204,7 +204,7 @@ class ApiClient {
     return this.request<{ provider_id: number; provider_name: string }>(
       '/users/api-keys',
       {
-      method: 'POST',
+        method: 'POST',
         body: JSON.stringify({ provider_id: providerId, api_key: apiKey }),
       }
     );
@@ -304,7 +304,7 @@ class ApiClient {
     model_completion_config: {
       model_name: string;
       model_id: string;
-      model_slug: string;
+      api_name: string;
       model_provider: string;
       model_provider_slug: string;
       model_provider_id: number;
@@ -313,7 +313,7 @@ class ApiClient {
     judge_config: {
       model_name: string;
       model_id: string;
-      model_slug: string;
+      api_name: string;
       model_provider: string;
       model_provider_slug: string;
       model_provider_id: number;
@@ -336,7 +336,7 @@ class ApiClient {
     model_completion_config: {
       model_name: string;
       model_id: string;
-      model_slug: string;
+      api_name: string;
       model_provider: string;
       model_provider_slug: string;
       model_provider_id: number;
@@ -345,7 +345,7 @@ class ApiClient {
     judge_config?: {
       model_name: string;
       model_id: string;
-      model_slug: string;
+      api_name: string;
       model_provider: string;
       model_provider_slug: string;
       model_provider_id: number;
@@ -369,7 +369,7 @@ class ApiClient {
     model_completion_config: {
       model_name: string;
       model_id: string;
-      model_slug: string;
+      api_name: string;
       model_provider: string;
       model_provider_slug: string;
       model_provider_id: number;
@@ -378,7 +378,7 @@ class ApiClient {
     judge_config?: {
       model_name: string;
       model_id: string;
-      model_slug: string;
+      api_name: string;
       model_provider: string;
       model_provider_slug: string;
       model_provider_id: number;
@@ -452,7 +452,7 @@ class ApiClient {
     if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
     if (params?.sort_order) queryParams.append('sort_order', params.sort_order);
     if (params?.tags) {
-        params.tags.forEach(tag => queryParams.append('tag', tag));
+      params.tags.forEach(tag => queryParams.append('tag', tag));
     }
     if (params?.author) queryParams.append('author', params.author);
     if (params?.search) queryParams.append('search', params.search);
@@ -564,7 +564,6 @@ class ApiClient {
         display_name: string;
         developer: string;
         api_name: string;
-        slug: string | null;
         providers: {
           id: number;
           name: string;
@@ -645,6 +644,34 @@ class ApiClient {
         .map((e) => e.provider_name)
         .filter((x): x is string => Boolean(x)),
     };
+  }
+
+  async getOverlappingDatasets(modelProviderPairs: { model: string; provider: string }[]) {
+    return this.request<{ count: number; dataset_names: string[] }>(
+      '/evaluation-comparison/overlapping-datasets',
+      {
+        method: 'POST',
+        body: JSON.stringify({ model_provider_pairs: modelProviderPairs }),
+      }
+    );
+  }
+
+  async getSideBySideReport(modelProviderPairs: { model: string; provider: string }[]) {
+    return this.request<{
+      entries: {
+        model: string;
+        provider: string;
+        dataset_name: string;
+        metric_name: string;
+        trace_id: number;
+        created_at: string;
+        score?: number | Record<string, unknown>;
+      }[];
+      spec_by_trace: Record<string, { id: number; trace_id: number; event_type: string; data: Record<string, unknown>; created_at: string } | null>;
+    }>('/evaluation-comparison/side-by-side-report', {
+      method: 'POST',
+      body: JSON.stringify({ model_provider_pairs: modelProviderPairs }),
+    });
   }
 
   // Health check

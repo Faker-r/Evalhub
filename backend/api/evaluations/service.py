@@ -413,7 +413,7 @@ class EvaluationService:
                 self.user_id, OPENROUTER_PROVIDER_SLUG
             )
             model_config = OpenAICompatibleModelConfig(
-                model_name=model_completion_config.model_slug,
+                model_name=model_completion_config.api_name,
                 base_url=OPENROUTER_API_BASE,
                 api_key=model_api_key,
                 generation_parameters=GenerationParameters(
@@ -447,7 +447,7 @@ class EvaluationService:
                 self.user_id, OPENROUTER_PROVIDER_SLUG
             )
             return {
-                "model_name": judge_config.model_slug,
+                "model_name": judge_config.api_name,
                 "base_url": OPENROUTER_API_BASE,
                 "api_key": model_api_key,
                 "extra_body": {
@@ -725,6 +725,8 @@ class EvaluationService:
                 "completion_model": request.model_completion_config.model_name,
                 "model_provider": request.model_completion_config.model_provider,
                 "guideline_names": metric_names,
+                "sample_count": request.dataset_config.n_samples,
+                "n_fewshots": request.dataset_config.n_fewshots,
             },
         )
 

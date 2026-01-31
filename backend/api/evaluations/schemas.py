@@ -108,7 +108,7 @@ class ModelConfig(BaseModel):
     api_source: Literal["standard", "openrouter"]
     model_name: str
     model_id: int
-    model_slug: str
+    api_name: str
     model_provider: str
     model_provider_slug: str
     model_provider_id: int

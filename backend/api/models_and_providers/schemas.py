@@ -54,7 +54,6 @@ class ModelBase(BaseModel):
     display_name: str
     developer: str
     api_name: str
-    slug: str | None = None
 
 
 class ModelCreate(ModelBase):

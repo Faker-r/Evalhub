@@ -22,7 +22,7 @@ interface ModelConfig {
   provider_slug?: string;
   model_id?: number; // Database ID as integer
   model_name?: string;
-  model_slug?: string;
+  api_name?: string;
 
   // For OpenRouter
   is_openrouter?: boolean;
@@ -111,7 +111,7 @@ function convertModelConfigToAPI(config: ModelConfig) {
       api_source: "openrouter",
       model_name: config.openrouter_model_name || config.openrouter_model_id || '',
       model_id: '-1', // OpenRouter models don't have a database ID
-      model_slug: config.openrouter_model_id || '',
+      api_name: config.openrouter_model_id || '',
       model_provider: 'openrouter',
       model_provider_slug: config.openrouter_provider_slug || 'openrouter',
       model_provider_id: 0,
@@ -121,7 +121,7 @@ function convertModelConfigToAPI(config: ModelConfig) {
       api_source: "standard",
       model_name: config.model_name || '',
       model_id: String(config.model_id ?? 0), // Convert integer database ID to string for API
-      model_slug: config.model_slug || config.model_name || '',
+      api_name: config.api_name || config.model_name || '',
       model_provider: config.provider_name || '',
       model_provider_slug: config.provider_slug || config.provider_name || '',
       model_provider_id: config.provider_id || 0,
@@ -134,21 +134,21 @@ export default function Submit() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
-  
+
   // Selection type
   const [selectionType, setSelectionType] = useState<SelectionType>(null);
-  
+
   // Dataset-specific state
   const [selectedDataset, setSelectedDataset] = useState("");
   const [selectedGuidelines, setSelectedGuidelines] = useState<string[]>([]);
-  
+
   // Flexible evaluation state
   const [inputField, setInputField] = useState("");
   const [outputType, setOutputType] = useState<"text" | "multiple_choice" | null>(null);
   const [goldAnswerField, setGoldAnswerField] = useState("");
   const [choicesField, setChoicesField] = useState("");
   const [judgeType, setJudgeType] = useState<"llm_as_judge" | "f1_score" | "exact_match" | null>(null);
-  
+
   // Benchmark-specific state
   const [selectedBenchmark, setSelectedBenchmark] = useState<any>(null);
   const [selectedTask, setSelectedTask] = useState("");
@@ -157,7 +157,7 @@ export default function Submit() {
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
-  
+
   // Model configuration
   const [completionModel, setCompletionModel] = useState("gpt-3.5-turbo");
   const [judgeModel, setJudgeModel] = useState("gpt-3.5-turbo");
@@ -211,13 +211,13 @@ export default function Submit() {
   const apiKeys = apiKeysData?.api_key_providers || [];
 
   // Filter datasets and benchmarks
-  const filteredDatasets = datasets.filter((ds: any) => 
-    (ds.name && ds.name.toLowerCase().includes(datasetSearch.toLowerCase())) || 
+  const filteredDatasets = datasets.filter((ds: any) =>
+    (ds.name && ds.name.toLowerCase().includes(datasetSearch.toLowerCase())) ||
     (ds.category && ds.category.toLowerCase().includes(datasetSearch.toLowerCase()))
   );
 
-  const filteredBenchmarks = benchmarks.filter((bm: any) => 
-    (bm.dataset_name && bm.dataset_name.toLowerCase().includes(benchmarkSearch.toLowerCase())) || 
+  const filteredBenchmarks = benchmarks.filter((bm: any) =>
+    (bm.dataset_name && bm.dataset_name.toLowerCase().includes(benchmarkSearch.toLowerCase())) ||
     (bm.description && bm.description.toLowerCase().includes(benchmarkSearch.toLowerCase()))
   );
 
@@ -356,7 +356,7 @@ export default function Submit() {
       });
       return;
     }
-    
+
     if (selectionType === "dataset") {
       submitFlexibleMutation.mutate();
     } else if (selectionType === "benchmark") {
@@ -407,7 +407,7 @@ export default function Submit() {
     } else {
       newExpanded.add(taskName);
       setExpandedTasks(newExpanded);
-      
+
       if (!taskDetails[taskName]) {
         setLoadingTasks(prev => new Set(prev).add(taskName));
         try {
@@ -432,13 +432,13 @@ export default function Submit() {
     if (value === null || value === undefined) {
       return <span className="text-gray-400 italic">null</span>;
     }
-    
+
     if (typeof value === 'object' && !Array.isArray(value)) {
       const entries = Object.entries(value);
       if (entries.length === 0) {
         return <span className="text-gray-400">{'{}'}</span>;
       }
-      
+
       return (
         <div className="space-y-1">
           <button
@@ -461,12 +461,12 @@ export default function Submit() {
         </div>
       );
     }
-    
+
     if (Array.isArray(value)) {
       if (value.length === 0) {
         return <span className="text-gray-400">[]</span>;
       }
-      
+
       return (
         <div className="space-y-1">
           <button
@@ -488,7 +488,7 @@ export default function Submit() {
         </div>
       );
     }
-    
+
     return <span className="text-gray-900 font-mono text-xs">{String(value)}</span>;
   };
 
@@ -522,8 +522,8 @@ export default function Submit() {
                     currentStep === step.id
                       ? "bg-mint-50 text-mint-900"
                       : currentStep > step.id
-                      ? "text-black"
-                      : "text-muted-foreground"
+                        ? "text-black"
+                        : "text-muted-foreground"
                   )}
                 >
                   <div
@@ -532,8 +532,8 @@ export default function Submit() {
                       currentStep === step.id
                         ? "border-mint-500 bg-mint-500 text-white"
                         : currentStep > step.id
-                        ? "border-black bg-black text-white"
-                        : "border-zinc-200 bg-white"
+                          ? "border-black bg-black text-white"
+                          : "border-zinc-200 bg-white"
                     )}
                   >
                     {currentStep > step.id ? <Check className="w-3 h-3" /> : step.id}
@@ -564,18 +564,18 @@ export default function Submit() {
                   <div className="space-y-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                         <Label className="text-lg font-semibold">Select a Dataset</Label>
-                         <div className="relative w-full max-w-xs">
-                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                             <Input 
-                               placeholder="Search datasets..." 
-                               className="pl-8"
-                               value={datasetSearch}
-                               onChange={(e) => setDatasetSearch(e.target.value)}
-                             />
-                         </div>
+                        <Label className="text-lg font-semibold">Select a Dataset</Label>
+                        <div className="relative w-full max-w-xs">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search datasets..."
+                            className="pl-8"
+                            value={datasetSearch}
+                            onChange={(e) => setDatasetSearch(e.target.value)}
+                          />
+                        </div>
                       </div>
-                      
+
                       {filteredDatasets.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                           {datasets.length === 0 ? "No datasets available. Please upload one first." : "No datasets match your search."}
@@ -622,21 +622,21 @@ export default function Submit() {
 
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                         <Label className="text-lg font-semibold">Select a Benchmark</Label>
-                         <div className="relative w-full max-w-xs">
-                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                             <Input 
-                               placeholder="Search benchmarks..." 
-                               className="pl-8"
-                               value={benchmarkSearch}
-                               onChange={(e) => setBenchmarkSearch(e.target.value)}
-                             />
-                         </div>
+                        <Label className="text-lg font-semibold">Select a Benchmark</Label>
+                        <div className="relative w-full max-w-xs">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search benchmarks..."
+                            className="pl-8"
+                            value={benchmarkSearch}
+                            onChange={(e) => setBenchmarkSearch(e.target.value)}
+                          />
+                        </div>
                       </div>
-                      
+
                       {filteredBenchmarks.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
-                           {benchmarks.length === 0 ? "No benchmarks available." : "No benchmarks match your search."}
+                          {benchmarks.length === 0 ? "No benchmarks available." : "No benchmarks match your search."}
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
@@ -847,8 +847,8 @@ export default function Submit() {
                                   <div>
                                     <div className="font-medium">{guideline.name}</div>
                                     <div className="text-xs text-muted-foreground">
-                                      {guideline.category} • {guideline.scoring_scale === "numeric" 
-                                        ? `${guideline.scoring_scale_config.min_value}-${guideline.scoring_scale_config.max_value}` 
+                                      {guideline.category} • {guideline.scoring_scale === "numeric"
+                                        ? `${guideline.scoring_scale_config.min_value}-${guideline.scoring_scale_config.max_value}`
                                         : guideline.scoring_scale}
                                     </div>
                                   </div>
@@ -945,7 +945,7 @@ export default function Submit() {
                           Number of samples to evaluate (leave empty for all)
                         </p>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label>Number of Few-Shot Examples</Label>
                         <Input
@@ -993,7 +993,7 @@ export default function Submit() {
                           <span className="text-muted-foreground">Type:</span>
                           <span className="font-medium capitalize">{selectionType}</span>
                         </div>
-                        
+
                         {selectionType === "dataset" ? (
                           <>
                             <div className="flex justify-between">
@@ -1077,7 +1077,7 @@ export default function Submit() {
                             </div>
                           </>
                         )}
-                        
+
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Completion Model:</span>
                           <span className="font-medium">
@@ -1131,8 +1131,8 @@ export default function Submit() {
                     disabled={submitFlexibleMutation.isPending || submitTaskMutation.isPending}
                     className="bg-mint-500 hover:bg-mint-600"
                   >
-                    {(submitFlexibleMutation.isPending || submitTaskMutation.isPending) 
-                      ? "Submitting..." 
+                    {(submitFlexibleMutation.isPending || submitTaskMutation.isPending)
+                      ? "Submitting..."
                       : "Start Evaluation"}
                     <Play className="w-4 h-4 ml-2" />
                   </Button>
@@ -1162,8 +1162,8 @@ export default function Submit() {
             {isPreviewLoading ? (
               <div className="text-center py-4">
                 <svg role="status" className="inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600" viewBox="0 0 100 101" fill="none">
-                  <path d="M50 100C77.6142 100 100 77.6142 100 50C100 22.3858 77.6142 0 50 0C22.3858 0 0 22.3858 0 50C0 77.6142 22.3858 100 50 100Z" fill="currentColor"/>
-                  <path d="M93.9706 50C93.9706 73.7973 73.7973 93.9706 50 93.9706C26.2027 93.9706 6.02941 73.7973 6.02941 50C6.02941 26.2027 26.2027 6.02941 50 6.02941C73.7973 6.02941 93.9706 26.2027 93.9706 50Z" stroke="white" strokeWidth="2"/>
+                  <path d="M50 100C77.6142 100 100 77.6142 100 50C100 22.3858 77.6142 0 50 0C22.3858 0 0 22.3858 0 50C0 77.6142 22.3858 100 50 100Z" fill="currentColor" />
+                  <path d="M93.9706 50C93.9706 73.7973 73.7973 93.9706 50 93.9706C26.2027 93.9706 6.02941 73.7973 6.02941 50C6.02941 26.2027 26.2027 6.02941 50 6.02941C73.7973 6.02941 93.9706 26.2027 93.9706 50Z" stroke="white" strokeWidth="2" />
                 </svg>
               </div>
             ) : (
@@ -1214,12 +1214,12 @@ export default function Submit() {
           <DialogHeader>
             <DialogTitle>Dataset Content</DialogTitle>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-y-auto min-h-0 py-4">
             {isPreviewLoading ? (
-               <div className="flex justify-center p-8">
-                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-               </div>
+              <div className="flex justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
             ) : previewData?.samples ? (
               <div className="space-y-4">
                 {previewData.samples.map((sample: any, idx: number) => (
@@ -1231,9 +1231,9 @@ export default function Submit() {
                 ))}
               </div>
             ) : (
-                <div className="text-center text-muted-foreground p-4">
-                    No preview available
-                </div>
+              <div className="text-center text-muted-foreground p-4">
+                No preview available
+              </div>
             )}
           </div>
         </DialogContent>
