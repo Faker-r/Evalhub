@@ -15,14 +15,25 @@ class Trace(Base):
     user_id = Column(String, nullable=False)  # Supabase UUID
     dataset_name = Column(String, nullable=False)
     guideline_names = Column(JSONB, nullable=False)  # ["humor_likert", "clarity"]
-    completion_model = Column(String, nullable=False)
-    model_provider = Column(String, nullable=False)
-    judge_model = Column(String, nullable=False)
+    completion_model_config = Column(JSONB, nullable=False)
+    judge_model_config = Column(JSONB, nullable=False)
     status = Column(
         String, nullable=False, default="running"
     )  # running, completed, failed
     summary = Column(JSONB, nullable=True)  # Final scores summary
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    @property
+    def completion_model(self) -> str:
+        return (self.completion_model_config or {}).get("api_name", "")
+
+    @property
+    def model_provider(self) -> str:
+        return (self.completion_model_config or {}).get("provider_slug", "")
+
+    @property
+    def judge_model(self) -> str:
+        return (self.judge_model_config or {}).get("api_name", "")
 
 
 class TraceEvent(Base):

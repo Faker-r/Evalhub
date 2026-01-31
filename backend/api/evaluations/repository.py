@@ -23,18 +23,16 @@ class EvaluationRepository:
         user_id: str,
         dataset_name: str,
         guideline_names: list[str],
-        completion_model: str,
-        model_provider: str,
-        judge_model: str,
+        completion_model_config: dict,
+        judge_model_config: dict,
     ) -> Trace:
         """Create a new trace for an evaluation run."""
         trace = Trace(
             user_id=user_id,
             dataset_name=dataset_name,
             guideline_names=guideline_names,
-            completion_model=completion_model,
-            model_provider=model_provider,
-            judge_model=judge_model,
+            completion_model_config=completion_model_config,
+            judge_model_config=judge_model_config,
             status="running",
             created_at=datetime.utcnow(),
         )

@@ -29,14 +29,21 @@ class EvaluationComparisonService:
             return [], {}, {}
 
         pair_filter = or_(
-            and_(Trace.completion_model == m, Trace.model_provider == p)
+            and_(
+                Trace.completion_model_config["api_name"].astext == m,
+                Trace.completion_model_config["provider_slug"].astext == p,
+            )
             for m, p in model_provider_pairs
         )
         ranked = select(
             Trace,
             func.row_number()
             .over(
-                partition_by=[Trace.dataset_name, Trace.completion_model, Trace.model_provider],
+                partition_by=[
+                    Trace.dataset_name,
+                    Trace.completion_model_config["api_name"].astext,
+                    Trace.completion_model_config["provider_slug"].astext,
+                ],
                 order_by=Trace.created_at.desc(),
             )
             .label("rn"),
@@ -65,7 +72,9 @@ class EvaluationComparisonService:
 
         by_dataset_pair: dict[str, dict[tuple[str, str], Trace]] = defaultdict(dict)
         for row in rows:
-            by_dataset_pair[row.dataset_name][(row.completion_model, row.model_provider)] = trace_map[row.id]
+            cfg = row.completion_model_config or {}
+            key = (cfg.get("api_name", ""), cfg.get("provider_slug", ""))
+            by_dataset_pair[row.dataset_name][key] = trace_map[row.id]
         overlapping_datasets = list(by_dataset_pair.keys())
 
         spec_by_trace: dict[int, Any] = {}
