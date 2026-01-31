@@ -108,10 +108,18 @@ class ModelConfig(BaseModel):
     api_source: Literal["standard", "openrouter"]
     model_name: str
     model_id: int
-    model_slug: str
+    api_name: str
     model_provider: str
     model_provider_slug: str
     model_provider_id: int
+
+
+class ModelConfigStored(BaseModel):
+    """Config shape stored on Trace (completion_model_config / judge_model_config)."""
+
+    api_source: Literal["standard", "openrouter"]
+    api_name: str
+    provider_slug: str
 
 
 class EvaluationRequest(BaseModel):

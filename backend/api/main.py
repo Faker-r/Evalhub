@@ -5,6 +5,7 @@ from api.benchmarks.routes import router as benchmarks_router
 from api.core.config import settings
 from api.core.logging import get_logger, setup_logging
 from api.datasets.routes import router as datasets_router
+from api.evaluation_comparison.routes import router as evaluation_comparison_router
 from api.evaluations.routes import router as evaluations_router
 from api.guidelines.routes import router as guidelines_router
 from api.leaderboard.routes import router as leaderboard_router
@@ -33,6 +34,7 @@ api_router.include_router(users_router)
 api_router.include_router(datasets_router)
 api_router.include_router(guidelines_router)
 api_router.include_router(evaluations_router)
+api_router.include_router(evaluation_comparison_router)
 api_router.include_router(leaderboard_router)
 api_router.include_router(benchmarks_router)
 api_router.include_router(models_and_providers_router)

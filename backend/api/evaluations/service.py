@@ -310,32 +310,57 @@ class EvaluationService:
         """Load dataset content from S3."""
         return self.s3.download_dataset(dataset_name)
 
+    def _to_stored_config(self, config: ModelConfig) -> dict:
+        return {
+            "api_source": config.api_source,
+            "api_name": config.api_name,
+            "provider_slug": config.model_provider_slug,
+        }
+
     async def _create_trace(self, request: EvaluationRequest) -> Trace:
         """Create initial trace in database."""
+        completion_config = self._to_stored_config(request.model_completion_config)
+        judge_config = self._to_stored_config(request.judge_config)
         return await self.repository.create_trace(
             user_id=self.user_id,
             dataset_name=request.dataset_name,
             guideline_names=request.guideline_names,
-            completion_model=request.model_completion_config.model_name,
-            model_provider=request.model_completion_config.model_provider,
-            judge_model=request.judge_config.model_name,
+            completion_model_config=completion_config,
+            judge_model_config=judge_config,
         )
 
     async def _create_task_trace(self, request: TaskEvaluationRequest) -> Trace:
         """Create initial trace in database."""
-        judge_model = request.judge_config.model_name if request.judge_config else ""
+        completion_config = self._to_stored_config(request.model_completion_config)
+        judge_config = (
+            self._to_stored_config(request.judge_config)
+            if request.judge_config
+            else {
+                "api_source": "standard",
+                "api_name": "",
+                "provider_slug": request.model_completion_config.model_provider_slug,
+            }
+        )
         return await self.repository.create_trace(
             user_id=self.user_id,
             dataset_name=request.task_name,
             guideline_names=[],
-            completion_model=request.model_completion_config.model_name,
-            model_provider=request.model_completion_config.model_provider,
-            judge_model=judge_model,
+            completion_model_config=completion_config,
+            judge_model_config=judge_config,
         )
 
     async def _create_flexible_trace(self, request: FlexibleEvaluationRequest) -> Trace:
         """Create initial trace for flexible evaluation."""
-        judge_model = request.judge_config.model_name if request.judge_config else ""
+        completion_config = self._to_stored_config(request.model_completion_config)
+        judge_config = (
+            self._to_stored_config(request.judge_config)
+            if request.judge_config
+            else {
+                "api_source": "standard",
+                "api_name": "",
+                "provider_slug": request.model_completion_config.model_provider_slug,
+            }
+        )
         guideline_names = request.guideline_names or []
         if request.judge_type != JudgeType.LLM_AS_JUDGE:
             guideline_names = [request.judge_type.value]
@@ -344,9 +369,8 @@ class EvaluationService:
             user_id=self.user_id,
             dataset_name=request.dataset_name,
             guideline_names=guideline_names,
-            completion_model=request.model_completion_config.model_name,
-            model_provider=request.model_completion_config.model_provider,
-            judge_model=judge_model,
+            completion_model_config=completion_config,
+            judge_model_config=judge_config,
         )
 
     async def _update_trace_guidelines(
@@ -413,7 +437,7 @@ class EvaluationService:
                 self.user_id, OPENROUTER_PROVIDER_SLUG
             )
             model_config = OpenAICompatibleModelConfig(
-                model_name=model_completion_config.model_slug,
+                model_name=model_completion_config.api_name,
                 base_url=OPENROUTER_API_BASE,
                 api_key=model_api_key,
                 generation_parameters=GenerationParameters(
@@ -447,7 +471,7 @@ class EvaluationService:
                 self.user_id, OPENROUTER_PROVIDER_SLUG
             )
             return {
-                "model_name": judge_config.model_slug,
+                "model_name": judge_config.api_name,
                 "base_url": OPENROUTER_API_BASE,
                 "api_key": model_api_key,
                 "extra_body": {
@@ -725,6 +749,8 @@ class EvaluationService:
                 "completion_model": request.model_completion_config.model_name,
                 "model_provider": request.model_completion_config.model_provider,
                 "guideline_names": metric_names,
+                "sample_count": request.dataset_config.n_samples,
+                "n_fewshots": request.dataset_config.n_fewshots,
             },
         )
 

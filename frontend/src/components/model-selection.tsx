@@ -23,7 +23,7 @@ interface ModelConfig {
   provider_slug?: string;
   model_id?: number; // Database ID as integer
   model_name?: string;
-  model_slug?: string;
+  api_name?: string;
   api_base?: string;
 
   // For OpenRouter
@@ -216,7 +216,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
           provider_slug: provider.slug || provider.name,
           model_id: model.id,
           model_name: model.api_name,
-          model_slug: model.slug || model.api_name,
+          api_name: model.api_name,
           api_base: provider.base_url,
           is_openrouter: false,
         });
