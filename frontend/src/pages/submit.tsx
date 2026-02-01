@@ -14,7 +14,47 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
 import { ModelSelection } from "@/components/model-selection";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+interface ExpandableCellProps {
+  value: any;
+}
+
+const ExpandableCell = ({ value }: ExpandableCellProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (value === undefined || value === null) {
+    return <span className="text-muted-foreground italic">—</span>;
+  }
+
+  const isObject = typeof value === 'object';
+
+  return (
+    <div
+      onClick={() => setIsExpanded(!isExpanded)}
+      className={`cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors ${
+        !isExpanded ? "truncate" : ""
+      }`}
+      title={!isExpanded ? "Click to expand" : "Click to collapse"}
+    >
+      {isExpanded ? (
+        isObject ? (
+          <pre className="font-mono text-xs whitespace-pre-wrap overflow-x-auto p-2 bg-muted rounded border mt-1">
+            {JSON.stringify(value, null, 2)}
+          </pre>
+        ) : (
+          <div className="whitespace-pre-wrap text-sm pt-1">{String(value)}</div>
+        )
+      ) : isObject ? (
+        <span className="font-mono text-xs">{JSON.stringify(value)}</span>
+      ) : (
+        <span className="text-sm">{String(value)}</span>
+      )}
+    </div>
+  );
+};
+  
 interface ModelConfig {
   // For standard providers
   provider_id?: number;
@@ -29,70 +69,6 @@ interface ModelConfig {
   openrouter_model_id?: string;
   openrouter_model_name?: string;
   openrouter_provider_slug?: string;
-}
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
-interface ProviderComboboxProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  predefinedOptions?: string[];
-}
-
-function ProviderCombobox({ value, onChange, placeholder = "Select or type...", predefinedOptions = [] }: ProviderComboboxProps) {
-  const [open, setOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(value);
-
-  const handleSelect = (selectedValue: string) => {
-    onChange(selectedValue);
-    setInputValue(selectedValue);
-    setOpen(false);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setInputValue(newValue);
-    onChange(newValue);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      setOpen(false);
-    }
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className="flex items-center w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 cursor-pointer">
-          <input
-            className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
-            value={inputValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-          />
-          <ChevronDown className="h-4 w-4 opacity-50" />
-        </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search or type custom..." />
-          <CommandList>
-            {predefinedOptions.map((option) => (
-              <CommandItem
-                key={option}
-                onSelect={() => handleSelect(option)}
-                className={value === option ? "bg-accent" : ""}
-              >
-                {option}
-              </CommandItem>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
 }
 
 const STEPS = [
@@ -167,10 +143,6 @@ export default function Submit() {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   // Model configuration
-  const [completionModel, setCompletionModel] = useState("gpt-3.5-turbo");
-  const [judgeModel, setJudgeModel] = useState("gpt-3.5-turbo");
-  const [modelProvider, setModelProvider] = useState("openai");
-  const [judgeProvider, setJudgeProvider] = useState("openai");
   const [completionModelConfig, setCompletionModelConfig] = useState<ModelConfig>({});
   const [judgeModelConfig, setJudgeModelConfig] = useState<ModelConfig>({});
 
@@ -1167,97 +1139,63 @@ export default function Submit() {
         </div>
       </div>
 
-      {/* Preview Modal */}
-      {previewModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Dataset Preview</h3>
-              <button
-                onClick={() => setPreviewModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {isPreviewLoading ? (
-              <div className="text-center py-4">
-                <svg role="status" className="inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600" viewBox="0 0 100 101" fill="none">
-                  <path d="M50 100C77.6142 100 100 77.6142 100 50C100 22.3858 77.6142 0 50 0C22.3858 0 0 22.3858 0 50C0 77.6142 22.3858 100 50 100Z" fill="currentColor" />
-                  <path d="M93.9706 50C93.9706 73.7973 73.7973 93.9706 50 93.9706C26.2027 93.9706 6.02941 73.7973 6.02941 50C6.02941 26.2027 26.2027 6.02941 50 6.02941C73.7973 6.02941 93.9706 26.2027 93.9706 50Z" stroke="white" strokeWidth="2" />
-                </svg>
-              </div>
-            ) : (
-              <div className="max-h-80 overflow-y-auto">
-                {!previewData?.samples?.length ? (
-                  <div className="text-center py-4 text-gray-500">
-                    No samples available for preview.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {(() => {
-                      const samples = previewData.samples;
-                      const fieldNames = [...new Set(samples.flatMap((s: any) => Object.keys(s || {})))];
-                      return fieldNames.map((fieldName: string, idx: number) => {
-                        const sampleValues = samples.map((s: any) => s?.[fieldName]).filter((v: any) => v !== undefined);
-                        return (
-                          <div key={idx} className="p-4 bg-gray-50 rounded-lg shadow-sm">
-                            <div className="font-semibold text-gray-800">{fieldName}</div>
-                            <div className="mt-2">
-                              <Label className="text-xs font-medium text-gray-700">Sample Values</Label>
-                              <div className="flex flex-wrap gap-2 mt-1">
-                                {sampleValues.length === 0 ? (
-                                  <span className="text-gray-400 italic">No sample values</span>
-                                ) : (
-                                  sampleValues.slice(0, 5).map((value: any, valueIdx: number) => (
-                                    <span key={valueIdx} className="text-xs bg-mint-50 text-mint-700 rounded-full px-3 py-1">
-                                      {String(value)}
-                                    </span>
-                                  ))
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Preview Dialog */}
       <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Dataset Content</DialogTitle>
+            <DialogDescription>
+              Showing all samples from the selected dataset.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto min-h-0 py-4">
             {isPreviewLoading ? (
-              <div className="flex justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : previewData?.samples ? (
-              <div className="space-y-4">
-                {previewData.samples.map((sample: any, idx: number) => (
-                  <Card key={idx} className="bg-muted/50">
-                    <CardContent className="p-4 overflow-x-auto">
-                      <pre className="text-xs">{JSON.stringify(sample, null, 2)}</pre>
-                    </CardContent>
-                  </Card>
-                ))}
+               <div className="flex justify-center p-8">
+                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+               </div>
+            ) : previewData?.samples && previewData.samples.length > 0 ? (
+              <div className="overflow-x-auto">
+                {(() => {
+                  // Get all unique keys from all samples
+                  const allKeys = Array.from(
+                    new Set(
+                      previewData.samples.flatMap((sample: any) => Object.keys(sample))
+                    )
+                  );
+
+                  return (
+                    <div className="border rounded-md">
+                      <Table>
+                        <TableHeader className="sticky top-0 bg-background z-10">
+                          <TableRow>
+                            <TableHead className="w-12">#</TableHead>
+                            {allKeys.map((key) => (
+                              <TableHead key={key}>{key}</TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {previewData.samples.map((sample: any, idx: number) => (
+                            <TableRow key={idx}>
+                              <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                              {allKeys.map((key) => (
+                                <TableCell key={key} className="max-w-md align-top">
+                                  <ExpandableCell value={sample[key]} />
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  );
+                })()}
               </div>
             ) : (
-              <div className="text-center text-muted-foreground p-4">
-                No preview available
-              </div>
+                <div className="text-center text-muted-foreground p-4">
+                    No preview available
+                </div>
             )}
           </div>
         </DialogContent>

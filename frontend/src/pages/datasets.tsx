@@ -15,6 +15,40 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { TagInput } from "@/components/ui/tag-input";
 
+const ExpandableCell = ({ value }: { value: any }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (value === undefined || value === null) {
+    return <span className="text-muted-foreground italic">—</span>;
+  }
+
+  const isObject = typeof value === 'object';
+
+  return (
+    <div
+      onClick={() => setIsExpanded(!isExpanded)}
+      className={`cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors ${
+        !isExpanded ? "truncate" : ""
+      }`}
+      title={!isExpanded ? "Click to expand" : "Click to collapse"}
+    >
+      {isExpanded ? (
+        isObject ? (
+          <pre className="font-mono text-xs whitespace-pre-wrap overflow-x-auto p-2 bg-muted rounded border mt-1">
+            {JSON.stringify(value, null, 2)}
+          </pre>
+        ) : (
+          <div className="whitespace-pre-wrap text-sm pt-1">{String(value)}</div>
+        )
+      ) : isObject ? (
+        <span className="font-mono text-xs">{JSON.stringify(value)}</span>
+      ) : (
+        <span className="text-sm">{String(value)}</span>
+      )}
+    </div>
+  );
+};
+
 export default function Datasets() {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -359,28 +393,8 @@ export default function Datasets() {
                               <TableRow key={idx}>
                                 <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                                 {allKeys.map((key) => (
-                                  <TableCell key={key} className="max-w-md">
-                                    <div
-                                      className="truncate"
-                                      title={
-                                        typeof sample[key] === 'object'
-                                          ? JSON.stringify(sample[key], null, 2)
-                                          : String(sample[key] ?? '')
-                                      }
-                                    >
-                                      {sample[key] === undefined || sample[key] === null ? (
-                                        <span className="text-muted-foreground italic">—</span>
-                                      ) : typeof sample[key] === 'object' ? (
-                                        <span className="font-mono text-xs">
-                                          {Array.isArray(sample[key])
-                                            ? `[${sample[key].length} items]`
-                                            : `{${Object.keys(sample[key]).length} fields}`
-                                          }
-                                        </span>
-                                      ) : (
-                                        String(sample[key])
-                                      )}
-                                    </div>
+                                  <TableCell key={key} className="max-w-md align-top">
+                                    <ExpandableCell value={sample[key]} />
                                   </TableCell>
                                 ))}
                               </TableRow>
