@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server, ChevronDown, Eye, Search } from "lucide-react";
 import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -12,7 +12,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { ModelSelection } from "@/components/model-selection";
 
 interface ModelConfig {
@@ -158,6 +158,14 @@ export default function Submit() {
   const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
 
+  // Search state
+  const [datasetSearch, setDatasetSearch] = useState("");
+  const [benchmarkSearch, setBenchmarkSearch] = useState("");
+
+  // Preview state
+  const [previewDatasetId, setPreviewDatasetId] = useState<number | null>(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+
   // Model configuration
   const [completionModel, setCompletionModel] = useState("gpt-3.5-turbo");
   const [judgeModel, setJudgeModel] = useState("gpt-3.5-turbo");
@@ -165,11 +173,6 @@ export default function Submit() {
   const [judgeProvider, setJudgeProvider] = useState("openai");
   const [completionModelConfig, setCompletionModelConfig] = useState<ModelConfig>({});
   const [judgeModelConfig, setJudgeModelConfig] = useState<ModelConfig>({});
-
-  const [datasetSearch, setDatasetSearch] = useState("");
-  const [benchmarkSearch, setBenchmarkSearch] = useState("");
-  const [previewDatasetId, setPreviewDatasetId] = useState<number | null>(null);
-  const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   // Fetch datasets
   const { data: datasetsData } = useQuery({
@@ -209,6 +212,27 @@ export default function Submit() {
   const benchmarks = benchmarksData?.benchmarks || [];
   const guidelines = guidelinesData?.guidelines || [];
   const apiKeys = apiKeysData?.api_key_providers || [];
+
+  // Handle pre-selection from URL params (from benchmarks page)
+  const searchString = useSearch();
+  useEffect(() => {
+    if (!benchmarks.length) return;
+
+    const params = new URLSearchParams(searchString);
+    const benchmarkId = params.get('benchmarkId');
+    const taskName = params.get('task');
+
+    if (benchmarkId && taskName) {
+      const benchmark = benchmarks.find((b: any) => b.id === parseInt(benchmarkId));
+      if (benchmark) {
+        setSelectedBenchmark(benchmark);
+        setSelectionType("benchmark");
+        setSelectedTask(taskName);
+        // Clear URL params after setting state
+        setLocation('/submit', { replace: true });
+      }
+    }
+  }, [benchmarks, searchString]);
 
   // Filter datasets and benchmarks
   const filteredDatasets = datasets.filter((ds: any) =>

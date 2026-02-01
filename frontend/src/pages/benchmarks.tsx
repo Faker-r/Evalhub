@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ExternalLink, Search, ChevronLeft, ChevronRight, ChevronDown, Download, Box, ChevronUp, Database } from "lucide-react";
+import { ExternalLink, Search, ChevronLeft, ChevronRight, ChevronDown, Download, Box, ChevronUp, Database, Play } from "lucide-react";
+import { useLocation } from "wouter";
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -93,6 +94,8 @@ export default function Benchmarks() {
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
   const [benchmarkTasks, setBenchmarkTasks] = useState<Record<number, any[]>>({});
   const [loadingBenchmarkTasks, setLoadingBenchmarkTasks] = useState<Set<number>>(new Set());
+
+  const [, setLocation] = useLocation();
 
   const ITEMS_PER_PAGE = 12;
 
@@ -648,17 +651,35 @@ export default function Benchmarks() {
                           <div className="space-y-2">
                             {selectedBenchmark.tasks.map((task: string) => (
                               <div key={task} className="border border-gray-200 rounded-md">
-                                <button
-                                  onClick={() => toggleTask(task)}
-                                  className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors"
-                                >
-                                  <code className="text-xs text-mint-700 font-mono break-all">{task}</code>
-                                  {expandedTasks.has(task) ? (
-                                    <ChevronUp className="w-4 h-4 text-gray-500 flex-shrink-0 ml-2" />
-                                  ) : (
-                                    <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0 ml-2" />
-                                  )}
-                                </button>
+                                <div className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
+                                  <button
+                                    onClick={() => toggleTask(task)}
+                                    className="flex-1 flex items-center text-left"
+                                  >
+                                    <code className="text-xs text-mint-700 font-mono break-all">{task}</code>
+                                  </button>
+                                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-mint-600 hover:text-mint-700 hover:bg-mint-50"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setLocation(`/submit?benchmarkId=${selectedBenchmark.id}&task=${encodeURIComponent(task)}`);
+                                      }}
+                                    >
+                                      <Play className="w-3 h-3 mr-1" />
+                                      <span className="text-xs">Run</span>
+                                    </Button>
+                                    <button onClick={() => toggleTask(task)} className="p-1 hover:bg-gray-100 rounded">
+                                      {expandedTasks.has(task) ? (
+                                        <ChevronUp className="w-4 h-4 text-gray-500" />
+                                      ) : (
+                                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
                                 {expandedTasks.has(task) && (
                                   <div className="px-3 pb-3 border-t border-gray-100">
                                     {/* Task-specific size and tokens */}
