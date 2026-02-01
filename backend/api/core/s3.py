@@ -313,3 +313,26 @@ class S3Storage:
         except ClientError as e:
             logger.error(f"Failed to upload eval results to S3: {e}")
             raise
+
+    def list_files(self, prefix: str) -> list[str]:
+        """List all files in S3 with the given prefix."""
+        try:
+            paginator = self.client.get_paginator("list_objects_v2")
+            files = []
+            for page in paginator.paginate(Bucket=self.bucket, Prefix=prefix):
+                if "Contents" in page:
+                    for obj in page["Contents"]:
+                        files.append(obj["Key"])
+            return files
+        except ClientError as e:
+            logger.error(f"Failed to list files from S3: {e}")
+            raise
+
+    def download_file(self, key: str, local_path: str) -> None:
+        """Download a file from S3 to a local path."""
+        try:
+            self.client.download_file(self.bucket, key, local_path)
+            logger.debug(f"Downloaded file from S3: {key}")
+        except ClientError as e:
+            logger.error(f"Failed to download file from S3: {e}")
+            raise

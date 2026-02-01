@@ -25,6 +25,14 @@ export default function Results() {
   const traces = tracesData?.traces || [];
 
   const [selectedTrace, setSelectedTrace] = useState<any>(null);
+  
+  const { data: traceSamplesData, isLoading: isLoadingSamples } = useQuery({
+    queryKey: ["traceSamples", selectedTrace?.id],
+    queryFn: () => apiClient.getTraceSamples(selectedTrace.id),
+    enabled: !!selectedTrace && selectedTrace.status === "completed",
+  });
+
+  const traceSamples = traceSamplesData?.samples || [];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -401,12 +409,13 @@ export default function Results() {
                                 View Scores
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                              <DialogHeader>
+                            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-6 overflow-hidden">
+                              <DialogHeader className="pb-4">
                                 <DialogTitle>Evaluation Details #{selectedTrace?.id}</DialogTitle>
                               </DialogHeader>
+                              
                               {selectedTrace && (
-                                <div className="space-y-6">
+                                <div className="flex-1 overflow-y-auto pr-2 space-y-6">
                                   {/* Evaluation Info */}
                                   <Card>
                                     <CardHeader>
@@ -466,6 +475,68 @@ export default function Results() {
 
                                   {/* Metric Documentation */}
                                   {selectedTrace.summary?.metric_docs && renderMetricDocs(selectedTrace.summary.metric_docs)}
+                                  
+                                  {/* Samples Section */}
+                                  <div className="pt-6 border-t">
+                                     <h3 className="text-lg font-semibold mb-4">Samples Preview</h3>
+                                     {isLoadingSamples ? (
+                                        <div className="flex justify-center p-8">
+                                          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                                        </div>
+                                      ) : traceSamples.length > 0 ? (
+                                        <div className="space-y-6">
+                                          {traceSamples.map((sample: any, idx: number) => (
+                                            <Card key={idx}>
+                                              <CardHeader className="pb-3">
+                                                <CardTitle className="text-base font-medium">Sample {idx + 1}</CardTitle>
+                                              </CardHeader>
+                                              <CardContent className="space-y-4">
+                                                <div>
+                                                  <h4 className="text-sm font-semibold text-muted-foreground mb-1">Input</h4>
+                                                  <div className="bg-muted p-3 rounded-md text-sm whitespace-pre-wrap font-mono max-h-40 overflow-y-auto">
+                                                    {sample.input}
+                                                  </div>
+                                                </div>
+                                                
+                                                <div>
+                                                  <h4 className="text-sm font-semibold text-muted-foreground mb-1">Model Output</h4>
+                                                  <div className="bg-blue-50 border border-blue-100 p-3 rounded-md text-sm whitespace-pre-wrap font-mono text-blue-900 max-h-40 overflow-y-auto">
+                                                    {sample.prediction}
+                                                  </div>
+                                                </div>
+
+                                                {sample.gold && (
+                                                  <div>
+                                                    <h4 className="text-sm font-semibold text-muted-foreground mb-1">Reference Answer</h4>
+                                                    <div className="bg-green-50 border border-green-100 p-3 rounded-md text-sm whitespace-pre-wrap font-mono text-green-900 max-h-40 overflow-y-auto">
+                                                      {Array.isArray(sample.gold) ? sample.gold.join(", ") : sample.gold}
+                                                    </div>
+                                                  </div>
+                                                )}
+
+                                                {Object.keys(sample.metric_scores).length > 0 && (
+                                                  <div>
+                                                    <h4 className="text-sm font-semibold text-muted-foreground mb-2">Detailed Scores</h4>
+                                                    <div className="flex flex-wrap gap-2">
+                                                      {Object.entries(sample.metric_scores).map(([key, value]) => (
+                                                        <Badge key={key} variant="outline" className="font-mono">
+                                                          {key}: {typeof value === 'number' ? value.toFixed(3) : String(value)}
+                                                        </Badge>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </CardContent>
+                                            </Card>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-lg">
+                                          <Info className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                          <p>No samples available for preview.</p>
+                                        </div>
+                                      )}
+                                  </div>
                                 </div>
                               )}
                             </DialogContent>

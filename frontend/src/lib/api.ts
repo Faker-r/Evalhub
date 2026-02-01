@@ -412,6 +412,10 @@ class ApiClient {
     return this.request(`/evaluations/traces/${traceId}`);
   }
 
+  async getTraceSamples(traceId: number) {
+    return this.request<{ samples: any[] }>(`/evaluations/traces/${traceId}/samples`);
+  }
+
   // Leaderboard endpoints
   async getLeaderboard(datasetName: string) {
     return this.request<{

@@ -166,3 +166,25 @@ class FlexibleEvaluationRequest(BaseModel):
     guideline_names: list[str] | None = None
     model_completion_config: ModelConfig
     judge_config: ModelConfig | None = None
+
+
+class TraceSamplesRequest(BaseModel):
+    """Request schema for getting trace samples."""
+
+    trace_id: int
+    n_samples: int = 3
+
+
+class TraceSample(BaseModel):
+    """Schema for a single trace sample."""
+
+    input: str
+    prediction: str
+    gold: str | list[str] | None = None
+    metric_scores: dict[str, float] = {}
+
+
+class TraceSamplesResponse(BaseModel):
+    """Response schema for trace samples."""
+
+    samples: list[TraceSample]
