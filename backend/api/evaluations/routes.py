@@ -12,6 +12,8 @@ from api.evaluations.schemas import (
     FlexibleEvaluationRequest,
     TraceListResponse,
     TraceResponse,
+    TraceSamplesRequest,
+    TraceSamplesResponse,
 )
 from api.evaluations.service import EvaluationService
 
@@ -98,3 +100,16 @@ async def get_trace(
     """Get a specific evaluation trace."""
     logger.debug(f"Getting trace {trace_id} for user {current_user.email}")
     return await EvaluationService(session, current_user.id).get_trace(trace_id)
+
+
+@router.get("/traces/{trace_id}/samples", response_model=TraceSamplesResponse)
+async def get_trace_samples(
+    trace_id: int,
+    n_samples: int = 3,
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> TraceSamplesResponse:
+    """Get samples for a specific trace."""
+    logger.debug(f"Getting samples for trace {trace_id} for user {current_user.email}, n_samples={n_samples}")
+    request = TraceSamplesRequest(trace_id=trace_id, n_samples=n_samples)
+    return await EvaluationService(session, current_user.id).get_trace_samples(request)

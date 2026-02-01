@@ -24,6 +24,9 @@ from api.evaluations.schemas import (
     FlexibleEvaluationRequest,
     JudgeType,
     ModelConfig,
+    TraceSamplesRequest,
+    TraceSamplesResponse,
+    TraceSample,
 )
 from api.guidelines.models import Guideline
 from api.guidelines.service import GuidelineService
@@ -659,9 +662,18 @@ class EvaluationService:
         )
         task = dataset_task.build_lighteval_task()
 
-        registry = Registry(tasks=None)
-        registry._task_registry[request.dataset_name] = task.config
-        registry.task_to_configs = {request.dataset_name: [task.config]}
+        registry = Registry(tasks=task_name)
+        configs = [
+            config
+            for configs in registry.task_to_configs.values()
+            for config in configs
+        ]
+        metrics = [metric for config in configs for metric in config.metrics]
+        metric_docs = MetricDocGenerator.generate_metric_docs(metrics)
+        return {
+            name: [asdict(desc) for desc in descriptions]
+            for name, descriptions in metric_docs.items()
+        }
 
         model_config = await self._create_openai_compatible_client(
             request.model_completion_config
@@ -1044,3 +1056,157 @@ class EvaluationService:
             )
 
         return trace
+
+    async def get_trace_samples(self, request: TraceSamplesRequest) -> TraceSamplesResponse:
+        """Get samples for a trace from S3 details parquet files."""
+        trace = await self.get_trace(request.trace_id)
+        
+        # We need to find the details file for this trace in S3
+        # The path structure is defined in EvaluationTracker and S3Storage
+        # EVAL_RESULTS_PREFIX/{trace_id}/{relative_path}
+        
+        # First list files for this trace
+        from api.core.s3 import EVAL_RESULTS_PREFIX
+        prefix = f"{EVAL_RESULTS_PREFIX}/{trace.id}/details"
+        
+        s3_files = self.s3.list_files(prefix)
+        logger.debug(f"Found {len(s3_files)} files for trace {trace.id}")
+        
+        if not s3_files:
+            return TraceSamplesResponse(samples=[])
+        
+        # Find parquet files
+        parquet_files = [f for f in s3_files if f.endswith(".parquet")]
+        if not parquet_files:
+            return TraceSamplesResponse(samples=[])
+            
+        # Download the first parquet file to a temporary location
+        # In a more robust implementation we might want to sample from multiple files
+        # or handle multiple tasks properly. For now we take the first available one.
+        import pandas as pd
+        import tempfile
+        import os
+        
+        samples = []
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for s3_key in parquet_files:
+                filename = os.path.basename(s3_key)
+                local_path = os.path.join(temp_dir, filename)
+                
+                self.s3.download_file(s3_key, local_path)
+                
+                try:
+                    df = pd.read_parquet(local_path)
+                    
+                    # Take up to n_samples
+                    # We iterate to find good samples (non-empty)
+                    count = 0
+                    
+                    # Helper for safe extraction
+                    def safe_get(obj, key, default=None):
+                        if isinstance(obj, dict):
+                            return obj.get(key, default)
+                        if hasattr(obj, "__getitem__"):
+                            try:
+                                return obj[key]
+                            except (Exception):
+                                pass
+                        if hasattr(obj, key):
+                            return getattr(obj, key)
+                        return default
+
+                    for _, row in df.iterrows():
+                        if count >= request.n_samples:
+                            break
+                            
+                        # Extract data from the row
+                        # The structure matches DetailsLogger.Detail
+                        
+                        doc_obj = row.get("doc")
+                        model_resp_obj = row.get("model_response")
+                        metrics_obj = row.get("metric")
+                        
+                        # Input
+                        input_text = ""
+                        if doc_obj is not None:
+                             input_text = safe_get(doc_obj, "query", "")
+                        
+                        # Prediction
+                        prediction = ""
+                        if model_resp_obj is not None:
+                            text_val = safe_get(model_resp_obj, "text")
+                            
+                            # Handle numpy array conversion
+                            if hasattr(text_val, "tolist"):
+                                text_val = text_val.tolist()
+                                
+                            if isinstance(text_val, (list, tuple)) and len(text_val) > 0:
+                                prediction = text_val[0]
+                            elif isinstance(text_val, str):
+                                prediction = text_val
+                        
+                        # Gold
+                        gold = None
+                        if doc_obj is not None:
+                            # Try to get gold from gold_index and choices (MCQ style)
+                            gold_idx = safe_get(doc_obj, "gold_index")
+                            choices = safe_get(doc_obj, "choices", [])
+                            
+                            # Handle numpy array conversion
+                            if hasattr(choices, "tolist"):
+                                choices = choices.tolist()
+                                
+                            # Convert choices to list if it is not already
+                            if not isinstance(choices, (list, tuple)) and choices is not None:
+                                choices = [choices]
+
+                            if gold_idx is not None and choices:
+                                if hasattr(gold_idx, "tolist"):
+                                     gold_idx = gold_idx.tolist()
+                                     
+                                if isinstance(gold_idx, (list, tuple)):
+                                    gold = []
+                                    for i in gold_idx:
+                                        if isinstance(i, int) and 0 <= i < len(choices):
+                                            gold.append(choices[i])
+                                elif isinstance(gold_idx, int) and 0 <= gold_idx < len(choices):
+                                    gold = choices[gold_idx]
+                            
+                            # Fallback: Try to get gold from choices directly if gold_index logic failed or wasn't applicable
+                            # Some tasks store gold directly in choices if it's a generative task with reference answers
+                            if gold is None and choices and len(choices) > 0:
+                                # For some generative tasks, choices might contain the reference answers directly
+                                # This is common in lighteval for tasks like exact_match where choices acts as references
+                                gold = choices
+                                
+                            # If gold is still None but gold_index was not None, maybe gold_index IS the answer (if choices was empty)
+                            if gold is None and gold_idx is not None and not choices:
+                                gold = str(gold_idx)
+
+                        # Metrics
+                        metric_scores = {}
+                        if metrics_obj is not None:
+                            if hasattr(metrics_obj, "items"):
+                                try:
+                                    for k, v in metrics_obj.items():
+                                        metric_scores[k] = float(v)
+                                except:
+                                    pass
+
+                        samples.append(TraceSample(
+                            input=input_text,
+                            prediction=prediction,
+                            gold=gold,
+                            metric_scores=metric_scores
+                        ))
+                        count += 1
+                        
+                    if len(samples) >= request.n_samples:
+                        break
+                        
+                except Exception as e:
+                    logger.error(f"Failed to read parquet file {filename}: {e}")
+                    continue
+                    
+        return TraceSamplesResponse(samples=samples[:request.n_samples])
