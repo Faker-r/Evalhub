@@ -1,9 +1,9 @@
 import json
-import tempfile
 import statistics
 import asyncio
 import traceback
-from dataclasses import asdict
+from concurrent.futures import ProcessPoolExecutor
+import functools
 
 from api.models_and_providers.service import ModelsAndProvidersService
 from fastapi import HTTPException, status
@@ -17,8 +17,6 @@ from api.evaluations.repository import EvaluationRepository
 from api.evaluations.schemas import (
     EvaluationRequest,
     EvaluationResponse,
-    CategoricalScoreDistribution,
-    NumericScoreDistribution,
     TaskEvaluationRequest,
     TaskEvaluationResponse,
     FlexibleEvaluationRequest,
@@ -31,42 +29,40 @@ from api.evaluations.schemas import (
 from api.guidelines.models import Guideline
 from api.guidelines.service import GuidelineService
 from api.guidelines.schemas import GuidelineScoringScale
-from api.evaluations.eval_pipeline.dataset_task import DatasetTask
-from api.evaluations.eval_pipeline.flexible_dataset_task import FlexibleDatasetTask
-from api.evaluations.eval_pipeline.eval_pipeline import (
-    CustomTaskEvaluationPipeline,
-    CustomTaskEvaluationPipelineParameters,
+from api.evaluations.eval_worker import (
+    run_lighteval_pipeline_worker,
+    run_lighteval_task_pipeline_worker,
+    run_flexible_lighteval_pipeline_worker,
 )
-from api.evaluations.eval_pipeline.guideline_judge import GuidelineJudgeMetric
-from api.evaluations.eval_pipeline.metric_doc_generator import MetricDocGenerator
-
-from lighteval.logging.evaluation_tracker import EvaluationTracker
-from lighteval.models.endpoints.openai_model import (
-    OpenAICompatibleModelConfig,
-    OpenAICompatibleClient,
-)
-from lighteval.tasks.registry import Registry
-from lighteval.pipeline import ParallelismManager, Pipeline, PipelineParameters
-from lighteval.models.model_input import GenerationParameters
 
 logger = get_logger(__name__)
 
-# Threadpool configuration for parallel API calls
-MAX_WORKERS = 20
+# Process pool for running evaluations in separate processes
+# This allows evaluations to run on their own main thread, fixing thread-affinity issues
+# and preventing blocking of the FastAPI event loop
+_process_pool: ProcessPoolExecutor | None = None
 
-# Default API bases for providers
-DEFAULT_API_BASES = {
-    "openai": "https://api.openai.com/v1",
-    "baseten": "https://inference.baseten.co/v1",
-    "together": "https://api.together.xyz/v1",
-    "anyscale": "https://api.endpoints.anyscale.com/v1",
-}
+
+def get_process_pool() -> ProcessPoolExecutor:
+    """Get or create the process pool for evaluation workers."""
+    global _process_pool
+    if _process_pool is None:
+        # Use a small number of workers since evaluations are I/O bound (API calls)
+        # and each process consumes memory
+        _process_pool = ProcessPoolExecutor(max_workers=4)
+    return _process_pool
+
+
+def shutdown_process_pool():
+    """Shutdown the process pool gracefully."""
+    global _process_pool
+    if _process_pool is not None:
+        _process_pool.shutdown(wait=True)
+        _process_pool = None
+
 
 OPENROUTER_PROVIDER_SLUG = "openrouter"
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
-
-# Default temperature for model completion
-DEFAULT_TEMPERATURE = 0.7
 
 
 class EvaluationService:
@@ -108,7 +104,12 @@ class EvaluationService:
 
     @staticmethod
     async def _run_evaluation_background(trace_id: int, request: EvaluationRequest):
-        """Run evaluation in background."""
+        """Run evaluation in background using a separate process.
+
+        The evaluation pipeline runs in a separate process to:
+        1. Prevent blocking the FastAPI event loop
+        2. Allow metrics that require main-thread execution to work correctly
+        """
         async for session in get_session():
             repository = EvaluationRepository(session)
             try:
@@ -120,10 +121,40 @@ class EvaluationService:
                 dataset_content = service._load_dataset_content(request.dataset_name)
                 guidelines = await service._load_guidelines(request.guideline_names)
 
-                # Run lighteval pipeline
-                pipeline_output = await service._run_lighteval_pipeline(
-                    request, dataset_content, guidelines
+                # Convert guidelines to serializable dicts for the worker
+                guidelines_data = [
+                    service._convert_guideline_to_dict(g) for g in guidelines
+                ]
+
+                # Get model and judge configs as serializable dicts
+                model_config_data = await service._get_serializable_model_config(
+                    request.model_completion_config
                 )
+                judge_config_data = await service._get_serializable_judge_config(
+                    request.judge_config
+                )
+
+                # Run pipeline in a separate process
+                loop = asyncio.get_event_loop()
+                pool = get_process_pool()
+                pipeline_output = await loop.run_in_executor(
+                    pool,
+                    functools.partial(
+                        run_lighteval_pipeline_worker,
+                        dataset_name=request.dataset_name,
+                        dataset_content=dataset_content,
+                        guidelines_data=guidelines_data,
+                        model_config_data=model_config_data,
+                        judge_config_data=judge_config_data,
+                    ),
+                )
+
+                # Check for worker errors
+                if not pipeline_output.get("success", False):
+                    raise Exception(
+                        f"Worker failed: {pipeline_output.get('error', 'Unknown error')}\n"
+                        f"{pipeline_output.get('traceback', '')}"
+                    )
 
                 # Write results to database and upload to S3
                 trace = await repository.get_trace_by_id(trace_id)
@@ -181,7 +212,7 @@ class EvaluationService:
     async def _run_task_evaluation_background(
         trace_id: int, request: TaskEvaluationRequest
     ):
-        """Run task evaluation in background."""
+        """Run task evaluation in background using a separate process."""
         async for session in get_session():
             repository = EvaluationRepository(session)
             try:
@@ -189,10 +220,35 @@ class EvaluationService:
                 trace = await repository.get_trace_by_id(trace_id)
                 service = EvaluationService(session, trace.user_id)
 
-                # Run lighteval pipeline
-                pipeline_output = await service._run_lighteval_task_pipeline(request)
+                # Get model config as serializable dict
+                model_config_data = await service._get_serializable_model_config(
+                    request.model_completion_config
+                )
+
                 task_name = service._build_task_name(request)
-                metric_docs = service._build_metric_docs_for_task(task_name)
+
+                # Run pipeline in a separate process
+                loop = asyncio.get_event_loop()
+                pool = get_process_pool()
+                pipeline_output = await loop.run_in_executor(
+                    pool,
+                    functools.partial(
+                        run_lighteval_task_pipeline_worker,
+                        task_name=task_name,
+                        n_samples=request.dataset_config.n_samples,
+                        n_fewshots=request.dataset_config.n_fewshots,
+                        model_config_data=model_config_data,
+                    ),
+                )
+
+                # Check for worker errors
+                if not pipeline_output.get("success", False):
+                    raise Exception(
+                        f"Worker failed: {pipeline_output.get('error', 'Unknown error')}\n"
+                        f"{pipeline_output.get('traceback', '')}"
+                    )
+
+                metric_docs = pipeline_output.get("metric_docs", {})
 
                 # Extract metric names to use as guidelines
                 metric_names = list(pipeline_output["scores"].keys())
@@ -259,7 +315,7 @@ class EvaluationService:
     async def _run_flexible_evaluation_background(
         trace_id: int, request: FlexibleEvaluationRequest
     ):
-        """Run flexible evaluation in background."""
+        """Run flexible evaluation in background using a separate process."""
         async for session in get_session():
             repository = EvaluationRepository(session)
             try:
@@ -269,15 +325,60 @@ class EvaluationService:
                 dataset_content = service._load_dataset_content(request.dataset_name)
 
                 guidelines = []
+                guidelines_data = []
                 if (
                     request.judge_type == JudgeType.LLM_AS_JUDGE
                     and request.guideline_names
                 ):
                     guidelines = await service._load_guidelines(request.guideline_names)
+                    guidelines_data = [
+                        service._convert_guideline_to_dict(g) for g in guidelines
+                    ]
 
-                pipeline_output = await service._run_flexible_lighteval_pipeline(
-                    request, dataset_content, guidelines
+                # Get model and judge configs as serializable dicts
+                model_config_data = await service._get_serializable_model_config(
+                    request.model_completion_config
                 )
+                judge_config_data = None
+                if request.judge_config:
+                    judge_config_data = await service._get_serializable_judge_config(
+                        request.judge_config
+                    )
+
+                # Convert configs to serializable dicts
+                text_config_data = (
+                    request.text_config.model_dump() if request.text_config else None
+                )
+                mc_config_data = (
+                    request.mc_config.model_dump() if request.mc_config else None
+                )
+
+                # Run pipeline in a separate process
+                loop = asyncio.get_event_loop()
+                pool = get_process_pool()
+                pipeline_output = await loop.run_in_executor(
+                    pool,
+                    functools.partial(
+                        run_flexible_lighteval_pipeline_worker,
+                        dataset_name=request.dataset_name,
+                        dataset_content=dataset_content,
+                        input_field=request.input_field,
+                        output_type=request.output_type.value,
+                        judge_type=request.judge_type.value,
+                        text_config=text_config_data,
+                        mc_config=mc_config_data,
+                        guidelines_data=guidelines_data,
+                        model_config_data=model_config_data,
+                        judge_config_data=judge_config_data,
+                    ),
+                )
+
+                # Check for worker errors
+                if not pipeline_output.get("success", False):
+                    raise Exception(
+                        f"Worker failed: {pipeline_output.get('error', 'Unknown error')}\n"
+                        f"{pipeline_output.get('traceback', '')}"
+                    )
 
                 trace = await repository.get_trace_by_id(trace_id)
                 metric_names = list(pipeline_output["scores"].keys())
@@ -419,42 +520,6 @@ class EvaluationService:
 
         return model.api_name, provider.base_url
 
-    async def _create_openai_compatible_client(
-        self, model_completion_config: ModelConfig
-    ) -> OpenAICompatibleModelConfig:
-        if model_completion_config.api_source == "standard":
-            model_api_key = self.s3.download_api_key(
-                self.user_id, model_completion_config.model_provider_slug
-            )
-            model_name, model_url = await self._get_model_api_name_and_base_url(
-                model_completion_config.model_provider_id,
-                model_completion_config.model_id,
-            )
-            model_config = OpenAICompatibleModelConfig(
-                model_name=model_name,
-                base_url=model_url,
-                api_key=model_api_key,
-            )
-        else:
-            model_api_key = self.s3.download_api_key(
-                self.user_id, OPENROUTER_PROVIDER_SLUG
-            )
-            model_config = OpenAICompatibleModelConfig(
-                model_name=model_completion_config.api_name,
-                base_url=OPENROUTER_API_BASE,
-                api_key=model_api_key,
-                generation_parameters=GenerationParameters(
-                    extra_body={
-                        "provider": {
-                            "order": [model_completion_config.model_provider_slug],
-                            "allow_fallbacks": False,
-                        }
-                    }
-                ),
-            )
-
-        return model_config
-
     async def _create_judge_client_parameters(self, judge_config: ModelConfig) -> dict:
         if judge_config.api_source == "standard":
             model_api_key = self.s3.download_api_key(
@@ -485,226 +550,42 @@ class EvaluationService:
                 },
             }
 
-    async def _run_lighteval_pipeline(
-        self,
-        request: EvaluationRequest,
-        dataset_content: str,
-        guidelines: list[Guideline],
+    async def _get_serializable_model_config(
+        self, model_completion_config: ModelConfig
     ) -> dict:
-        """Run evaluation using lighteval pipeline.
-
-        Returns:
-            dict with keys: summary, scores, sample_count, temp_dir
-        """
-        # Get API key for judge model
-        judge_client_parameters = await self._create_judge_client_parameters(
-            request.judge_config
-        )
-
-        # Create judge metrics from guidelines
-        metrics = []
-        for guideline in guidelines:
-            guideline_dict = self._convert_guideline_to_dict(guideline)
-            metric = GuidelineJudgeMetric(
-                guideline=guideline_dict,
-                model=judge_client_parameters["model_name"],
-                url=judge_client_parameters["base_url"],
-                api_key=judge_client_parameters["api_key"],
-                extra_body=judge_client_parameters.get("extra_body", {}),
+        """Get model config as a serializable dict for worker processes."""
+        if model_completion_config.api_source == "standard":
+            model_api_key = self.s3.download_api_key(
+                self.user_id, model_completion_config.model_provider_slug
             )
-            metrics.append(metric)
-
-        # Create DatasetTask
-        dataset_task = DatasetTask(
-            dataset_name=request.dataset_name,
-            dataset_content=dataset_content,
-            metrics=metrics,
-        )
-        task = dataset_task.build_lighteval_task()
-
-        # Create registry for proper cache hashing
-        registry = Registry(tasks=None)
-        registry._task_registry[request.dataset_name] = task.config
-        registry.task_to_configs = {request.dataset_name: [task.config]}
-
-        # Create model client
-        model_config = await self._create_openai_compatible_client(
-            request.model_completion_config
-        )
-        model = OpenAICompatibleClient(model_config)
-
-        # Initialize registry on model cache
-        if hasattr(model, "_cache") and model._cache is not None:
-            model._cache._init_registry(registry)
-
-        # Create evaluation tracker with temporary directory
-        temp_dir = tempfile.mkdtemp()
-        evaluation_tracker = EvaluationTracker(
-            output_dir=temp_dir,
-            save_details=True,
-            push_to_hub=False,
-        )
-
-        # Run evaluation pipeline
-        pipeline = CustomTaskEvaluationPipeline(
-            task=task,
-            evaluation_tracker=evaluation_tracker,
-            model=model,
-            params=CustomTaskEvaluationPipelineParameters(
-                max_samples=None, save_details=True, use_cache=True
-            ),
-        )
-
-        results = pipeline.evaluate()
-        pipeline.save_and_push_results()
-
-        # Cleanup
-        dataset_task.cleanup()
-
-        return {**results, "temp_dir": temp_dir}
-
-    async def _run_lighteval_task_pipeline(
-        self, request: TaskEvaluationRequest
-    ) -> dict:
-        """Run an evaluation on a task using lighteval.
-
-        Returns:
-            dict with keys: summary, scores, sample_count, temp_dir
-        """
-        # Create evaluation tracker with temporary directory
-        temp_dir = tempfile.mkdtemp()
-        evaluation_tracker = EvaluationTracker(
-            output_dir=temp_dir,
-            save_details=True,
-        )
-
-        # Create pipeline parameters
-        pipeline_params = PipelineParameters(
-            launcher_type=ParallelismManager.ACCELERATE,
-            max_samples=request.dataset_config.n_samples,
-        )
-
-        # Create model config
-        model_config = await self._create_openai_compatible_client(
-            request.model_completion_config
-        )
-
-        task_name = self._build_task_name(request)
-
-        # Create pipeline
-        pipeline = Pipeline(
-            tasks=task_name,
-            pipeline_parameters=pipeline_params,
-            evaluation_tracker=evaluation_tracker,
-            model_config=model_config,
-        )
-
-        # Run pipeline
-        pipeline.evaluate()
-        pipeline.save_and_push_results()
-
-        results = pipeline.get_results()
-
-        # Extract task results
-        task_results = results["results"]["all"]
-
-        # Extract scores by metric
-        scores_by_metric = {}
-        for metric_name, value in task_results.items():
-            if not metric_name.endswith("_stderr"):
-                scores_by_metric[metric_name] = value
-
-        # Extract sample count from config_general
-        actual_sample_count = results.get("config_general", {}).get(
-            "max_samples", request.dataset_config.n_samples
-        )
-
-        return {
-            "summary": task_results,
-            "scores": scores_by_metric,
-            "sample_count": actual_sample_count,
-            "temp_dir": temp_dir,
-        }
-
-    async def _run_flexible_lighteval_pipeline(
-        self,
-        request: FlexibleEvaluationRequest,
-        dataset_content: str,
-        guidelines: list[Guideline],
-    ) -> dict:
-        """Run flexible evaluation using lighteval pipeline."""
-        guideline_metrics = []
-        if request.judge_type == JudgeType.LLM_AS_JUDGE and request.judge_config:
-            judge_client_parameters = await self._create_judge_client_parameters(
-                request.judge_config
+            model_name, model_url = await self._get_model_api_name_and_base_url(
+                model_completion_config.model_provider_id,
+                model_completion_config.model_id,
             )
+            return {
+                "model_name": model_name,
+                "base_url": model_url,
+                "api_key": model_api_key,
+            }
+        else:
+            model_api_key = self.s3.download_api_key(
+                self.user_id, OPENROUTER_PROVIDER_SLUG
+            )
+            return {
+                "model_name": model_completion_config.api_name,
+                "base_url": OPENROUTER_API_BASE,
+                "api_key": model_api_key,
+                "extra_body": {
+                    "provider": {
+                        "order": [model_completion_config.model_provider_slug],
+                        "allow_fallbacks": False,
+                    }
+                },
+            }
 
-            for guideline in guidelines:
-                guideline_dict = self._convert_guideline_to_dict(guideline)
-                metric = GuidelineJudgeMetric(
-                    guideline=guideline_dict,
-                    model=judge_client_parameters["model_name"],
-                    url=judge_client_parameters["base_url"],
-                    api_key=judge_client_parameters["api_key"],
-                    extra_body=judge_client_parameters.get("extra_body", {}),
-                )
-                guideline_metrics.append(metric)
-
-        dataset_task = FlexibleDatasetTask(
-            dataset_name=request.dataset_name,
-            dataset_content=dataset_content,
-            input_field=request.input_field,
-            output_type=request.output_type,
-            judge_type=request.judge_type,
-            text_config=request.text_config,
-            mc_config=request.mc_config,
-            guideline_metrics=guideline_metrics,
-        )
-        task = dataset_task.build_lighteval_task()
-
-        registry = Registry(tasks=task_name)
-        configs = [
-            config
-            for configs in registry.task_to_configs.values()
-            for config in configs
-        ]
-        metrics = [metric for config in configs for metric in config.metrics]
-        metric_docs = MetricDocGenerator.generate_metric_docs(metrics)
-        return {
-            name: [asdict(desc) for desc in descriptions]
-            for name, descriptions in metric_docs.items()
-        }
-
-        model_config = await self._create_openai_compatible_client(
-            request.model_completion_config
-        )
-        model = OpenAICompatibleClient(model_config)
-
-        if hasattr(model, "_cache") and model._cache is not None:
-            model._cache._init_registry(registry)
-
-        temp_dir = tempfile.mkdtemp()
-        evaluation_tracker = EvaluationTracker(
-            output_dir=temp_dir,
-            save_details=True,
-            push_to_hub=False,
-        )
-
-        pipeline = CustomTaskEvaluationPipeline(
-            task=task,
-            evaluation_tracker=evaluation_tracker,
-            model=model,
-            params=CustomTaskEvaluationPipelineParameters(
-                max_samples=None, save_details=True, use_cache=True
-            ),
-        )
-
-        results = pipeline.evaluate()
-        pipeline.save_and_push_results()
-
-        dataset_task.cleanup()
-
-        return {**results, "temp_dir": temp_dir}
+    async def _get_serializable_judge_config(self, judge_config: ModelConfig) -> dict:
+        """Get judge config as a serializable dict for worker processes."""
+        return await self._create_judge_client_parameters(judge_config)
 
     async def _write_results(
         self,
@@ -934,78 +815,10 @@ class EvaluationService:
 
         return summary
 
-    def _build_response_from_summary(
-        self, trace: Trace, request: EvaluationRequest, sample_count: int, summary: dict
-    ) -> EvaluationResponse:
-        """Build evaluation response from summary."""
-        scores = {}
-        for name in request.guideline_names:
-            summary_data = summary[name]
-            if summary_data["type"] == "categorical":
-                scores[name] = CategoricalScoreDistribution(
-                    distribution=summary_data["distribution"],
-                    mode=summary_data["mode"],
-                    failed=summary_data["failed"],
-                )
-            else:  # numeric
-                scores[name] = NumericScoreDistribution(
-                    mean=summary_data["mean"],
-                    std=summary_data["std"],
-                    failed=summary_data["failed"],
-                )
-
-        return EvaluationResponse(
-            trace_id=trace.id,
-            status=trace.status,
-            dataset_name=request.dataset_name,
-            sample_count=sample_count,
-            guideline_names=request.guideline_names,
-            completion_model=request.model_completion_config.model_name,
-            model_provider=request.model_completion_config.model_provider,
-            judge_model=request.judge_config.model_name,
-            scores=scores,
-            created_at=trace.created_at,
-        )
-
-    def _build_task_response_from_summary(
-        self,
-        trace: Trace,
-        request: TaskEvaluationRequest,
-        pipeline_output: dict,
-        metric_names: list[str],
-    ) -> TaskEvaluationResponse:
-        """Build task evaluation response from summary."""
-        judge_model = request.judge_config.model_name if request.judge_config else ""
-        return TaskEvaluationResponse(
-            trace_id=trace.id,
-            status=trace.status,
-            task_name=request.task_name,
-            sample_count=pipeline_output.get("sample_count"),
-            guideline_names=metric_names,
-            completion_model=request.model_completion_config.model_name,
-            model_provider=request.model_completion_config.model_provider,
-            judge_model=judge_model,
-            created_at=trace.created_at,
-        )
-
     def _build_task_name(self, request: TaskEvaluationRequest) -> str:
         if "|" in request.task_name:
             return request.task_name
         return f"{request.task_name}|{request.dataset_config.n_fewshots}"
-
-    def _build_metric_docs_for_task(self, task_name: str) -> dict:
-        registry = Registry(tasks=task_name)
-        configs = [
-            config
-            for configs in registry.task_to_configs.values()
-            for config in configs
-        ]
-        metrics = [metric for config in configs for metric in config.metrics]
-        metric_docs = MetricDocGenerator.generate_metric_docs(metrics)
-        return {
-            name: [asdict(desc) for desc in descriptions]
-            for name, descriptions in metric_docs.items()
-        }
 
     async def _upload_trace_jsonl_simple(self, trace: Trace) -> None:
         """Upload trace events as JSONL to S3."""
