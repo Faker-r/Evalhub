@@ -2,7 +2,10 @@ import json
 import statistics
 import asyncio
 import traceback
+import sys
+import threading
 from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 import functools
 
 from api.models_and_providers.service import ModelsAndProvidersService
@@ -41,24 +44,38 @@ logger = get_logger(__name__)
 # This allows evaluations to run on their own main thread, fixing thread-affinity issues
 # and preventing blocking of the FastAPI event loop
 _process_pool: ProcessPoolExecutor | None = None
+_pool_lock = threading.Lock()
 
 
 def get_process_pool() -> ProcessPoolExecutor:
     """Get or create the process pool for evaluation workers."""
     global _process_pool
-    if _process_pool is None:
-        # Use a small number of workers since evaluations are I/O bound (API calls)
-        # and each process consumes memory
+    with _pool_lock:
+        if _process_pool is None:
+            _process_pool = ProcessPoolExecutor(max_workers=4)
+    return _process_pool
+
+
+def _recreate_process_pool() -> ProcessPoolExecutor:
+    global _process_pool
+    with _pool_lock:
+        if _process_pool is not None:
+            try:
+                _process_pool.shutdown(wait=False)
+            except Exception:
+                pass
         _process_pool = ProcessPoolExecutor(max_workers=4)
+        logger.warning("Process pool recreated after worker crash")
     return _process_pool
 
 
 def shutdown_process_pool():
     """Shutdown the process pool gracefully."""
     global _process_pool
-    if _process_pool is not None:
-        _process_pool.shutdown(wait=True)
-        _process_pool = None
+    with _pool_lock:
+        if _process_pool is not None:
+            _process_pool.shutdown(wait=True)
+            _process_pool = None
 
 
 OPENROUTER_PROVIDER_SLUG = "openrouter"
@@ -137,17 +154,25 @@ class EvaluationService:
                 # Run pipeline in a separate process
                 loop = asyncio.get_event_loop()
                 pool = get_process_pool()
-                pipeline_output = await loop.run_in_executor(
-                    pool,
-                    functools.partial(
-                        run_lighteval_pipeline_worker,
-                        dataset_name=request.dataset_name,
-                        dataset_content=dataset_content,
-                        guidelines_data=guidelines_data,
-                        model_config_data=model_config_data,
-                        judge_config_data=judge_config_data,
-                    ),
-                )
+                try:
+                    pipeline_output = await loop.run_in_executor(
+                        pool,
+                        functools.partial(
+                            run_lighteval_pipeline_worker,
+                            dataset_name=request.dataset_name,
+                            dataset_content=dataset_content,
+                            guidelines_data=guidelines_data,
+                            model_config_data=model_config_data,
+                            judge_config_data=judge_config_data,
+                        ),
+                    )
+                except BrokenProcessPool:
+                    logger.error("Process pool crashed during evaluation, recreating pool")
+                    _recreate_process_pool()
+                    raise Exception(
+                        "Evaluation worker process crashed unexpectedly. "
+                        "This may be due to memory exhaustion."
+                    )
 
                 # Check for worker errors
                 if not pipeline_output.get("success", False):
@@ -230,16 +255,24 @@ class EvaluationService:
                 # Run pipeline in a separate process
                 loop = asyncio.get_event_loop()
                 pool = get_process_pool()
-                pipeline_output = await loop.run_in_executor(
-                    pool,
-                    functools.partial(
-                        run_lighteval_task_pipeline_worker,
-                        task_name=task_name,
-                        n_samples=request.dataset_config.n_samples,
-                        n_fewshots=request.dataset_config.n_fewshots,
-                        model_config_data=model_config_data,
-                    ),
-                )
+                try:
+                    pipeline_output = await loop.run_in_executor(
+                        pool,
+                        functools.partial(
+                            run_lighteval_task_pipeline_worker,
+                            task_name=task_name,
+                            n_samples=request.dataset_config.n_samples,
+                            n_fewshots=request.dataset_config.n_fewshots,
+                            model_config_data=model_config_data,
+                        ),
+                    )
+                except BrokenProcessPool:
+                    logger.error("Process pool crashed during task evaluation, recreating pool")
+                    _recreate_process_pool()
+                    raise Exception(
+                        "Evaluation worker process crashed unexpectedly. "
+                        "This may be due to memory exhaustion."
+                    )
 
                 # Check for worker errors
                 if not pipeline_output.get("success", False):
@@ -356,22 +389,30 @@ class EvaluationService:
                 # Run pipeline in a separate process
                 loop = asyncio.get_event_loop()
                 pool = get_process_pool()
-                pipeline_output = await loop.run_in_executor(
-                    pool,
-                    functools.partial(
-                        run_flexible_lighteval_pipeline_worker,
-                        dataset_name=request.dataset_name,
-                        dataset_content=dataset_content,
-                        input_field=request.input_field,
-                        output_type=request.output_type.value,
-                        judge_type=request.judge_type.value,
-                        text_config=text_config_data,
-                        mc_config=mc_config_data,
-                        guidelines_data=guidelines_data,
-                        model_config_data=model_config_data,
-                        judge_config_data=judge_config_data,
-                    ),
-                )
+                try:
+                    pipeline_output = await loop.run_in_executor(
+                        pool,
+                        functools.partial(
+                            run_flexible_lighteval_pipeline_worker,
+                            dataset_name=request.dataset_name,
+                            dataset_content=dataset_content,
+                            input_field=request.input_field,
+                            output_type=request.output_type.value,
+                            judge_type=request.judge_type.value,
+                            text_config=text_config_data,
+                            mc_config=mc_config_data,
+                            guidelines_data=guidelines_data,
+                            model_config_data=model_config_data,
+                            judge_config_data=judge_config_data,
+                        ),
+                    )
+                except BrokenProcessPool:
+                    logger.error("Process pool crashed during flexible evaluation, recreating pool")
+                    _recreate_process_pool()
+                    raise Exception(
+                        "Evaluation worker process crashed unexpectedly. "
+                        "This may be due to memory exhaustion."
+                    )
 
                 # Check for worker errors
                 if not pipeline_output.get("success", False):
