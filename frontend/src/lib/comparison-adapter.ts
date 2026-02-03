@@ -154,3 +154,43 @@ export function getNumericForDiff(score: number | Record<string, unknown>): numb
   if (n == null) return null;
   return n <= 1 ? n * 100 : n;
 }
+
+// New interface for grouped bar chart data
+export interface BarChartDataPoint {
+  benchmark: string;
+  metric: string;
+  modelScores: Record<ModelProviderKey, number | null>;
+}
+
+export function buildGroupedBarData(
+  rows: ComparisonRow[],
+  modelKeys: ModelProviderKey[]
+): BarChartDataPoint[] {
+  return rows.map((row) => {
+    const modelScores: Record<ModelProviderKey, number | null> = {};
+
+    for (const mk of modelKeys) {
+      const cell = row.models[mk];
+      if (cell) {
+        const num = extractNumericScore(cell.score);
+        if (num != null) {
+          // Normalize to percentage
+          modelScores[mk] = num <= 1 ? num * 100 : num;
+        } else {
+          modelScores[mk] = null;
+        }
+      } else {
+        modelScores[mk] = null;
+      }
+    }
+
+    return {
+      benchmark: row.dataset,
+      metric: row.metric,
+      modelScores,
+    };
+  }).filter((point) => {
+    // Only include benchmarks where at least one model has a valid score
+    return Object.values(point.modelScores).some((score) => score !== null);
+  });
+}
