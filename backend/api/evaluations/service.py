@@ -10,6 +10,7 @@ import functools
 
 from api.models_and_providers.service import ModelsAndProvidersService
 from fastapi import HTTPException, status
+from numpy import isin
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.logging import get_logger
@@ -983,9 +984,17 @@ class EvaluationService:
                         
                         # Input
                         input_text = ""
-                        if doc_obj is not None:
-                             input_text = safe_get(doc_obj, "query", "")
+                        if model_resp_obj is not None:
+                            try:
+                                input_text = "\n".join([line['content'] for line in safe_get(model_resp_obj, "input", [])])
+                            except Exception as e:
+                                logger.error(f"Failed to extract input text for trace {trace.id}: {e}")
                         
+                        # Fallback to doc object if input text is empty
+                        if input_text == "":
+                            if doc_obj is not None:
+                                input_text = safe_get(doc_obj, "query", "")
+
                         # Prediction
                         prediction = ""
                         if model_resp_obj is not None:
@@ -1042,12 +1051,22 @@ class EvaluationService:
                         metric_scores = {}
                         if metrics_obj is not None:
                             if hasattr(metrics_obj, "items"):
-                                try:
-                                    for k, v in metrics_obj.items():
-                                        metric_scores[k] = float(v)
-                                except:
-                                    pass
-
+                                for k, v in metrics_obj.items():
+                                    normalized = None
+                                    if hasattr(v, "item") and getattr(v, "size", 2) == 1:
+                                        v = v.item()
+                                    if isinstance(v, bool):
+                                        normalized = v
+                                    elif isinstance(v, int):
+                                        normalized = v
+                                    elif isinstance(v, float):
+                                        normalized = int(v) if v == int(v) else v
+                                    elif isinstance(v, str):
+                                        normalized = v
+                                    else:
+                                        normalized = str(v)
+                                    metric_scores[k] = normalized
+                        
                         samples.append(TraceSample(
                             input=input_text,
                             prediction=prediction,

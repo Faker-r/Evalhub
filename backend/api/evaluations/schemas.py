@@ -181,7 +181,7 @@ class TraceSample(BaseModel):
     input: str
     prediction: str
     gold: str | list[str] | None = None
-    metric_scores: dict[str, float] = {}
+    metric_scores: dict[str, float | int | bool | str] = {}
 
 
 class TraceSamplesResponse(BaseModel):
