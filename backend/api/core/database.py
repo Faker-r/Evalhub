@@ -15,7 +15,11 @@ connect_args = {
 
 # Create async engine
 engine = create_async_engine(
-    database_url, echo=False, future=True, connect_args=connect_args
+    database_url,
+    echo=False,
+    future=True,
+    connect_args=connect_args,
+    pool_pre_ping=True,
 )
 
 # Create async session factory

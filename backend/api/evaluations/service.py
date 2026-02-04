@@ -18,6 +18,7 @@ from api.core.s3 import S3Storage
 from api.core.database import get_session
 from api.evaluations.models import Trace
 from api.evaluations.repository import EvaluationRepository
+from api.core.exceptions import NotFoundException
 from api.evaluations.schemas import (
     EvaluationRequest,
     EvaluationResponse,
@@ -26,6 +27,7 @@ from api.evaluations.schemas import (
     FlexibleEvaluationRequest,
     JudgeType,
     ModelConfig,
+    TraceDetailsResponse,
     TraceSamplesRequest,
     TraceSamplesResponse,
     TraceSample,
@@ -912,6 +914,20 @@ class EvaluationService:
 
         return trace
 
+    async def get_trace_details(self, trace_id: int) -> TraceDetailsResponse:
+        """Get trace details from the spec event."""
+        trace = await self.get_trace(trace_id)
+        spec_event = await self.repository.get_spec_event_by_trace_id(trace_id)
+        if not spec_event:
+            raise NotFoundException("Trace details not found")
+        return TraceDetailsResponse(
+            trace_id=trace.id,
+            status=trace.status,
+            created_at=trace.created_at,
+            judge_model_provider=trace.judge_model_provider,
+            spec=spec_event.data,
+        )
+
     async def get_trace_samples(self, request: TraceSamplesRequest) -> TraceSamplesResponse:
         """Get samples for a trace from S3 details parquet files."""
         trace = await self.get_trace(request.trace_id)
@@ -1051,21 +1067,22 @@ class EvaluationService:
                         metric_scores = {}
                         if metrics_obj is not None:
                             if hasattr(metrics_obj, "items"):
-                                for k, v in metrics_obj.items():
+                                for metric_name in trace.guideline_names:
+                                    metric_value = safe_get(metrics_obj, metric_name)
                                     normalized = None
-                                    if hasattr(v, "item") and getattr(v, "size", 2) == 1:
-                                        v = v.item()
-                                    if isinstance(v, bool):
-                                        normalized = v
-                                    elif isinstance(v, int):
-                                        normalized = v
-                                    elif isinstance(v, float):
-                                        normalized = int(v) if v == int(v) else v
-                                    elif isinstance(v, str):
-                                        normalized = v
+                                    if hasattr(metric_value, "item") and getattr(metric_value, "size", 2) == 1:
+                                        metric_value = metric_value.item()
+                                    if isinstance(metric_value, bool):
+                                        normalized = metric_value
+                                    elif isinstance(metric_value, int):
+                                        normalized = metric_value
+                                    elif isinstance(metric_value, float):
+                                        normalized = int(metric_value) if metric_value == int(metric_value) else metric_value
+                                    elif isinstance(metric_value, str):
+                                        normalized = metric_value
                                     else:
-                                        normalized = str(v)
-                                    metric_scores[k] = normalized
+                                        normalized = str(metric_value)
+                                    metric_scores[metric_name] = normalized
                         
                         samples.append(TraceSample(
                             input=input_text,

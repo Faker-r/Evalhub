@@ -691,6 +691,9 @@ export default function Submit() {
                             onClick={() => {
                               setOutputType("text");
                               setChoicesField("");
+                              setJudgeType(null);
+                              setSelectedGuidelines([]);
+                              setJudgeModelConfig({});
                             }}
                             className={cn(
                               "flex-1 border p-4 rounded-lg cursor-pointer transition-all",
@@ -703,7 +706,12 @@ export default function Submit() {
                             <div className="text-sm text-muted-foreground">Free-form text response</div>
                           </div>
                           <div
-                            onClick={() => setOutputType("multiple_choice")}
+                            onClick={() => {
+                              setOutputType("multiple_choice");
+                              setJudgeType(null);
+                              setSelectedGuidelines([]);
+                              setJudgeModelConfig({});
+                            }}
                             className={cn(
                               "flex-1 border p-4 rounded-lg cursor-pointer transition-all",
                               outputType === "multiple_choice"

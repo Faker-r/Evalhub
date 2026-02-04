@@ -29,11 +29,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
 import { ModelSelection } from "@/components/model-selection";
 import {
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   ResponsiveContainer,
   Legend,
   Tooltip as RechartsTooltip,
@@ -43,8 +43,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiClient } from "@/lib/api";
 import {
   buildComparisonRows,
-  buildRadarData,
+  buildGroupedBarData,
   type ComparisonRow,
+  type BarChartDataPoint,
   toModelProviderKey,
   getDisplayScore,
   getNumericForDiff,
@@ -69,16 +70,16 @@ function configToPair(config: ModelConfig): { model: string; provider: string; l
   if (config.is_openrouter) {
     const model = config.openrouter_model_id ?? "";
     const provider = config.openrouter_provider_slug ?? "openrouter";
-    const label = (config.openrouter_model_name ?? model) || "OpenRouter model";
+    const label = (config.openrouter_model_id ?? config.openrouter_model_name ?? model) || "OpenRouter model";
     return model ? { model, provider, label } : null;
   }
   const model = (config.api_name ?? config.model_name) ?? "";
-  const provider = (config.provider_name ?? config.provider_slug) ?? "";
-  const label = (config.model_name ?? model) || "Model";
+  const provider = config.provider_slug ?? "";
+  const label = (config.api_name ?? config.model_name ?? model) || "Model";
   return model && provider ? { model, provider, label } : null;
 }
 
-const RADAR_COLORS = ["#39E29D", "#000000", "#6366f1", "#f59e0b", "#ec4899"];
+const BAR_COLORS = ["#39E29D", "#6366f1", "#f59e0b", "#ec4899", "#8b5cf6"];
 
 export default function Compare() {
   const [pairs, setPairs] = useState<{ id: string; model: string; provider: string; label: string }[]>([]);
@@ -95,7 +96,6 @@ export default function Compare() {
   const [sortKey, setSortKey] = useState<"benchmark" | "diff" | string>("benchmark");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [selectedRow, setSelectedRow] = useState<ComparisonRow | null>(null);
-  const [radarVisibility, setRadarVisibility] = useState<Record<string, boolean>>({});
 
   const modelProviderPairs = useMemo(
     () => pairs.map((p) => ({ model: p.model, provider: p.provider })),
@@ -170,9 +170,9 @@ export default function Compare() {
     [pairs]
   );
 
-  const radarData = useMemo(() => {
+  const barChartData = useMemo(() => {
     if (modelKeys.length === 0) return [];
-    return buildRadarData(rows, modelKeys);
+    return buildGroupedBarData(rows, modelKeys);
   }, [rows, modelKeys]);
 
   const sortedRows = useMemo(() => {
@@ -204,9 +204,6 @@ export default function Compare() {
     return arr;
   }, [rows, sortKey, sortDir, modelKeys]);
 
-  const toggleRadarSeries = useCallback((dataKey: string) => {
-    setRadarVisibility((prev) => ({ ...prev, [dataKey]: !prev[dataKey] }));
-  }, []);
 
   const hasOverlapping = overlappingCount !== null && overlappingCount > 0;
   const noOverlappingWarning = pairs.length >= 2 && overlappingCount === 0 && !overlappingLoading;
@@ -222,50 +219,58 @@ export default function Compare() {
         </div>
 
         <div className="sticky top-16 z-40 bg-background/95 backdrop-blur border-b border-border -mx-4 px-4 py-4 mb-6">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {pairs.map((p) => (
-              <Badge
-                key={p.id}
-                variant="secondary"
-                className="pl-2 pr-1 py-1.5 gap-1 font-normal"
-              >
-                <span className="max-w-[140px] truncate">{p.label}</span>
+              <Card key={p.id} className="border-border relative">
                 <button
                   type="button"
                   onClick={() => removePair(p.id)}
-                  className="rounded hover:bg-muted p-0.5"
-                  aria-label="Remove"
+                  className="absolute top-2 right-2 rounded hover:bg-muted p-1.5 z-10"
+                  aria-label="Remove model"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
-              </Badge>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium pr-8 truncate">
+                    {p.label}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-xs text-muted-foreground space-y-1">
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">Provider:</span>
+                    <span className="truncate">{p.provider}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">Model:</span>
+                    <span className="truncate">{p.model}</span>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAddModalOpen(true)}
-              className="gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              Add model
-            </Button>
-            {pairs.length >= 2 && (
-              <>
-                <span className="text-sm text-muted-foreground">
-                  {overlappingLoading
-                    ? "…"
-                    : `${overlappingCount ?? 0} overlapping dataset${(overlappingCount ?? 0) !== 1 ? "s" : ""}`}
-                </span>
-                <Button
-                  onClick={handleCompare}
-                  disabled={reportLoading || (overlappingCount ?? 0) === 0}
-                  className="bg-black hover:bg-zinc-800"
-                >
-                  {reportLoading ? "Loading…" : "Compare"}
-                </Button>
-              </>
-            )}
+            <Card className="border-dashed border-2 border-border hover:border-primary/50 transition-colors cursor-pointer" onClick={() => setAddModalOpen(true)}>
+              <CardContent className="flex flex-col items-center justify-center h-full min-h-[120px] p-6">
+                <div className="rounded-full bg-primary/10 p-3 mb-2">
+                  <Plus className="w-5 h-5 text-primary" />
+                </div>
+                <span className="text-sm font-medium">Add Model</span>
+              </CardContent>
+            </Card>
           </div>
+          {pairs.length >= 2 && (
+            <div className="flex items-center gap-3 mt-4">
+              <span className="text-sm text-muted-foreground">
+                {overlappingLoading
+                  ? "…"
+                  : `${overlappingCount ?? 0} overlapping dataset${(overlappingCount ?? 0) !== 1 ? "s" : ""}`}
+              </span>
+              <Button
+                onClick={handleCompare}
+                disabled={reportLoading || (overlappingCount ?? 0) === 0}
+              >
+                {reportLoading ? "Loading…" : "Compare"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {noOverlappingWarning && (
@@ -285,193 +290,190 @@ export default function Compare() {
         )}
 
         {report && pairs.length >= 2 && (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <div className="lg:col-span-2">
-              <Card className="border-border h-full">
-                <CardHeader>
-                  <CardTitle>Guideline Performance</CardTitle>
-                  <CardDescription>Capability-level comparison (0–100)</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[360px]">
-                  {radarData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart
-                        cx="50%"
-                        cy="50%"
-                        outerRadius="75%"
-                        data={radarData}
-                        onClick={(state) => {
-                          if (state?.activePayload?.[0]?.dataKey) {
-                            toggleRadarSeries(state.activePayload[0].dataKey as string);
-                          }
-                        }}
+          <div className="space-y-6">
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Performance Comparison</CardTitle>
+                <CardDescription>Score comparison across benchmarks and metrics</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {barChartData.length > 0 ? (
+                  <ScrollArea className="h-[500px]">
+                    <ResponsiveContainer width="100%" height={Math.max(500, barChartData.length * 60)}>
+                      <BarChart
+                        data={barChartData}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
                       >
-                        <PolarGrid stroke="#e5e7eb" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: "#6b7280", fontSize: 11 }} />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                        {modelKeys.map((key, i) => (
-                          <Radar
-                            key={key}
-                            name={pairs.find((p) => toModelProviderKey(p.model, p.provider) === key)?.label ?? key}
-                            dataKey={key}
-                            stroke={RADAR_COLORS[i % RADAR_COLORS.length]}
-                            strokeWidth={2}
-                            fill={RADAR_COLORS[i % RADAR_COLORS.length]}
-                            fillOpacity={radarVisibility[key] === false ? 0 : 0.2}
-                            strokeOpacity={radarVisibility[key] === false ? 0 : 1}
-                          />
-                        ))}
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis type="number" domain={[0, 100]} />
+                        <YAxis
+                          type="category"
+                          dataKey={(item: BarChartDataPoint) => `${item.benchmark} (${item.metric})`}
+                          width={140}
+                          tick={{ fontSize: 11 }}
+                        />
                         <RechartsTooltip
-                          formatter={(value: number) => [value.toFixed(1), ""]}
+                          formatter={(value: number) => [`${value.toFixed(1)}%`, ""]}
                           contentStyle={{ fontSize: 12 }}
                         />
-                        <Legend
-                          onClick={(e) => e.dataKey != null && toggleRadarSeries(String(e.dataKey))}
-                          wrapperStyle={{ cursor: "pointer" }}
-                        />
-                      </RadarChart>
+                        <Legend />
+                        {modelKeys.map((key, i) => {
+                          const p = pairs.find((p) => toModelProviderKey(p.model, p.provider) === key);
+                          const name = p ? `${p.provider} / ${p.label}` : key;
+                          return (
+                          <Bar
+                            key={key}
+                            name={name}
+                            dataKey={(item: BarChartDataPoint) => item.modelScores[key] ?? 0}
+                            fill={BAR_COLORS[i % BAR_COLORS.length]}
+                            radius={[0, 4, 4, 0]}
+                          />
+                        );})}
+                      </BarChart>
                     </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                      No capability data for overlapping datasets.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="flex items-center justify-center h-[360px] text-sm text-muted-foreground">
+                    No performance data for overlapping datasets.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-            <div className="lg:col-span-3">
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>Benchmark Comparison</CardTitle>
-                  <CardDescription>Head-to-head scores; click a row for trace details.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {sortedRows.length === 0 ? (
-                    <Empty>
-                      <EmptyMedia variant="icon">
-                        <AlertCircle className="size-6" />
-                      </EmptyMedia>
-                      <EmptyHeader>
-                        <EmptyTitle>No results</EmptyTitle>
-                        <EmptyDescription>
-                          Adjust model selection or run evaluations on shared datasets.
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
-                  ) : (
-                    <ScrollArea className={cn(sortedRows.length > 30 && "h-[480px]")}>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle>Benchmark Comparison</CardTitle>
+                <CardDescription>Head-to-head scores; click a row for trace details.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {sortedRows.length === 0 ? (
+                  <Empty>
+                    <EmptyMedia variant="icon">
+                      <AlertCircle className="size-6" />
+                    </EmptyMedia>
+                    <EmptyHeader>
+                      <EmptyTitle>No results</EmptyTitle>
+                      <EmptyDescription>
+                        Adjust model selection or run evaluations on shared datasets.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <ScrollArea className={cn(sortedRows.length > 30 && "h-[480px]")}>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead
+                            className="cursor-pointer"
+                            onClick={() => {
+                              setSortKey("benchmark");
+                              setSortDir((d) => (sortKey === "benchmark" ? (d === "asc" ? "desc" : "asc") : "asc"));
+                            }}
+                          >
+                            Benchmark {sortKey === "benchmark" && (sortDir === "asc" ? "↑" : "↓")}
+                          </TableHead>
+                          {modelKeys.map((key) => {
+                            const p = pairs.find((p) => toModelProviderKey(p.model, p.provider) === key);
+                            const headerLabel = p ? `${p.provider} / ${p.label}` : key;
+                            return (
                             <TableHead
-                              className="cursor-pointer"
+                              key={key}
+                              className="text-right cursor-pointer"
                               onClick={() => {
-                                setSortKey("benchmark");
-                                setSortDir((d) => (sortKey === "benchmark" ? (d === "asc" ? "desc" : "asc") : "asc"));
+                                setSortKey(key);
+                                setSortDir((d) => (sortKey === key ? (d === "asc" ? "desc" : "asc") : "asc"));
                               }}
                             >
-                              Benchmark {sortKey === "benchmark" && (sortDir === "asc" ? "↑" : "↓")}
+                              {headerLabel}{" "}
+                              {sortKey === key && (sortDir === "asc" ? "↑" : "↓")}
                             </TableHead>
-                            {modelKeys.map((key) => (
-                              <TableHead
-                                key={key}
-                                className="text-right cursor-pointer"
-                                onClick={() => {
-                                  setSortKey(key);
-                                  setSortDir((d) => (sortKey === key ? (d === "asc" ? "desc" : "asc") : "asc"));
-                                }}
-                              >
-                                {pairs.find((p) => toModelProviderKey(p.model, p.provider) === key)?.label ?? key}{" "}
-                                {sortKey === key && (sortDir === "asc" ? "↑" : "↓")}
-                              </TableHead>
-                            ))}
-                            {modelKeys.length >= 2 && (
-                              <TableHead
-                                className="text-right cursor-pointer"
-                                onClick={() => {
-                                  setSortKey("diff");
-                                  setSortDir((d) => (sortKey === "diff" ? (d === "asc" ? "desc" : "asc") : "desc"));
-                                }}
-                              >
-                                Diff {sortKey === "diff" && (sortDir === "asc" ? "↑" : "↓")}
-                              </TableHead>
-                            )}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {sortedRows.map((row) => {
-                            const nums = modelKeys.map((k) => ({
-                              key: k,
-                              num: getNumericForDiff(row.models[k]?.score ?? 0),
-                              cell: row.models[k],
-                            }));
-                            const maxNum = Math.max(...nums.map((n) => n.num ?? -Infinity));
-                            const diffVal =
-                              modelKeys.length >= 2 && nums[0].num != null && nums[1].num != null
-                                ? nums[0].num! - nums[1].num!
-                                : null;
-                            return (
-                              <TableRow
-                                key={`${row.dataset}-${row.metric}`}
-                                className="cursor-pointer"
-                                onClick={() => setSelectedRow(row)}
-                              >
-                                <TableCell className="font-medium">
-                                  {row.dataset} ({row.metric})
-                                </TableCell>
-                                {modelKeys.map((key) => {
-                                  const cell = row.models[key];
-                                  const num = getNumericForDiff(cell?.score ?? 0);
-                                  const isMax = num != null && num === maxNum && maxNum > -Infinity;
-                                  const display = cell ? getDisplayScore(cell.score) : null;
-                                  return (
-                                    <TableCell key={key} className="text-right">
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <span className={cn(isMax && "font-bold")}>
-                                            {display?.type === "number"
-                                              ? display.value
-                                              : display?.type === "object"
-                                                ? <Badge variant="secondary" className="font-mono text-xs">JSON</Badge>
-                                                : "—"}
-                                          </span>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          {cell ? (
-                                            <>trace_id: {cell.trace_id}, {new Date(cell.created_at).toLocaleString()}</>
-                                          ) : (
-                                            <>—</>
-                                          )}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TableCell>
-                                  );
-                                })}
-                                {modelKeys.length >= 2 && (
-                                  <TableCell
-                                    className={cn(
-                                      "text-right font-mono",
-                                      diffVal == null && "bg-muted/50 text-muted-foreground",
-                                      diffVal != null && diffVal > 0 && "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200",
-                                      diffVal != null && diffVal < 0 && "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
-                                    )}
-                                  >
-                                    {diffVal != null
-                                      ? (diffVal >= 0 ? "+" : "") + diffVal.toFixed(1) + "%"
-                                      : "—"}
+                          );})}
+                          {modelKeys.length >= 2 && (
+                            <TableHead
+                              className="text-right cursor-pointer"
+                              onClick={() => {
+                                setSortKey("diff");
+                                setSortDir((d) => (sortKey === "diff" ? (d === "asc" ? "desc" : "asc") : "desc"));
+                              }}
+                            >
+                              Diff {sortKey === "diff" && (sortDir === "asc" ? "↑" : "↓")}
+                            </TableHead>
+                          )}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedRows.map((row) => {
+                          const nums = modelKeys.map((k) => ({
+                            key: k,
+                            num: getNumericForDiff(row.models[k]?.score ?? 0),
+                            cell: row.models[k],
+                          }));
+                          const maxNum = Math.max(...nums.map((n) => n.num ?? -Infinity));
+                          const diffVal =
+                            modelKeys.length >= 2 && nums[0].num != null && nums[1].num != null
+                              ? nums[0].num! - nums[1].num!
+                              : null;
+                          return (
+                            <TableRow
+                              key={`${row.dataset}-${row.metric}`}
+                              className="cursor-pointer"
+                              onClick={() => setSelectedRow(row)}
+                            >
+                              <TableCell className="font-medium">
+                                {row.dataset} ({row.metric})
+                              </TableCell>
+                              {modelKeys.map((key) => {
+                                const cell = row.models[key];
+                                const num = getNumericForDiff(cell?.score ?? 0);
+                                const isMax = num != null && num === maxNum && maxNum > -Infinity;
+                                const display = cell ? getDisplayScore(cell.score) : null;
+                                return (
+                                  <TableCell key={key} className="text-right">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className={cn(isMax && "font-bold")}>
+                                          {display?.type === "number"
+                                            ? display.value
+                                            : display?.type === "object"
+                                              ? <Badge variant="secondary" className="font-mono text-xs">JSON</Badge>
+                                              : "—"}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        {cell ? (
+                                          <>trace_id: {cell.trace_id}, {new Date(cell.created_at).toLocaleString()}</>
+                                        ) : (
+                                          <>—</>
+                                        )}
+                                      </TooltipContent>
+                                    </Tooltip>
                                   </TableCell>
-                                )}
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                                );
+                              })}
+                              {modelKeys.length >= 2 && (
+                                <TableCell
+                                  className={cn(
+                                    "text-right font-mono",
+                                    diffVal == null && "bg-muted/50 text-muted-foreground",
+                                    diffVal != null && diffVal > 0 && "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200",
+                                    diffVal != null && diffVal < 0 && "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
+                                  )}
+                                >
+                                  {diffVal != null
+                                    ? (diffVal >= 0 ? "+" : "") + diffVal.toFixed(1) + "%"
+                                    : "—"}
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -518,7 +520,8 @@ export default function Compare() {
             <div className="mt-4 space-y-4">
               {modelKeys.map((key) => {
                 const cell = selectedRow.models[key];
-                const label = pairs.find((p) => toModelProviderKey(p.model, p.provider) === key)?.label ?? key;
+                const p = pairs.find((p) => toModelProviderKey(p.model, p.provider) === key);
+                const label = p ? `${p.provider} / ${p.label}` : key;
                 return (
                   <div key={key} className="border rounded-lg p-3 space-y-2">
                     <div className="font-medium text-sm">{label}</div>

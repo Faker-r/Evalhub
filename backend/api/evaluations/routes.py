@@ -10,6 +10,7 @@ from api.evaluations.schemas import (
     TaskEvaluationRequest,
     TaskEvaluationResponse,
     FlexibleEvaluationRequest,
+    TraceDetailsResponse,
     TraceListResponse,
     TraceResponse,
     TraceSamplesRequest,
@@ -100,6 +101,16 @@ async def get_trace(
     """Get a specific evaluation trace."""
     logger.debug(f"Getting trace {trace_id} for user {current_user.email}")
     return await EvaluationService(session, current_user.id).get_trace(trace_id)
+
+
+@router.get("/trace-details/{trace_id}", response_model=TraceDetailsResponse)
+async def get_trace_details(
+    trace_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> TraceDetailsResponse:
+    """Get trace details from the spec event."""
+    return await EvaluationService(session, current_user.id).get_trace_details(trace_id)
 
 
 @router.get("/traces/{trace_id}/samples", response_model=TraceSamplesResponse)

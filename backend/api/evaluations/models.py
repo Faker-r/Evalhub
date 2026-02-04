@@ -35,6 +35,10 @@ class Trace(Base):
     def judge_model(self) -> str:
         return (self.judge_model_config or {}).get("api_name", "")
 
+    @property
+    def judge_model_provider(self) -> str:
+        return (self.judge_model_config or {}).get("provider_slug", "")
+
 
 class TraceEvent(Base):
     """TraceEvent model - represents one event in an evaluation run."""

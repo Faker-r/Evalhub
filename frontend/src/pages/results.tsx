@@ -25,7 +25,13 @@ export default function Results() {
   const traces = tracesData?.traces || [];
 
   const [selectedTrace, setSelectedTrace] = useState<any>(null);
-  
+
+  const { data: traceDetails, isLoading: isLoadingDetails } = useQuery({
+    queryKey: ["traceDetails", selectedTrace?.id],
+    queryFn: () => apiClient.getTraceDetails(selectedTrace.id),
+    enabled: !!selectedTrace?.id,
+  });
+
   const { data: traceSamplesData, isLoading: isLoadingSamples } = useQuery({
     queryKey: ["traceSamples", selectedTrace?.id],
     queryFn: () => apiClient.getTraceSamples(selectedTrace.id),
@@ -70,47 +76,6 @@ export default function Results() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString();
-  };
-
-  const renderMetricDocs = (metricDocs: any) => {
-    if (!metricDocs) return null;
-
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Metric Documentation</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Object.entries(metricDocs).map(([metricName, descriptions]: [string, any]) => (
-            <div key={metricName} className="border-b last:border-b-0 pb-4 last:pb-0">
-              <h4 className="font-semibold text-sm mb-2">{metricName}</h4>
-              <div className="space-y-3">
-                {descriptions.map((desc: any, idx: number) => (
-                  <div key={idx} className="bg-muted/50 p-3 rounded-md space-y-2 text-sm">
-                    <div>
-                      <span className="font-medium text-muted-foreground">Measure: </span>
-                      <span>{desc.measure}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-muted-foreground">Sample Level: </span>
-                      <span>{desc.sample_level}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-muted-foreground">Corpus Level: </span>
-                      <span>{desc.corpus_level}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-muted-foreground">Source: </span>
-                      <span className="text-xs font-mono">{desc.source}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    );
   };
 
   const renderScores = (scores: any, metricDocs: any) => {
@@ -422,46 +387,109 @@ export default function Results() {
                                       <CardTitle className="text-lg">Evaluation Information</CardTitle>
                                     </CardHeader>
                                     <CardContent className="grid grid-cols-2 gap-4">
-                                      <div>
-                                        <span className="text-sm text-muted-foreground">Dataset:</span>
-                                        <p className="font-medium">{selectedTrace.dataset_name}</p>
-                                      </div>
-                                      <div>
-                                        <span className="text-sm text-muted-foreground">Model:</span>
-                                        <p className="font-medium">{selectedTrace.completion_model}</p>
-                                      </div>
-                                      <div>
-                                        <span className="text-sm text-muted-foreground">Provider:</span>
-                                        <p className="font-medium">{selectedTrace.model_provider}</p>
-                                      </div>
-                                      <div>
-                                        <span className="text-sm text-muted-foreground">Judge Model:</span>
-                                        <p className="font-medium">{selectedTrace.judge_model}</p>
-                                      </div>
-                                      <div>
-                                        <span className="text-sm text-muted-foreground">Status:</span>
-                                        <p className="font-medium">{getStatusBadge(selectedTrace.status)}</p>
-                                      </div>
-                                      <div>
-                                        <span className="text-sm text-muted-foreground">Created:</span>
-                                        <p className="font-medium">{formatDate(selectedTrace.created_at)}</p>
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-
-                                  {/* Guidelines */}
-                                  <Card>
-                                    <CardHeader>
-                                      <CardTitle className="text-lg">Guidelines</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                      <div className="flex flex-wrap gap-2">
-                                        {selectedTrace.guideline_names.map((name: string) => (
-                                          <Badge key={name} variant="secondary">
-                                            {name}
-                                          </Badge>
-                                        ))}
-                                      </div>
+                                      {isLoadingDetails ? (
+                                        <div className="col-span-2 flex justify-center p-4">
+                                          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                                        </div>
+                                      ) : traceDetails ? (
+                                        <>
+                                          <div>
+                                            <span className="text-sm text-muted-foreground">Dataset:</span>
+                                            <p className="font-medium">{traceDetails.spec.dataset_name ?? traceDetails.spec.task_name ?? selectedTrace.dataset_name}</p>
+                                          </div>
+                                          <div className="flex gap-4">
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Model:</span>
+                                              <p className="font-medium">{traceDetails.spec.completion_model ?? selectedTrace.completion_model}</p>
+                                            </div>
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Provider:</span>
+                                              <p className="font-medium">{traceDetails.spec.model_provider ?? selectedTrace.model_provider}</p>
+                                            </div>
+                                          </div>
+                                          {traceDetails.spec.judge_model ? (
+                                            <div className="flex gap-4">
+                                              <div>
+                                                <span className="text-sm text-muted-foreground">Judge Model:</span>
+                                                <p className="font-medium">{traceDetails.spec.judge_model}</p>
+                                              </div>
+                                              <div>
+                                                <span className="text-sm text-muted-foreground">Judge Provider:</span>
+                                                <p className="font-medium">{traceDetails.judge_model_provider}</p>
+                                              </div>
+                                            </div>
+                                          ) : null}
+                                          {traceDetails.spec.sample_count != null ? (
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Number of samples:</span>
+                                              <p className="font-medium">{traceDetails.spec.sample_count}</p>
+                                            </div>
+                                          ) : null}
+                                          {traceDetails.spec.n_fewshots != null ? (
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Few shot examples:</span>
+                                              <p className="font-medium">{traceDetails.spec.n_fewshots}</p>
+                                            </div>
+                                          ) : null}
+                                          <div>
+                                            <span className="text-sm text-muted-foreground">Status:</span>
+                                            <p className="font-medium">{getStatusBadge(traceDetails.status)}</p>
+                                          </div>
+                                          <div>
+                                            <span className="text-sm text-muted-foreground">Created:</span>
+                                            <p className="font-medium">{formatDate(traceDetails.created_at)}</p>
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <div>
+                                            <span className="text-sm text-muted-foreground">Dataset:</span>
+                                            <p className="font-medium">{selectedTrace.dataset_name}</p>
+                                          </div>
+                                          <div className="flex gap-4">
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Model:</span>
+                                              <p className="font-medium">{selectedTrace.completion_model}</p>
+                                            </div>
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Provider:</span>
+                                              <p className="font-medium">{selectedTrace.model_provider}</p>
+                                            </div>
+                                          </div>
+                                          {selectedTrace.judge_model ? (
+                                            <div className="flex gap-4">
+                                              <div>
+                                                <span className="text-sm text-muted-foreground">Judge Model:</span>
+                                                <p className="font-medium">{selectedTrace.judge_model}</p>
+                                              </div>
+                                              <div>
+                                                <span className="text-sm text-muted-foreground">Judge Provider:</span>
+                                                <p className="font-medium">{selectedTrace.judge_model_provider ?? ""}</p>
+                                              </div>
+                                            </div>
+                                          ) : null}
+                                          {selectedTrace.summary?.n_samples != null ? (
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Number of samples:</span>
+                                              <p className="font-medium">{selectedTrace.summary.n_samples}</p>
+                                            </div>
+                                          ) : null}
+                                          {selectedTrace.summary?.n_fewshots != null ? (
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Few shot examples:</span>
+                                              <p className="font-medium">{selectedTrace.summary.n_fewshots}</p>
+                                            </div>
+                                          ) : null}
+                                          <div>
+                                            <span className="text-sm text-muted-foreground">Status:</span>
+                                            <p className="font-medium">{getStatusBadge(selectedTrace.status)}</p>
+                                          </div>
+                                          <div>
+                                            <span className="text-sm text-muted-foreground">Created:</span>
+                                            <p className="font-medium">{formatDate(selectedTrace.created_at)}</p>
+                                          </div>
+                                        </>
+                                      )}
                                     </CardContent>
                                   </Card>
 
@@ -473,9 +501,6 @@ export default function Results() {
                                     </div>
                                   </div>
 
-                                  {/* Metric Documentation */}
-                                  {selectedTrace.summary?.metric_docs && renderMetricDocs(selectedTrace.summary.metric_docs)}
-                                  
                                   {/* Samples Section */}
                                   <div className="pt-6 border-t">
                                      <h3 className="text-lg font-semibold mb-4">Samples Preview</h3>
