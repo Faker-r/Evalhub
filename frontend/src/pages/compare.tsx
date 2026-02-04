@@ -48,6 +48,7 @@ import {
   type BarChartDataPoint,
   toModelProviderKey,
   getDisplayScore,
+  getDisplayStd,
   getNumericForDiff,
 } from "@/lib/comparison-adapter";
 import { cn } from "@/lib/utils";
@@ -170,13 +171,31 @@ export default function Compare() {
     [pairs]
   );
 
+  const rowsWithAllModels = useMemo(
+    () => rows.filter((row) => modelKeys.length > 0 && modelKeys.every((k) => row.models[k])),
+    [rows, modelKeys]
+  );
+
   const barChartData = useMemo(() => {
     if (modelKeys.length === 0) return [];
-    return buildGroupedBarData(rows, modelKeys);
-  }, [rows, modelKeys]);
+    return buildGroupedBarData(rowsWithAllModels, modelKeys);
+  }, [rowsWithAllModels, modelKeys]);
+
+  const barChartDataNormalized = useMemo(() => {
+    return barChartData.map((point) => {
+      const values = Object.values(point.modelScores).filter((n): n is number => n != null);
+      const maxVal = values.length ? Math.max(...values) : 1;
+      const normalized: Record<string, number> = {};
+      for (const k of modelKeys) {
+        const v = point.modelScores[k];
+        normalized[k] = maxVal > 0 && v != null ? (v / maxVal) * 100 : 0;
+      }
+      return { ...point, normalizedModelScores: normalized };
+    });
+  }, [barChartData, modelKeys]);
 
   const sortedRows = useMemo(() => {
-    const arr = [...rows];
+    const arr = [...rowsWithAllModels];
     if (sortKey === "benchmark") {
       arr.sort((a, b) => {
         const la = `${a.dataset} (${a.metric})`;
@@ -202,7 +221,7 @@ export default function Compare() {
       });
     }
     return arr;
-  }, [rows, sortKey, sortDir, modelKeys]);
+  }, [rowsWithAllModels, sortKey, sortDir, modelKeys]);
 
 
   const hasOverlapping = overlappingCount !== null && overlappingCount > 0;
@@ -298,41 +317,68 @@ export default function Compare() {
               </CardHeader>
               <CardContent>
                 {barChartData.length > 0 ? (
-                  <ScrollArea className="h-[500px]">
-                    <ResponsiveContainer width="100%" height={Math.max(500, barChartData.length * 60)}>
-                      <BarChart
-                        data={barChartData}
-                        layout="vertical"
-                        margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" domain={[0, 100]} />
-                        <YAxis
-                          type="category"
-                          dataKey={(item: BarChartDataPoint) => `${item.benchmark} (${item.metric})`}
-                          width={140}
-                          tick={{ fontSize: 11 }}
-                        />
-                        <RechartsTooltip
-                          formatter={(value: number) => [`${value.toFixed(1)}%`, ""]}
-                          contentStyle={{ fontSize: 12 }}
-                        />
-                        <Legend />
-                        {modelKeys.map((key, i) => {
-                          const p = pairs.find((p) => toModelProviderKey(p.model, p.provider) === key);
-                          const name = p ? `${p.provider} / ${p.label}` : key;
-                          return (
+                  <ResponsiveContainer
+                    width="100%"
+                    height={Math.max(200, barChartDataNormalized.length * 88)}
+                    debounce={0}
+                  >
+                    <BarChart
+                      data={barChartDataNormalized}
+                      layout="vertical"
+                      margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
+                      barCategoryGap={28}
+                      barGap={8}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" domain={[0, 100]} hide />
+                      <YAxis
+                        type="category"
+                        dataKey={(item: BarChartDataPoint & { normalizedModelScores?: Record<string, number> }) =>
+                          `${item.benchmark} (${item.metric})`
+                        }
+                        width={140}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <RechartsTooltip
+                        formatter={(_value: number, name: string, props: { payload?: BarChartDataPoint }) => {
+                          const key = modelKeys.find((k) => {
+                            const p = pairs.find((pp) => toModelProviderKey(pp.model, pp.provider) === k);
+                            return p && `${p.provider} / ${p.label}` === name;
+                          });
+                          const raw = key != null && props.payload ? props.payload.modelScores[key] : null;
+                          return [raw != null ? raw.toFixed(2) : "—", name];
+                        }}
+                        contentStyle={{ fontSize: 12 }}
+                      />
+                      <Legend />
+                      {modelKeys.map((key, i) => {
+                        const p = pairs.find((p) => toModelProviderKey(p.model, p.provider) === key);
+                        const name = p ? `${p.provider} / ${p.label}` : key;
+                        return (
                           <Bar
                             key={key}
                             name={name}
-                            dataKey={(item: BarChartDataPoint) => item.modelScores[key] ?? 0}
+                            dataKey={(item: BarChartDataPoint & { normalizedModelScores?: Record<string, number> }) =>
+                              item.normalizedModelScores?.[key] ?? 0
+                            }
                             fill={BAR_COLORS[i % BAR_COLORS.length]}
                             radius={[0, 4, 4, 0]}
+                            barSize={18}
+                            cursor="pointer"
+                            onClick={(data: unknown) => {
+                              const point = (data as { payload?: { benchmark: string; metric: string } })?.payload ?? (data as { benchmark?: string; metric?: string });
+                              const benchmark = point?.benchmark;
+                              const metric = point?.metric;
+                              if (benchmark != null && metric != null) {
+                                const row = rowsWithAllModels.find((r) => r.dataset === benchmark && r.metric === metric);
+                                if (row) setSelectedRow(row);
+                              }
+                            }}
                           />
-                        );})}
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </ScrollArea>
+                        );
+                      })}
+                    </BarChart>
+                  </ResponsiveContainer>
                 ) : (
                   <div className="flex items-center justify-center h-[360px] text-sm text-muted-foreground">
                     No performance data for overlapping datasets.
@@ -428,13 +474,16 @@ export default function Compare() {
                                 const num = getNumericForDiff(cell?.score ?? 0);
                                 const isMax = num != null && num === maxNum && maxNum > -Infinity;
                                 const display = cell ? getDisplayScore(cell.score) : null;
+                                const stdStr = cell ? getDisplayStd(cell.score) : null;
                                 return (
                                   <TableCell key={key} className="text-right">
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <span className={cn(isMax && "font-bold")}>
                                           {display?.type === "number"
-                                            ? display.value
+                                            ? stdStr
+                                              ? `${display.value} ± ${stdStr}`
+                                              : display.value
                                             : display?.type === "object"
                                               ? <Badge variant="secondary" className="font-mono text-xs">JSON</Badge>
                                               : "—"}
@@ -461,7 +510,7 @@ export default function Compare() {
                                   )}
                                 >
                                   {diffVal != null
-                                    ? (diffVal >= 0 ? "+" : "") + diffVal.toFixed(1) + "%"
+                                    ? (diffVal >= 0 ? "+" : "") + diffVal.toFixed(2)
                                     : "—"}
                                 </TableCell>
                               )}
@@ -531,21 +580,116 @@ export default function Compare() {
                           trace_id: {cell.trace_id} · {new Date(cell.created_at).toLocaleString()}
                         </div>
                         <div className="text-sm">
-                          Score:{" "}
-                          {typeof cell.score === "object" && cell.score !== null
-                            ? JSON.stringify(cell.score)
-                            : String(cell.score)}
+                          {(() => {
+                            const display = getDisplayScore(cell.score);
+                            const stdStr = getDisplayStd(cell.score);
+                            if (display.type === "number") {
+                              return (
+                                <>
+                                  <span className="text-muted-foreground">Score </span>
+                                  <span className="font-medium">
+                                    {display.value}
+                                    {stdStr && ` ± ${stdStr}`}
+                                  </span>
+                                </>
+                              );
+                            }
+                            if (
+                              typeof cell.score === "object" &&
+                              cell.score !== null &&
+                              !Array.isArray(cell.score)
+                            ) {
+                              const entries = Object.entries(cell.score);
+                              const primary =
+                                "mean" in cell.score
+                                  ? (cell.score as { mean: unknown }).mean
+                                  : "value" in cell.score
+                                    ? (cell.score as { value: unknown }).value
+                                    : null;
+                              const omitKeys = new Set(primary != null ? ["mean", "value", "std"] : []);
+                              return (
+                                <div className="space-y-1">
+                                  {primary != null && (
+                                    <div>
+                                      <span className="text-muted-foreground">Score </span>
+                                      <span className="font-medium">
+                                        {typeof primary === "number"
+                                          ? primary.toFixed(2)
+                                          : String(primary)}
+                                        {stdStr && ` ± ${stdStr}`}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {entries.filter(([k]) => !omitKeys.has(k)).length > 0 && (
+                                    <dl className="grid gap-x-2 gap-y-0.5 text-xs [&>div]:grid [&>div]:grid-cols-[auto_1fr] [&>div]:items-baseline">
+                                      {entries
+                                        .filter(([k]) => !omitKeys.has(k))
+                                        .map(([k, v]) => (
+                                          <div key={k}>
+                                            <dt className="text-muted-foreground capitalize pr-2">
+                                              {k.replace(/_/g, " ")}
+                                            </dt>
+                                            <dd className="truncate" title={String(v)}>
+                                              {typeof v === "object" && v !== null
+                                                ? JSON.stringify(v)
+                                                : String(v)}
+                                            </dd>
+                                          </div>
+                                        ))}
+                                    </dl>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return (
+                              <>
+                                <span className="text-muted-foreground">Score </span>
+                                <span className="font-medium">{String(cell.score)}</span>
+                              </>
+                            );
+                          })()}
                         </div>
-                        <div className="text-xs">
-                          Spec:{" "}
-                          {cell.spec ? (
-                            <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-auto max-h-32">
-                              {JSON.stringify(cell.spec, null, 2)}
-                            </pre>
+                        {cell.spec ? (
+                          cell.spec.data ? (
+                            <div className="text-xs space-y-1.5 pt-1 border-t">
+                              <div className="font-medium text-muted-foreground mb-1">Run config</div>
+                              <dl className="grid gap-x-2 gap-y-1 [&>div]:grid [&>div]:grid-cols-[minmax(0,7rem)_1fr] [&>div]:items-baseline">
+                                {Object.entries(cell.spec.data).map(([k, v]) => {
+                                  const label =
+                                    {
+                                      task_name: "Task",
+                                      dataset_name: "Dataset",
+                                      input_field: "Input field",
+                                      output_type: "Output type",
+                                      judge_type: "Judge type",
+                                      completion_model: "Completion model",
+                                      model_provider: "Provider",
+                                      judge_model: "Judge model",
+                                      guideline_names: "Guidelines",
+                                      sample_count: "Samples",
+                                      n_fewshots: "Few-shots",
+                                    }[k] ?? k.replace(/_/g, " ");
+                                  const val =
+                                    Array.isArray(v)
+                                      ? (v as string[]).join(", ")
+                                      : String(v ?? "—");
+                                  return (
+                                    <div key={k}>
+                                      <dt className="text-muted-foreground truncate">{label}</dt>
+                                      <dd className="truncate font-medium" title={val}>
+                                        {val}
+                                      </dd>
+                                    </div>
+                                  );
+                                })}
+                              </dl>
+                            </div>
                           ) : (
-                            "No spec event"
-                          )}
-                        </div>
+                            <div className="text-xs text-muted-foreground pt-1">No spec data</div>
+                          )
+                        ) : (
+                          <div className="text-xs text-muted-foreground pt-1">No spec event</div>
+                        )}
                       </>
                     ) : (
                       <span className="text-muted-foreground text-sm">—</span>

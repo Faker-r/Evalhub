@@ -145,14 +145,19 @@ export function buildRadarData(
 
 export function getDisplayScore(score: number | Record<string, unknown>): { type: 'number'; value: string } | { type: 'object' } {
   const num = extractNumericScore(score);
-  if (num != null) return { type: 'number', value: (num <= 1 ? (num * 100).toFixed(1) : num.toFixed(1)) + '%' };
+  if (num != null) return { type: 'number', value: num.toFixed(2) };
   return { type: 'object' };
 }
 
+export function getDisplayStd(score: number | Record<string, unknown>): string | null {
+  if (!score || typeof score !== 'object' || !('std' in score)) return null;
+  const s = (score as { std: unknown }).std;
+  if (typeof s !== 'number' || Number.isNaN(s) || s === 0) return null;
+  return s.toFixed(2);
+}
+
 export function getNumericForDiff(score: number | Record<string, unknown>): number | null {
-  const n = extractNumericScore(score);
-  if (n == null) return null;
-  return n <= 1 ? n * 100 : n;
+  return extractNumericScore(score);
 }
 
 // New interface for grouped bar chart data
@@ -173,12 +178,7 @@ export function buildGroupedBarData(
       const cell = row.models[mk];
       if (cell) {
         const num = extractNumericScore(cell.score);
-        if (num != null) {
-          // Normalize to percentage
-          modelScores[mk] = num <= 1 ? num * 100 : num;
-        } else {
-          modelScores[mk] = null;
-        }
+        modelScores[mk] = num != null ? num : null;
       } else {
         modelScores[mk] = null;
       }
