@@ -70,12 +70,12 @@ function configToPair(config: ModelConfig): { model: string; provider: string; l
   if (config.is_openrouter) {
     const model = config.openrouter_model_id ?? "";
     const provider = config.openrouter_provider_slug ?? "openrouter";
-    const label = (config.openrouter_model_name ?? model) || "OpenRouter model";
+    const label = (config.openrouter_model_id ?? config.openrouter_model_name ?? model) || "OpenRouter model";
     return model ? { model, provider, label } : null;
   }
   const model = (config.api_name ?? config.model_name) ?? "";
   const provider = config.provider_slug ?? "";
-  const label = (config.model_name ?? model) || "Model";
+  const label = (config.api_name ?? config.model_name ?? model) || "Model";
   return model && provider ? { model, provider, label } : null;
 }
 
@@ -318,15 +318,18 @@ export default function Compare() {
                           contentStyle={{ fontSize: 12 }}
                         />
                         <Legend />
-                        {modelKeys.map((key, i) => (
+                        {modelKeys.map((key, i) => {
+                          const p = pairs.find((p) => toModelProviderKey(p.model, p.provider) === key);
+                          const name = p ? `${p.provider} / ${p.label}` : key;
+                          return (
                           <Bar
                             key={key}
-                            name={pairs.find((p) => toModelProviderKey(p.model, p.provider) === key)?.label ?? key}
+                            name={name}
                             dataKey={(item: BarChartDataPoint) => item.modelScores[key] ?? 0}
                             fill={BAR_COLORS[i % BAR_COLORS.length]}
                             radius={[0, 4, 4, 0]}
                           />
-                        ))}
+                        );})}
                       </BarChart>
                     </ResponsiveContainer>
                   </ScrollArea>
@@ -370,7 +373,10 @@ export default function Compare() {
                           >
                             Benchmark {sortKey === "benchmark" && (sortDir === "asc" ? "↑" : "↓")}
                           </TableHead>
-                          {modelKeys.map((key) => (
+                          {modelKeys.map((key) => {
+                            const p = pairs.find((p) => toModelProviderKey(p.model, p.provider) === key);
+                            const headerLabel = p ? `${p.provider} / ${p.label}` : key;
+                            return (
                             <TableHead
                               key={key}
                               className="text-right cursor-pointer"
@@ -379,10 +385,10 @@ export default function Compare() {
                                 setSortDir((d) => (sortKey === key ? (d === "asc" ? "desc" : "asc") : "asc"));
                               }}
                             >
-                              {pairs.find((p) => toModelProviderKey(p.model, p.provider) === key)?.label ?? key}{" "}
+                              {headerLabel}{" "}
                               {sortKey === key && (sortDir === "asc" ? "↑" : "↓")}
                             </TableHead>
-                          ))}
+                          );})}
                           {modelKeys.length >= 2 && (
                             <TableHead
                               className="text-right cursor-pointer"
@@ -514,7 +520,8 @@ export default function Compare() {
             <div className="mt-4 space-y-4">
               {modelKeys.map((key) => {
                 const cell = selectedRow.models[key];
-                const label = pairs.find((p) => toModelProviderKey(p.model, p.provider) === key)?.label ?? key;
+                const p = pairs.find((p) => toModelProviderKey(p.model, p.provider) === key);
+                const label = p ? `${p.provider} / ${p.label}` : key;
                 return (
                   <div key={key} className="border rounded-lg p-3 space-y-2">
                     <div className="font-medium text-sm">{label}</div>

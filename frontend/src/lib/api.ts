@@ -401,6 +401,7 @@ class ApiClient {
         completion_model: string;
         model_provider: string;
         judge_model: string;
+        judge_model_provider: string;
         status: string;
         summary: any;
         created_at: string;
@@ -410,6 +411,26 @@ class ApiClient {
 
   async getTrace(traceId: number) {
     return this.request(`/evaluations/traces/${traceId}`);
+  }
+
+  async getTraceDetails(traceId: number) {
+    return this.request<{
+      trace_id: number;
+      status: string;
+      created_at: string;
+      judge_model_provider: string;
+      spec: {
+        dataset_name?: string;
+        task_name?: string;
+        completion_model?: string;
+        model_provider?: string;
+        judge_model?: string;
+        guideline_names?: string[];
+        sample_count?: number;
+        n_fewshots?: number;
+        [key: string]: unknown;
+      };
+    }>(`/evaluations/trace-details/${traceId}`);
   }
 
   async getTraceSamples(traceId: number) {

@@ -69,6 +69,7 @@ class TraceResponse(BaseModel):
     completion_model: str
     model_provider: str
     judge_model: str
+    judge_model_provider: str
     status: str
     summary: dict | None
     created_at: datetime
@@ -78,6 +79,16 @@ class TraceListResponse(BaseModel):
     """Response schema for listing traces."""
 
     traces: list[TraceResponse]
+
+
+class TraceDetailsResponse(BaseModel):
+    """Response schema for trace details from spec event."""
+
+    trace_id: int
+    status: str
+    created_at: datetime
+    judge_model_provider: str
+    spec: dict
 
 
 class TraceEventResponse(BaseModel):

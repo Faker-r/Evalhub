@@ -108,3 +108,14 @@ class EvaluationRepository:
         )
         result = await self.session.execute(query)
         return list(result.scalars().all())
+
+    async def get_spec_event_by_trace_id(self, trace_id: int) -> TraceEvent | None:
+        """Get the spec event for a trace, if any."""
+        query = (
+            select(TraceEvent)
+            .where(TraceEvent.trace_id == trace_id, TraceEvent.event_type == "spec")
+            .order_by(TraceEvent.id.asc())
+            .limit(1)
+        )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
