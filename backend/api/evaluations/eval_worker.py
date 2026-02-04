@@ -275,7 +275,11 @@ def run_flexible_lighteval_pipeline_worker(
         Dict with keys: summary, scores, sample_count, temp_dir, or error info
     """
     try:
-        from api.evaluations.schemas import OutputType, TextOutputConfig, MultipleChoiceConfig
+        from api.evaluations.schemas import (
+            OutputType,
+            TextOutputConfig,
+            MultipleChoiceConfig,
+        )
 
         # Convert string enums back to enum types
         output_type_enum = OutputType(output_type)

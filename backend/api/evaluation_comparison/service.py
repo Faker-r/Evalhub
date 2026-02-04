@@ -59,7 +59,9 @@ class EvaluationComparisonService:
             .group_by(latest_subq.c.dataset_name)
             .having(func.count(latest_subq.c.id) == len(model_provider_pairs))
         )
-        query = select(latest_subq).where(latest_subq.c.dataset_name.in_(datasets_with_all))
+        query = select(latest_subq).where(
+            latest_subq.c.dataset_name.in_(datasets_with_all)
+        )
 
         result = await self.session.execute(query)
         rows = result.all()
@@ -67,7 +69,9 @@ class EvaluationComparisonService:
         if not trace_ids:
             return [], {}, {}
 
-        traces_result = await self.session.execute(select(Trace).where(Trace.id.in_(trace_ids)))
+        traces_result = await self.session.execute(
+            select(Trace).where(Trace.id.in_(trace_ids))
+        )
         trace_map = {t.id: t for t in traces_result.scalars().all()}
 
         by_dataset_pair: dict[str, dict[tuple[str, str], Trace]] = defaultdict(dict)
@@ -97,7 +101,9 @@ class EvaluationComparisonService:
         """Return the number and names of datasets that have completed traces for all given model-provider pairs."""
         pairs = [(p.model, p.provider) for p in model_provider_pairs]
         overlapping, _, _ = await self._fetch_overlapping_data(pairs)
-        return OverlappingDatasetsResult(count=len(overlapping), dataset_names=overlapping)
+        return OverlappingDatasetsResult(
+            count=len(overlapping), dataset_names=overlapping
+        )
 
     async def generate_side_by_side_report(
         self,
@@ -105,7 +111,9 @@ class EvaluationComparisonService:
     ) -> SideBySideReportResult:
         """Return map of (model, provider, dataset, metric) -> (trace_id, created_at, score) for overlapping datasets."""
         pairs = [(p.model, p.provider) for p in model_provider_pairs]
-        overlapping, by_dataset_pair, spec_by_trace = await self._fetch_overlapping_data(pairs)
+        overlapping, by_dataset_pair, spec_by_trace = (
+            await self._fetch_overlapping_data(pairs)
+        )
 
         entries: list[SideBySideReportEntry] = []
         for dataset_name in overlapping:

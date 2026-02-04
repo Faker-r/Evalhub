@@ -121,6 +121,8 @@ async def get_trace_samples(
     current_user: CurrentUser = Depends(get_current_user),
 ) -> TraceSamplesResponse:
     """Get samples for a specific trace."""
-    logger.debug(f"Getting samples for trace {trace_id} for user {current_user.email}, n_samples={n_samples}")
+    logger.debug(
+        f"Getting samples for trace {trace_id} for user {current_user.email}, n_samples={n_samples}"
+    )
     request = TraceSamplesRequest(trace_id=trace_id, n_samples=n_samples)
     return await EvaluationService(session, current_user.id).get_trace_samples(request)

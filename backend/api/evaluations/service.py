@@ -170,7 +170,9 @@ class EvaluationService:
                         ),
                     )
                 except BrokenProcessPool:
-                    logger.error("Process pool crashed during evaluation, recreating pool")
+                    logger.error(
+                        "Process pool crashed during evaluation, recreating pool"
+                    )
                     _recreate_process_pool()
                     raise Exception(
                         "Evaluation worker process crashed unexpectedly. "
@@ -241,21 +243,18 @@ class EvaluationService:
         trace_id: int, request: TaskEvaluationRequest
     ):
         """Run task evaluation in background using a separate process."""
+        pipeline_output = None
+        user_id = None
         async for session in get_session():
             repository = EvaluationRepository(session)
             try:
-                # Get trace to get user_id
                 trace = await repository.get_trace_by_id(trace_id)
+                user_id = trace.user_id
                 service = EvaluationService(session, trace.user_id)
-
-                # Get model config as serializable dict
                 model_config_data = await service._get_serializable_model_config(
                     request.model_completion_config
                 )
-
                 task_name = service._build_task_name(request)
-
-                # Run pipeline in a separate process
                 loop = asyncio.get_event_loop()
                 pool = get_process_pool()
                 try:
@@ -270,54 +269,64 @@ class EvaluationService:
                         ),
                     )
                 except BrokenProcessPool:
-                    logger.error("Process pool crashed during task evaluation, recreating pool")
+                    logger.error(
+                        "Process pool crashed during task evaluation, recreating pool"
+                    )
                     _recreate_process_pool()
                     raise Exception(
                         "Evaluation worker process crashed unexpectedly. "
                         "This may be due to memory exhaustion."
                     )
-
-                # Check for worker errors
                 if not pipeline_output.get("success", False):
                     raise Exception(
                         f"Worker failed: {pipeline_output.get('error', 'Unknown error')}\n"
                         f"{pipeline_output.get('traceback', '')}"
                     )
+            except Exception as e:
+                logger.error("Evaluation failed: %s", e)
+                pipeline_output = None
+                async for fail_session in get_session():
+                    fail_repo = EvaluationRepository(fail_session)
+                    await fail_repo.update_trace_status(
+                        trace_id,
+                        "failed",
+                        {"error": str(e), "traceback": traceback.format_exc()},
+                    )
+                    break
+            break
 
+        if pipeline_output is None:
+            return
+
+        async for session in get_session():
+            repository = EvaluationRepository(session)
+            service = EvaluationService(session, user_id)
+            try:
+                trace = await repository.get_trace_by_id(trace_id)
                 metric_docs = pipeline_output.get("metric_docs", {})
-
-                # Extract metric names to use as guidelines
                 metric_names = list(pipeline_output["scores"].keys())
-
-                # Update trace with metric names as guidelines
                 trace = await service._update_trace_guidelines(trace, metric_names)
-
-                # Write results to database and upload to S3
                 await service._write_task_results(
                     trace, request, pipeline_output, metric_names
                 )
-
-                # Finalize
                 summary = service._extract_task_summary(pipeline_output)
                 await repository.update_trace_status(
                     trace_id,
                     "completed",
                     {"scores": summary, "metric_docs": metric_docs},
                 )
-
-                # Upload trace to S3
                 trace = await repository.get_trace_by_id(trace_id)
                 await service._upload_trace_jsonl_simple(trace)
-
             except Exception as e:
                 logger.error("Evaluation failed: %s", e)
-                await repository.update_trace_status(
-                    trace_id,
-                    "failed",
-                    {"error": str(e), "traceback": traceback.format_exc()},
-                )
-            finally:
-                await session.close()
+                async for fail_session in get_session():
+                    fail_repo = EvaluationRepository(fail_session)
+                    await fail_repo.update_trace_status(
+                        trace_id,
+                        "failed",
+                        {"error": str(e), "traceback": traceback.format_exc()},
+                    )
+                    break
             break
 
     async def run_flexible_evaluation(
@@ -352,14 +361,16 @@ class EvaluationService:
         trace_id: int, request: FlexibleEvaluationRequest
     ):
         """Run flexible evaluation in background using a separate process."""
+        pipeline_output = None
+        user_id = None
+        guidelines = []
         async for session in get_session():
             repository = EvaluationRepository(session)
             try:
                 trace = await repository.get_trace_by_id(trace_id)
+                user_id = trace.user_id
                 service = EvaluationService(session, trace.user_id)
-
                 dataset_content = service._load_dataset_content(request.dataset_name)
-
                 guidelines = []
                 guidelines_data = []
                 if (
@@ -370,8 +381,6 @@ class EvaluationService:
                     guidelines_data = [
                         service._convert_guideline_to_dict(g) for g in guidelines
                     ]
-
-                # Get model and judge configs as serializable dicts
                 model_config_data = await service._get_serializable_model_config(
                     request.model_completion_config
                 )
@@ -380,16 +389,12 @@ class EvaluationService:
                     judge_config_data = await service._get_serializable_judge_config(
                         request.judge_config
                     )
-
-                # Convert configs to serializable dicts
                 text_config_data = (
                     request.text_config.model_dump() if request.text_config else None
                 )
                 mc_config_data = (
                     request.mc_config.model_dump() if request.mc_config else None
                 )
-
-                # Run pipeline in a separate process
                 loop = asyncio.get_event_loop()
                 pool = get_process_pool()
                 try:
@@ -410,46 +415,62 @@ class EvaluationService:
                         ),
                     )
                 except BrokenProcessPool:
-                    logger.error("Process pool crashed during flexible evaluation, recreating pool")
+                    logger.error(
+                        "Process pool crashed during flexible evaluation, recreating pool"
+                    )
                     _recreate_process_pool()
                     raise Exception(
                         "Evaluation worker process crashed unexpectedly. "
                         "This may be due to memory exhaustion."
                     )
-
-                # Check for worker errors
                 if not pipeline_output.get("success", False):
                     raise Exception(
                         f"Worker failed: {pipeline_output.get('error', 'Unknown error')}\n"
                         f"{pipeline_output.get('traceback', '')}"
                     )
+            except Exception as e:
+                logger.error("Flexible evaluation failed: %s", e)
+                pipeline_output = None
+                async for fail_session in get_session():
+                    fail_repo = EvaluationRepository(fail_session)
+                    await fail_repo.update_trace_status(
+                        trace_id,
+                        "failed",
+                        {"error": str(e), "traceback": traceback.format_exc()},
+                    )
+                    break
+            break
 
+        if pipeline_output is None:
+            return
+
+        async for session in get_session():
+            repository = EvaluationRepository(session)
+            service = EvaluationService(session, user_id)
+            try:
                 trace = await repository.get_trace_by_id(trace_id)
                 metric_names = list(pipeline_output["scores"].keys())
-
                 await service._write_flexible_results(
                     trace, request, pipeline_output, metric_names
                 )
-
                 summary = service._extract_flexible_summary(
                     pipeline_output, request, guidelines
                 )
                 await repository.update_trace_status(
                     trace_id, "completed", {"scores": summary}
                 )
-
                 trace = await repository.get_trace_by_id(trace_id)
                 await service._upload_trace_jsonl_simple(trace)
-
             except Exception as e:
                 logger.error("Flexible evaluation failed: %s", e)
-                await repository.update_trace_status(
-                    trace_id,
-                    "failed",
-                    {"error": str(e), "traceback": traceback.format_exc()},
-                )
-            finally:
-                await session.close()
+                async for fail_session in get_session():
+                    fail_repo = EvaluationRepository(fail_session)
+                    await fail_repo.update_trace_status(
+                        trace_id,
+                        "failed",
+                        {"error": str(e), "traceback": traceback.format_exc()},
+                    )
+                    break
             break
 
     # ==================== Lighteval Integration ====================
@@ -928,52 +949,55 @@ class EvaluationService:
             spec=spec_event.data,
         )
 
-    async def get_trace_samples(self, request: TraceSamplesRequest) -> TraceSamplesResponse:
+    async def get_trace_samples(
+        self, request: TraceSamplesRequest
+    ) -> TraceSamplesResponse:
         """Get samples for a trace from S3 details parquet files."""
         trace = await self.get_trace(request.trace_id)
-        
+
         # We need to find the details file for this trace in S3
         # The path structure is defined in EvaluationTracker and S3Storage
         # EVAL_RESULTS_PREFIX/{trace_id}/{relative_path}
-        
+
         # First list files for this trace
         from api.core.s3 import EVAL_RESULTS_PREFIX
+
         prefix = f"{EVAL_RESULTS_PREFIX}/{trace.id}/details"
-        
+
         s3_files = self.s3.list_files(prefix)
         logger.debug(f"Found {len(s3_files)} files for trace {trace.id}")
-        
+
         if not s3_files:
             return TraceSamplesResponse(samples=[])
-        
+
         # Find parquet files
         parquet_files = [f for f in s3_files if f.endswith(".parquet")]
         if not parquet_files:
             return TraceSamplesResponse(samples=[])
-            
+
         # Download the first parquet file to a temporary location
         # In a more robust implementation we might want to sample from multiple files
         # or handle multiple tasks properly. For now we take the first available one.
         import pandas as pd
         import tempfile
         import os
-        
+
         samples = []
-        
+
         with tempfile.TemporaryDirectory() as temp_dir:
             for s3_key in parquet_files:
                 filename = os.path.basename(s3_key)
                 local_path = os.path.join(temp_dir, filename)
-                
+
                 self.s3.download_file(s3_key, local_path)
-                
+
                 try:
                     df = pd.read_parquet(local_path)
-                    
+
                     # Take up to n_samples
                     # We iterate to find good samples (non-empty)
                     count = 0
-                    
+
                     # Helper for safe extraction
                     def safe_get(obj, key, default=None):
                         if isinstance(obj, dict):
@@ -981,7 +1005,7 @@ class EvaluationService:
                         if hasattr(obj, "__getitem__"):
                             try:
                                 return obj[key]
-                            except (Exception):
+                            except Exception:
                                 pass
                         if hasattr(obj, key):
                             return getattr(obj, key)
@@ -990,22 +1014,31 @@ class EvaluationService:
                     for _, row in df.iterrows():
                         if count >= request.n_samples:
                             break
-                            
+
                         # Extract data from the row
                         # The structure matches DetailsLogger.Detail
-                        
+
                         doc_obj = row.get("doc")
                         model_resp_obj = row.get("model_response")
                         metrics_obj = row.get("metric")
-                        
+
                         # Input
                         input_text = ""
                         if model_resp_obj is not None:
                             try:
-                                input_text = "\n".join([line['content'] for line in safe_get(model_resp_obj, "input", [])])
+                                input_text = "\n".join(
+                                    [
+                                        line["content"]
+                                        for line in safe_get(
+                                            model_resp_obj, "input", []
+                                        )
+                                    ]
+                                )
                             except Exception as e:
-                                logger.error(f"Failed to extract input text for trace {trace.id}: {e}")
-                        
+                                logger.error(
+                                    f"Failed to extract input text for trace {trace.id}: {e}"
+                                )
+
                         # Fallback to doc object if input text is empty
                         if input_text == "":
                             if doc_obj is not None:
@@ -1015,50 +1048,58 @@ class EvaluationService:
                         prediction = ""
                         if model_resp_obj is not None:
                             text_val = safe_get(model_resp_obj, "text")
-                            
+
                             # Handle numpy array conversion
                             if hasattr(text_val, "tolist"):
                                 text_val = text_val.tolist()
-                                
-                            if isinstance(text_val, (list, tuple)) and len(text_val) > 0:
+
+                            if (
+                                isinstance(text_val, (list, tuple))
+                                and len(text_val) > 0
+                            ):
                                 prediction = text_val[0]
                             elif isinstance(text_val, str):
                                 prediction = text_val
-                        
+
                         # Gold
                         gold = None
                         if doc_obj is not None:
                             # Try to get gold from gold_index and choices (MCQ style)
                             gold_idx = safe_get(doc_obj, "gold_index")
                             choices = safe_get(doc_obj, "choices", [])
-                            
+
                             # Handle numpy array conversion
                             if hasattr(choices, "tolist"):
                                 choices = choices.tolist()
-                                
+
                             # Convert choices to list if it is not already
-                            if not isinstance(choices, (list, tuple)) and choices is not None:
+                            if (
+                                not isinstance(choices, (list, tuple))
+                                and choices is not None
+                            ):
                                 choices = [choices]
 
                             if gold_idx is not None and choices:
                                 if hasattr(gold_idx, "tolist"):
-                                     gold_idx = gold_idx.tolist()
-                                     
+                                    gold_idx = gold_idx.tolist()
+
                                 if isinstance(gold_idx, (list, tuple)):
                                     gold = []
                                     for i in gold_idx:
                                         if isinstance(i, int) and 0 <= i < len(choices):
                                             gold.append(choices[i])
-                                elif isinstance(gold_idx, int) and 0 <= gold_idx < len(choices):
+                                elif isinstance(gold_idx, int) and 0 <= gold_idx < len(
+                                    choices
+                                ):
                                     gold = choices[gold_idx]
-                            
+
                             # Fallback: Try to get gold from choices directly if gold_index logic failed or wasn't applicable
                             # Some tasks store gold directly in choices if it's a generative task with reference answers
                             if gold is None and choices and len(choices) > 0:
                                 # For some generative tasks, choices might contain the reference answers directly
                                 # This is common in lighteval for tasks like exact_match where choices acts as references
                                 gold = choices
-                                
+
                             # If gold is still None but gold_index was not None, maybe gold_index IS the answer (if choices was empty)
                             if gold is None and gold_idx is not None and not choices:
                                 gold = str(gold_idx)
@@ -1070,33 +1111,42 @@ class EvaluationService:
                                 for metric_name in trace.guideline_names:
                                     metric_value = safe_get(metrics_obj, metric_name)
                                     normalized = None
-                                    if hasattr(metric_value, "item") and getattr(metric_value, "size", 2) == 1:
+                                    if (
+                                        hasattr(metric_value, "item")
+                                        and getattr(metric_value, "size", 2) == 1
+                                    ):
                                         metric_value = metric_value.item()
                                     if isinstance(metric_value, bool):
                                         normalized = metric_value
                                     elif isinstance(metric_value, int):
                                         normalized = metric_value
                                     elif isinstance(metric_value, float):
-                                        normalized = int(metric_value) if metric_value == int(metric_value) else metric_value
+                                        normalized = (
+                                            int(metric_value)
+                                            if metric_value == int(metric_value)
+                                            else metric_value
+                                        )
                                     elif isinstance(metric_value, str):
                                         normalized = metric_value
                                     else:
                                         normalized = str(metric_value)
                                     metric_scores[metric_name] = normalized
-                        
-                        samples.append(TraceSample(
-                            input=input_text,
-                            prediction=prediction,
-                            gold=gold,
-                            metric_scores=metric_scores
-                        ))
+
+                        samples.append(
+                            TraceSample(
+                                input=input_text,
+                                prediction=prediction,
+                                gold=gold,
+                                metric_scores=metric_scores,
+                            )
+                        )
                         count += 1
-                        
+
                     if len(samples) >= request.n_samples:
                         break
-                        
+
                 except Exception as e:
                     logger.error(f"Failed to read parquet file {filename}: {e}")
                     continue
-                    
-        return TraceSamplesResponse(samples=samples[:request.n_samples])
+
+        return TraceSamplesResponse(samples=samples[: request.n_samples])
