@@ -7,6 +7,9 @@ import os
 import tempfile
 
 from dotenv import load_dotenv
+from lighteval.logging.evaluation_tracker import EvaluationTracker
+from lighteval.models.endpoints.litellm_model import LiteLLMClient, LiteLLMModelConfig
+from lighteval.tasks.registry import Registry
 
 from api.evaluations.eval_pipeline.dataset_task import DatasetTask
 from api.evaluations.eval_pipeline.eval_pipeline import (
@@ -15,9 +18,6 @@ from api.evaluations.eval_pipeline.eval_pipeline import (
 )
 from api.evaluations.eval_pipeline.guideline_judge import GuidelineJudgeMetric
 from api.guidelines.schemas import GuidelineScoringScale
-from lighteval.logging.evaluation_tracker import EvaluationTracker
-from lighteval.models.endpoints.litellm_model import LiteLLMClient, LiteLLMModelConfig
-from lighteval.tasks.registry import Registry
 
 load_dotenv()
 

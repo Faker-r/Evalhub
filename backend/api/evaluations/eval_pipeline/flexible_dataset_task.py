@@ -3,13 +3,6 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-
-from api.evaluations.schemas import (
-    JudgeType,
-    MultipleChoiceConfig,
-    OutputType,
-    TextOutputConfig,
-)
 from lighteval.metrics import Metric
 from lighteval.metrics.metrics import Metrics
 from lighteval.metrics.metrics_sample import ExactMatches
@@ -20,6 +13,13 @@ from lighteval.tasks.lighteval_task import (
     TextGenerationInputGrammarType,
 )
 from lighteval.tasks.requests import Doc, SamplingMethod
+
+from api.evaluations.schemas import (
+    JudgeType,
+    MultipleChoiceConfig,
+    OutputType,
+    TextOutputConfig,
+)
 
 
 class FlexibleDatasetTask:
