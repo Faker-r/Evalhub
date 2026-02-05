@@ -6,8 +6,8 @@ By default, extracts only the first turn from each question.
 Use --all-turns to create separate entries for each turn.
 """
 
-import json
 import argparse
+import json
 from pathlib import Path
 
 

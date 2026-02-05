@@ -24,16 +24,16 @@ Evidence Collection:
 - Full request/response data captured
 """
 
-import pytest
 import json
 import os
 from datetime import datetime
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
 
+from api.core.security import CurrentUser, get_current_user
 from api.main import app
-from api.core.security import get_current_user, CurrentUser
-
 
 # Evidence output directory
 EVIDENCE_DIR = Path(__file__).parent.parent / "evidence"

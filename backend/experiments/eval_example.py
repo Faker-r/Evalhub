@@ -2,23 +2,21 @@
 Example of how to evaluate a task using a model and a metric.
 """
 
-import litellm
-
+import logging
+import os
 from dataclasses import dataclass
+
+import litellm
+from dotenv import load_dotenv
 
 from api.evaluations.eval_pipeline.guideline_judge import (
     GuidelineJudgeMetric,
     GuidelineScoringScale,
 )
-
 from lighteval.metrics import apply_metric
 from lighteval.models.abstract_model import LightevalModel
 from lighteval.models.model_output import ModelResponse
 from lighteval.tasks.requests import Doc
-import logging
-
-from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
@@ -68,7 +66,7 @@ Consider factors such as:
     },
 }
 
-from lighteval.tasks.lighteval_task import LightevalTaskConfig, LightevalTask
+from lighteval.tasks.lighteval_task import LightevalTask, LightevalTaskConfig
 from lighteval.tasks.registry import Registry
 
 
@@ -113,8 +111,7 @@ evaluation_tracker = EvaluationTracker(
     save_details=True,
     push_to_hub=False,
 )
-from lighteval.models.endpoints.litellm_model import LiteLLMModelConfig, LiteLLMClient
-
+from lighteval.models.endpoints.litellm_model import LiteLLMClient, LiteLLMModelConfig
 
 model_config = LiteLLMModelConfig(
     model_name="baseten/deepseek-ai/DeepSeek-V3.2",

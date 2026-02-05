@@ -20,19 +20,19 @@ Usage:
 import argparse
 import asyncio
 import re
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional
-from collections import defaultdict
 
 from huggingface_hub import HfApi
 from huggingface_hub.utils import HfHubHTTPError
-from lighteval.tasks.registry import Registry
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from transformers import AutoTokenizer
 
 from api.benchmarks.repository import BenchmarkRepository
 from api.core.config import settings
 from api.core.logging import get_logger, setup_logging
+from lighteval.tasks.registry import Registry
 from scripts.benchmark_utils import (
     clean_description,
     filter_benchmark_tags,
@@ -268,6 +268,7 @@ def estimate_avg_tokens_per_sample(
     """
     try:
         import signal
+
         from datasets import load_dataset
 
         # Set up timeout handler

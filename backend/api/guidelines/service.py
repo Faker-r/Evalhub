@@ -1,10 +1,10 @@
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.logging import get_logger
 from api.guidelines.models import Guideline
 from api.guidelines.repository import GuidelineRepository
 from api.guidelines.schemas import GuidelineCreate
-from fastapi import HTTPException, status
 
 logger = get_logger(__name__)
 

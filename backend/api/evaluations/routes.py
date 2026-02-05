@@ -7,9 +7,9 @@ from api.core.security import CurrentUser, get_current_user
 from api.evaluations.schemas import (
     EvaluationRequest,
     EvaluationResponse,
+    FlexibleEvaluationRequest,
     TaskEvaluationRequest,
     TaskEvaluationResponse,
-    FlexibleEvaluationRequest,
     TraceDetailsResponse,
     TraceListResponse,
     TraceResponse,

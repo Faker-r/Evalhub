@@ -16,14 +16,14 @@ Usage:
     poetry run python -m tests.test_all_benchmarks --from-json         # Load from JSON file instead of Supabase
 """
 
+import argparse
+import asyncio
+import json
 import os
 import sys
-import json
-import asyncio
-import argparse
 import traceback
-from datetime import datetime
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -32,10 +32,9 @@ load_dotenv()
 
 from api.core.database import get_session
 from api.core.supabase import get_supabase_client
-from api.evaluations.service import EvaluationService
 from api.evaluations.repository import EvaluationRepository
-from api.evaluations.schemas import TaskEvaluationRequest, DatasetConfig, ModelConfig
-
+from api.evaluations.schemas import DatasetConfig, ModelConfig, TaskEvaluationRequest
+from api.evaluations.service import EvaluationService
 
 # Polling configuration
 POLL_INTERVAL_SECONDS = 5

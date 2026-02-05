@@ -5,10 +5,10 @@ Revises: 007_add_dataset_size
 Create Date: 2026-01-27 12:00:00.000000
 
 """
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '008_add_benchmark_subtasks'

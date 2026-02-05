@@ -1,6 +1,7 @@
-from pydantic import BaseModel, ConfigDict, field_validator
 from enum import Enum
 from typing import Union
+
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class GuidelineScoringScale(str, Enum):

@@ -1,8 +1,9 @@
 import tempfile
 from pathlib import Path
-from lighteval.tasks.lighteval_task import LightevalTaskConfig, LightevalTask
-from lighteval.tasks.requests import Doc
+
 from lighteval.metrics import Metric
+from lighteval.tasks.lighteval_task import LightevalTask, LightevalTaskConfig
+from lighteval.tasks.requests import Doc
 
 
 class DatasetTask:

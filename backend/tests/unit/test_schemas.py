@@ -24,32 +24,31 @@ Test Matrix:
 import pytest
 from pydantic import ValidationError
 
+from api.auth.schemas import AuthResponse, LoginData, UserCreate
+from api.benchmarks.schemas import BenchmarkListResponse, BenchmarkResponse
+from api.datasets.schemas import DatasetListResponse, DatasetResponse
 from api.evaluations.schemas import (
-    EvaluationRequest,
-    TaskEvaluationRequest,
-    FlexibleEvaluationRequest,
     DatasetConfig,
-    ModelConfig,
-    OutputType,
-    JudgeType,
-    TextOutputConfig,
-    MultipleChoiceConfig,
-    TraceResponse,
+    EvaluationRequest,
     EvaluationResponse,
+    FlexibleEvaluationRequest,
+    JudgeType,
+    ModelConfig,
+    MultipleChoiceConfig,
+    OutputType,
+    TaskEvaluationRequest,
+    TextOutputConfig,
+    TraceResponse,
 )
-from api.benchmarks.schemas import BenchmarkResponse, BenchmarkListResponse
-from api.datasets.schemas import DatasetResponse, DatasetListResponse
 from api.guidelines.schemas import (
+    BooleanScaleConfig,
+    CustomCategoryScaleConfig,
     GuidelineCreate,
     GuidelineResponse,
     GuidelineScoringScale,
-    BooleanScaleConfig,
     NumericScaleConfig,
-    CustomCategoryScaleConfig,
     PercentageScaleConfig,
 )
-from api.auth.schemas import AuthResponse, LoginData, UserCreate
-
 
 # =============================================================================
 # FR-1.0: Benchmark & Dataset Schema Tests

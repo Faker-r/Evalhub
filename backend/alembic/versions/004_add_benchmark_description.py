@@ -5,9 +5,9 @@ Revises: 003_add_benchmarks
 Create Date: 2026-01-08 12:00:00.000000
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '004_add_benchmark_description'
