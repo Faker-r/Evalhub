@@ -212,3 +212,13 @@ node_modules/
 
 experiments/
 .litellm_cache/
+
+# Cloned dependencies
+backend/lighteval/
+
+# Test evidence files (keep directory structure with .gitkeep)
+backend/tests/evidence/*.json
+
+# Misc test artifacts
+samples_from_evals/
+traces_rows.csv
