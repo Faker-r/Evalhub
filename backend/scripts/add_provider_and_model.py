@@ -1,9 +1,8 @@
 import asyncio
-from api.core.database import async_session
 
+from api.core.database import async_session
 from api.models_and_providers.schemas import ModelCreate, ProviderCreate
 from api.models_and_providers.service import ModelsAndProvidersService
-
 
 PROVIDER_NAME = "openrouter"
 PROVIDER_BASE_URL = "https://openrouter.ai/api/v1"

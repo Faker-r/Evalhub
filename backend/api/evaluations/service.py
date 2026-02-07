@@ -1,45 +1,45 @@
+import asyncio
+import functools
 import json
 import statistics
-import asyncio
-import traceback
 import sys
 import threading
+import traceback
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
-import functools
 
-from api.models_and_providers.service import ModelsAndProvidersService
 from fastapi import HTTPException, status
 from numpy import isin
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.core.database import get_session
+from api.core.exceptions import NotFoundException
 from api.core.logging import get_logger
 from api.core.s3 import S3Storage
-from api.core.database import get_session
+from api.evaluations.eval_worker import (
+    run_flexible_lighteval_pipeline_worker,
+    run_lighteval_pipeline_worker,
+    run_lighteval_task_pipeline_worker,
+)
 from api.evaluations.models import Trace
 from api.evaluations.repository import EvaluationRepository
-from api.core.exceptions import NotFoundException
 from api.evaluations.schemas import (
     EvaluationRequest,
     EvaluationResponse,
-    TaskEvaluationRequest,
-    TaskEvaluationResponse,
     FlexibleEvaluationRequest,
     JudgeType,
     ModelConfig,
+    TaskEvaluationRequest,
+    TaskEvaluationResponse,
     TraceDetailsResponse,
+    TraceSample,
     TraceSamplesRequest,
     TraceSamplesResponse,
-    TraceSample,
 )
 from api.guidelines.models import Guideline
-from api.guidelines.service import GuidelineService
 from api.guidelines.schemas import GuidelineScoringScale
-from api.evaluations.eval_worker import (
-    run_lighteval_pipeline_worker,
-    run_lighteval_task_pipeline_worker,
-    run_flexible_lighteval_pipeline_worker,
-)
+from api.guidelines.service import GuidelineService
+from api.models_and_providers.service import ModelsAndProvidersService
 
 logger = get_logger(__name__)
 
@@ -978,9 +978,10 @@ class EvaluationService:
         # Download the first parquet file to a temporary location
         # In a more robust implementation we might want to sample from multiple files
         # or handle multiple tasks properly. For now we take the first available one.
-        import pandas as pd
-        import tempfile
         import os
+        import tempfile
+
+        import pandas as pd
 
         samples = []
 

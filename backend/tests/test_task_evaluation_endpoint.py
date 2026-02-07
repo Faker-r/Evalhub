@@ -2,12 +2,14 @@
 Test script to verify the task evaluation service works end-to-end.
 """
 
-import os
 import asyncio
+import os
+
 from dotenv import load_dotenv
+
 from api.core.database import get_session
+from api.evaluations.schemas import DatasetConfig, ModelConfig, TaskEvaluationRequest
 from api.evaluations.service import EvaluationService
-from api.evaluations.schemas import TaskEvaluationRequest, DatasetConfig, ModelConfig
 
 load_dotenv()
 

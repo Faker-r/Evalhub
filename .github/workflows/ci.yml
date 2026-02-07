@@ -27,12 +27,15 @@ jobs:
         python-version: "3.12"
         
     - name: Install the project
+      working-directory: backend
       run: uv sync --all-extras
 
     - name: Check imports with isort
+      working-directory: backend
       run: uv run isort --check-only --diff .
 
     - name: Check code formatting with black
+      working-directory: backend
       run: uv run black --check .
 
   test:
@@ -56,9 +59,11 @@ jobs:
         python-version: "3.12"
         
     - name: Install the project
+      working-directory: backend
       run: uv sync --all-extras
         
     - name: Run tests
+      working-directory: backend
       run: uv run pytest tests
       env:
         DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5432/test_db"

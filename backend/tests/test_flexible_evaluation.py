@@ -7,16 +7,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import asyncio
+
 from api.core.database import get_session
-from api.evaluations.service import EvaluationService
 from api.evaluations.schemas import (
     FlexibleEvaluationRequest,
+    JudgeType,
     ModelConfig,
     MultipleChoiceConfig,
     OutputType,
-    JudgeType,
     TextOutputConfig,
 )
+from api.evaluations.service import EvaluationService
 
 # Test user ID - replace with your own
 USER_ID = "e01da140-64b2-4ab9-b379-4f55dcaf0b22"

@@ -1,7 +1,8 @@
 import asyncio
-from api.evaluations.schemas import TaskEvaluationRequest, EvaluationRequest
-from api.evaluations.service import EvaluationService
+
 from api.core.database import get_session
+from api.evaluations.schemas import EvaluationRequest, TaskEvaluationRequest
+from api.evaluations.service import EvaluationService
 from tests.utils import get_test_user_id
 
 

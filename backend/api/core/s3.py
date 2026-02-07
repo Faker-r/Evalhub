@@ -1,6 +1,7 @@
+import os
+
 import boto3
 from botocore.exceptions import ClientError
-import os
 
 from api.core.config import settings
 from api.core.logging import get_logger

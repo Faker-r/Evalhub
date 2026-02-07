@@ -1,12 +1,13 @@
 """Module for custom task evaluation pipeline."""
 
 from dataclasses import dataclass
-from lighteval.tasks.lighteval_task import LightevalTask
+
 from lighteval.logging.evaluation_tracker import EvaluationTracker
+from lighteval.metrics import apply_metric
 from lighteval.models.abstract_model import LightevalModel
 from lighteval.models.model_output import ModelResponse
+from lighteval.tasks.lighteval_task import LightevalTask
 from lighteval.tasks.requests import Doc
-from lighteval.metrics import apply_metric
 
 
 @dataclass

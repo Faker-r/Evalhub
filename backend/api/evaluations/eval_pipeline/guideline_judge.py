@@ -1,20 +1,22 @@
 """Module for generating response classes for guideline scoring."""
 
-from collections import Counter
-from typing import Callable, Type, Literal, Dict, Any
 import json
-from pydantic import BaseModel, Field
+import logging
+import time
+from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Callable, Dict, Literal, Type
+
+from lighteval.metrics import Metric
+from lighteval.metrics.utils.llm_as_judge import JudgeLM
 from lighteval.models.model_output import ModelResponse
 from lighteval.tasks.requests import Doc, SamplingMethod
-from lighteval.metrics.utils.llm_as_judge import JudgeLM
-from lighteval.metrics import Metric
 from lighteval.utils.utils import as_list
-from api.guidelines.schemas import GuidelineScoringScale
-import logging
-from concurrent.futures import ThreadPoolExecutor
-from tqdm import tqdm
 from openai import OpenAI
-import time
+from pydantic import BaseModel, Field
+from tqdm import tqdm
+
+from api.guidelines.schemas import GuidelineScoringScale
 
 logger = logging.getLogger(__name__)
 

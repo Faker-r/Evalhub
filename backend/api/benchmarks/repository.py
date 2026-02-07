@@ -4,7 +4,10 @@ import functools
 from dataclasses import asdict
 from typing import Callable, Optional
 
-from sqlalchemy import func, select, String, cast
+from lighteval.metrics.utils.metric_utils import Metric
+from lighteval.tasks.lighteval_task import LightevalTaskConfig
+from lighteval.tasks.registry import Registry
+from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -12,10 +15,6 @@ from api.benchmarks.models import Benchmark, BenchmarkTask
 from api.core.exceptions import NotFoundException
 from api.core.logging import get_logger
 from scripts.benchmark_utils import normalize_language_code
-
-from lighteval.tasks.registry import Registry
-from lighteval.tasks.lighteval_task import LightevalTaskConfig
-from lighteval.metrics.utils.metric_utils import Metric
 
 logger = get_logger(__name__)
 

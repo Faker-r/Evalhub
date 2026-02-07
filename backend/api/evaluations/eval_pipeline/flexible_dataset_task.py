@@ -1,23 +1,25 @@
 import json
 import tempfile
 from pathlib import Path
+
+import numpy as np
+from lighteval.metrics import Metric
+from lighteval.metrics.metrics import Metrics
 from lighteval.metrics.metrics_sample import ExactMatches
 from lighteval.metrics.utils.metric_utils import SampleLevelMetric
 from lighteval.tasks.lighteval_task import (
-    LightevalTaskConfig,
     LightevalTask,
+    LightevalTaskConfig,
     TextGenerationInputGrammarType,
 )
 from lighteval.tasks.requests import Doc, SamplingMethod
-from lighteval.metrics import Metric
-from lighteval.metrics.metrics import Metrics
+
 from api.evaluations.schemas import (
-    OutputType,
     JudgeType,
-    TextOutputConfig,
     MultipleChoiceConfig,
+    OutputType,
+    TextOutputConfig,
 )
-import numpy as np
 
 
 class FlexibleDatasetTask:

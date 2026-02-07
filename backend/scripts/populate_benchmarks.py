@@ -20,9 +20,9 @@ Usage:
 import argparse
 import asyncio
 import re
+from collections import defaultdict
 from datetime import datetime
 from typing import Optional
-from collections import defaultdict
 
 from huggingface_hub import HfApi
 from huggingface_hub.utils import HfHubHTTPError
@@ -268,6 +268,7 @@ def estimate_avg_tokens_per_sample(
     """
     try:
         import signal
+
         from datasets import load_dataset
 
         # Set up timeout handler

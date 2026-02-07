@@ -7,7 +7,6 @@ Create Date: 2026-01-27 13:00:00.000000
 """
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
 revision = '009_rename_subtasks_to_tasks'
 down_revision = '008_add_benchmark_subtasks'

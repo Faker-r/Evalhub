@@ -4,7 +4,13 @@ This mimics what the evaluation service does.
 """
 
 import os
+import tempfile
+
 from dotenv import load_dotenv
+from lighteval.logging.evaluation_tracker import EvaluationTracker
+from lighteval.models.endpoints.litellm_model import LiteLLMClient, LiteLLMModelConfig
+from lighteval.tasks.registry import Registry
+
 from api.evaluations.eval_pipeline.dataset_task import DatasetTask
 from api.evaluations.eval_pipeline.eval_pipeline import (
     CustomTaskEvaluationPipeline,
@@ -12,10 +18,6 @@ from api.evaluations.eval_pipeline.eval_pipeline import (
 )
 from api.evaluations.eval_pipeline.guideline_judge import GuidelineJudgeMetric
 from api.guidelines.schemas import GuidelineScoringScale
-from lighteval.logging.evaluation_tracker import EvaluationTracker
-from lighteval.models.endpoints.litellm_model import LiteLLMModelConfig, LiteLLMClient
-from lighteval.tasks.registry import Registry
-import tempfile
 
 load_dotenv()
 

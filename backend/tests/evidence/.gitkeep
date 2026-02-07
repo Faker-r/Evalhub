@@ -1,0 +1,2 @@
+# This directory stores test evidence files (JSON logs, screenshots, etc.)
+# Evidence files are generated during test execution and used for M3 documentation.

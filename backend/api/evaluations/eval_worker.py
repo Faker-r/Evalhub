@@ -2,25 +2,25 @@ import tempfile
 import traceback
 from dataclasses import asdict
 
+from lighteval.logging.evaluation_tracker import EvaluationTracker
+from lighteval.models.endpoints.openai_model import (
+    OpenAICompatibleClient,
+    OpenAICompatibleModelConfig,
+)
+from lighteval.models.model_input import GenerationParameters
+from lighteval.pipeline import ParallelismManager, Pipeline, PipelineParameters
+from lighteval.tasks.registry import Registry
+
 from api.core.logging import get_logger
 from api.evaluations.eval_pipeline.dataset_task import DatasetTask
-from api.evaluations.eval_pipeline.flexible_dataset_task import FlexibleDatasetTask
 from api.evaluations.eval_pipeline.eval_pipeline import (
     CustomTaskEvaluationPipeline,
     CustomTaskEvaluationPipelineParameters,
 )
+from api.evaluations.eval_pipeline.flexible_dataset_task import FlexibleDatasetTask
 from api.evaluations.eval_pipeline.guideline_judge import GuidelineJudgeMetric
 from api.evaluations.eval_pipeline.metric_doc_generator import MetricDocGenerator
 from api.evaluations.schemas import JudgeType
-
-from lighteval.logging.evaluation_tracker import EvaluationTracker
-from lighteval.models.endpoints.openai_model import (
-    OpenAICompatibleModelConfig,
-    OpenAICompatibleClient,
-)
-from lighteval.tasks.registry import Registry
-from lighteval.pipeline import ParallelismManager, Pipeline, PipelineParameters
-from lighteval.models.model_input import GenerationParameters
 
 logger = get_logger(__name__)
 
@@ -276,9 +276,9 @@ def run_flexible_lighteval_pipeline_worker(
     """
     try:
         from api.evaluations.schemas import (
+            MultipleChoiceConfig,
             OutputType,
             TextOutputConfig,
-            MultipleChoiceConfig,
         )
 
         # Convert string enums back to enum types

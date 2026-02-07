@@ -56,13 +56,15 @@ api_router.include_router(leaderboard_router)
 api_router.include_router(benchmarks_router)
 api_router.include_router(models_and_providers_router)
 
-# Include the API router in the main app
-app.include_router(api_router)
-
 
 @api_router.get("/health")
 async def health_check():
+    """Health check endpoint."""
     return {"status": "ok"}
+
+
+# Include the API router in the main app (must be after all routes are added)
+app.include_router(api_router)
 
 
 @app.get("/")

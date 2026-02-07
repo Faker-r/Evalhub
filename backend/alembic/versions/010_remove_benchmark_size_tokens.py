@@ -7,9 +7,9 @@ Revises: 009_rename_subtasks_to_tasks
 Create Date: 2026-01-27 14:00:00.000000
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '010_remove_benchmark_size_tokens'

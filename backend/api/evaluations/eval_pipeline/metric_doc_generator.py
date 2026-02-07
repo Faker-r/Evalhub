@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-
 from lighteval.metrics.dynamic_metrics import MultilingualExtractiveMatchMetric
 from lighteval.metrics.harness_compatibility.drop import DropMetrics
 from lighteval.metrics.harness_compatibility.truthful_qa import TruthfulqaMCMetrics
@@ -18,30 +17,29 @@ from lighteval.metrics.metrics_corpus import (
     CorpusLevelTranslationMetric,
     MatthewsCorrCoef,
 )
-
 from lighteval.metrics.metrics_sample import (
+    BLEU,
+    BLEURT,
+    MRR,
+    ROUGE,
     AccGoldLikelihood,
     AvgAtN,
     BertScore,
-    BLEU,
-    BLEURT,
     ExactMatches,
     Extractiveness,
-    Faithfulness,
     F1_score,
+    Faithfulness,
     GPassAtK,
     JudgeLLM,
     JudgeLLMMixEval,
     JudgeLLMMTBench,
     JudgeLLMSimpleQA,
     LoglikelihoodAcc,
-    MRR,
     MajAtN,
     NormalizedMultiChoiceProbability,
     PassAtK,
     Probability,
     Recall,
-    ROUGE,
     SampleLevelComputation,
     SamplingMetric,
     StringDistance,
