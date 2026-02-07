@@ -5,8 +5,6 @@ from api.core.database import get_session
 from api.core.logging import get_logger
 from api.core.security import CurrentUser, get_current_user
 from api.evaluations.schemas import (
-    EvaluationRequest,
-    EvaluationResponse,
     FlexibleEvaluationRequest,
     TaskEvaluationRequest,
     TaskEvaluationResponse,
@@ -21,26 +19,6 @@ from api.evaluations.service import EvaluationService
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/evaluations", tags=["evaluations"])
-
-
-@router.post("", response_model=EvaluationResponse, status_code=status.HTTP_201_CREATED)
-async def run_evaluation(
-    request: EvaluationRequest,
-    session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
-) -> EvaluationResponse:
-    """Run an evaluation on a dataset with given guidelines.
-
-    This endpoint:
-    1. Generates completions for each sample in the dataset
-    2. Judges each completion against each guideline
-    3. Returns aggregated scores
-    """
-    logger.debug(
-        f"Running evaluation: dataset={request.dataset_name}, "
-        f"guidelines={request.guideline_names}, user={current_user.email}"
-    )
-    return await EvaluationService(session, current_user.id).run_evaluation(request)
 
 
 @router.post(

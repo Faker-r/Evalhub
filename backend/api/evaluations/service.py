@@ -18,14 +18,11 @@ from api.core.logging import get_logger
 from api.core.s3 import S3Storage
 from api.evaluations.eval_worker import (
     run_flexible_lighteval_pipeline_worker,
-    run_lighteval_pipeline_worker,
     run_lighteval_task_pipeline_worker,
 )
 from api.evaluations.models import Trace
 from api.evaluations.repository import EvaluationRepository
 from api.evaluations.schemas import (
-    EvaluationRequest,
-    EvaluationResponse,
     FlexibleEvaluationRequest,
     JudgeType,
     ModelConfig,
@@ -95,121 +92,6 @@ class EvaluationService:
         self.guideline_service = GuidelineService(session)
         self.s3 = S3Storage()
         self.model_providers_service = ModelsAndProvidersService(session)
-
-    # ==================== Main Entry Point ====================
-
-    async def run_evaluation(self, request: EvaluationRequest) -> EvaluationResponse:
-        """Run an evaluation on a dataset with given guidelines using lighteval."""
-        # Initialize trace in database
-        trace = await self._create_trace(request)
-
-        # Start background evaluation
-        asyncio.create_task(
-            EvaluationService._run_evaluation_background(trace.id, request)
-        )
-
-        # Return immediately with running status
-        return EvaluationResponse(
-            trace_id=trace.id,
-            status="running",
-            dataset_name=request.dataset_name,
-            sample_count=0,
-            guideline_names=request.guideline_names,
-            completion_model=request.model_completion_config.model_name,
-            model_provider=request.model_completion_config.model_provider,
-            judge_model=request.judge_config.model_name,
-            scores={},
-            created_at=trace.created_at,
-        )
-
-    @staticmethod
-    async def _run_evaluation_background(trace_id: int, request: EvaluationRequest):
-        """Run evaluation in background using a separate process.
-
-        The evaluation pipeline runs in a separate process to:
-        1. Prevent blocking the FastAPI event loop
-        2. Allow metrics that require main-thread execution to work correctly
-        """
-        async for session in get_session():
-            repository = EvaluationRepository(session)
-            try:
-                # Get trace to get user_id
-                trace = await repository.get_trace_by_id(trace_id)
-                service = EvaluationService(session, trace.user_id)
-
-                # Setup phase
-                dataset_content = service._load_dataset_content(request.dataset_name)
-                guidelines = await service._load_guidelines(request.guideline_names)
-
-                # Convert guidelines to serializable dicts for the worker
-                guidelines_data = [
-                    service._convert_guideline_to_dict(g) for g in guidelines
-                ]
-
-                # Get model and judge configs as serializable dicts
-                model_config_data = await service._get_serializable_model_config(
-                    request.model_completion_config
-                )
-                judge_config_data = await service._get_serializable_judge_config(
-                    request.judge_config
-                )
-
-                # Run pipeline in a separate process
-                loop = asyncio.get_event_loop()
-                pool = get_process_pool()
-                try:
-                    pipeline_output = await loop.run_in_executor(
-                        pool,
-                        functools.partial(
-                            run_lighteval_pipeline_worker,
-                            dataset_name=request.dataset_name,
-                            dataset_content=dataset_content,
-                            guidelines_data=guidelines_data,
-                            model_config_data=model_config_data,
-                            judge_config_data=judge_config_data,
-                        ),
-                    )
-                except BrokenProcessPool:
-                    logger.error(
-                        "Process pool crashed during evaluation, recreating pool"
-                    )
-                    _recreate_process_pool()
-                    raise Exception(
-                        "Evaluation worker process crashed unexpectedly. "
-                        "This may be due to memory exhaustion."
-                    )
-
-                # Check for worker errors
-                if not pipeline_output.get("success", False):
-                    raise Exception(
-                        f"Worker failed: {pipeline_output.get('error', 'Unknown error')}\n"
-                        f"{pipeline_output.get('traceback', '')}"
-                    )
-
-                # Write results to database and upload to S3
-                trace = await repository.get_trace_by_id(trace_id)
-                await service._write_results(trace, request, pipeline_output)
-
-                # Finalize
-                summary = service._extract_summary(pipeline_output, guidelines)
-                await repository.update_trace_status(
-                    trace_id, "completed", {"scores": summary}
-                )
-
-                # Upload trace to S3
-                trace = await repository.get_trace_by_id(trace_id)
-                await service._upload_trace_jsonl_simple(trace)
-
-            except Exception as e:
-                logger.error("Evaluation failed: %s", e)
-                await repository.update_trace_status(
-                    trace_id,
-                    "failed",
-                    {"error": str(e), "traceback": traceback.format_exc()},
-                )
-            finally:
-                await session.close()
-            break
 
     async def run_task_evaluation(
         self, request: TaskEvaluationRequest
@@ -486,18 +368,6 @@ class EvaluationService:
             "provider_slug": config.model_provider_slug,
         }
 
-    async def _create_trace(self, request: EvaluationRequest) -> Trace:
-        """Create initial trace in database."""
-        completion_config = self._to_stored_config(request.model_completion_config)
-        judge_config = self._to_stored_config(request.judge_config)
-        return await self.repository.create_trace(
-            user_id=self.user_id,
-            dataset_name=request.dataset_name,
-            guideline_names=request.guideline_names,
-            completion_model_config=completion_config,
-            judge_model_config=judge_config,
-        )
-
     async def _create_task_trace(self, request: TaskEvaluationRequest) -> Trace:
         """Create initial trace in database."""
         completion_config = self._to_stored_config(request.model_completion_config)
@@ -651,44 +521,6 @@ class EvaluationService:
     async def _get_serializable_judge_config(self, judge_config: ModelConfig) -> dict:
         """Get judge config as a serializable dict for worker processes."""
         return await self._create_judge_client_parameters(judge_config)
-
-    async def _write_results(
-        self,
-        trace: Trace,
-        request: EvaluationRequest,
-        pipeline_output: dict,
-    ) -> None:
-        """Write evaluation results to database as events."""
-        # Create spec event
-        await self.repository.create_event(
-            trace_id=trace.id,
-            event_type="spec",
-            data={
-                "dataset_name": request.dataset_name,
-                "guideline_names": request.guideline_names,
-                "completion_model": request.model_completion_config.model_name,
-                "model_provider": request.model_completion_config.model_provider,
-                "judge_model": request.judge_config.model_name,
-                "sample_count": pipeline_output["sample_count"],
-            },
-        )
-
-        # Upload evaluation results directory to S3
-        s3_path = self.s3.upload_eval_results(trace.id, pipeline_output["temp_dir"])
-
-        # Create sampling event with S3 path
-        await self.repository.create_event(
-            trace_id=trace.id,
-            event_type="sampling",
-            data={"s3_path": s3_path},
-        )
-
-        # Create report event
-        await self.repository.create_event(
-            trace_id=trace.id,
-            event_type="report",
-            data={"scores": pipeline_output["summary"]},
-        )
 
     async def _write_task_results(
         self,

@@ -15,7 +15,6 @@ Test Matrix:
 | test_guideline_schema_numeric          | FR-1 | GuidelineCreate     | Numeric scoring scale        |
 | test_guideline_schema_custom_category  | FR-1 | GuidelineCreate     | Custom category scale        |
 | test_guideline_schema_invalid_config   | FR-1 | GuidelineCreate     | Mismatched config rejection  |
-| test_evaluation_request_valid          | FR-2 | EvaluationRequest   | Valid evaluation request     |
 | test_flexible_eval_request_valid       | FR-2 | FlexibleEvalRequest | Valid flexible eval request  |
 | test_auth_response_schema              | FR-6 | AuthResponse        | Valid auth response          |
 | test_login_data_invalid_email          | FR-6 | LoginData           | Email validation             |
@@ -29,8 +28,6 @@ from api.benchmarks.schemas import BenchmarkListResponse, BenchmarkResponse
 from api.datasets.schemas import DatasetListResponse, DatasetResponse
 from api.evaluations.schemas import (
     DatasetConfig,
-    EvaluationRequest,
-    EvaluationResponse,
     FlexibleEvaluationRequest,
     JudgeType,
     ModelConfig,

@@ -41,23 +41,6 @@ class NumericScoreDistribution(BaseModel):
     failed: int = 0
 
 
-class EvaluationResponse(BaseModel):
-    """Response schema for an evaluation run."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    trace_id: int
-    status: str
-    dataset_name: str
-    sample_count: int
-    guideline_names: list[str]
-    completion_model: str
-    model_provider: str
-    judge_model: str
-    scores: dict[str, CategoricalScoreDistribution | NumericScoreDistribution]
-    created_at: datetime
-
-
 class TraceResponse(BaseModel):
     """Response schema for a trace."""
 
@@ -132,15 +115,6 @@ class ModelConfigStored(BaseModel):
     api_source: Literal["standard", "openrouter"]
     api_name: str
     provider_slug: str
-
-
-class EvaluationRequest(BaseModel):
-    """Request schema for running an evaluation."""
-
-    dataset_name: str
-    guideline_names: list[str]
-    model_completion_config: ModelConfig
-    judge_config: ModelConfig
 
 
 class TaskEvaluationRequest(BaseModel):
