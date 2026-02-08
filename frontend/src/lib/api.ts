@@ -438,27 +438,28 @@ class ApiClient {
   }
 
   // Leaderboard endpoints
-  async getLeaderboard(datasetName: string) {
+  async getLeaderboard() {
     return this.request<{
-      dataset_name: string;
-      sample_count: number;
-      entries: {
-        trace_id: number;
-        completion_model: string;
-        model_provider: string;
-        judge_model: string;
-        scores: {
-          guideline_name: string;
-          mean: number;
-          max_score: number;
-          normalized: number;
-          failed: number;
+      datasets: {
+        dataset_name: string;
+        sample_count: number;
+        entries: {
+          trace_id: number;
+          dataset_name: string;
+          completion_model: string;
+          model_provider: string;
+          judge_model: string;
+          scores: {
+            metric_name: string;
+            mean: number;
+            std: number;
+            failed: number;
+          }[];
+          total_failures: number;
+          created_at: string;
         }[];
-        total_failures: number;
-        normalized_avg_score: number;
-        created_at: string;
       }[];
-    }>(`/leaderboard?dataset_name=${encodeURIComponent(datasetName)}`);
+    }>('/leaderboard');
   }
 
   // Benchmark endpoints

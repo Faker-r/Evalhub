@@ -13,20 +13,23 @@ router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
 
 @router.get("", response_model=LeaderboardResponse)
 async def get_leaderboard(
-    dataset_name: str,
     session: AsyncSession = Depends(get_session),
 ) -> LeaderboardResponse:
-    """Get the leaderboard for a dataset.
+    """Get the leaderboard for all datasets.
 
-    Returns all completed evaluation runs for the specified dataset,
-    ranked by normalized average scores across all guidelines.
+    Returns all completed evaluation runs with count_on_leaderboard=True,
+    grouped by dataset name and ranked by average metric scores.
 
+    Each dataset includes:
+    - Dataset name and sample count
+    - List of entries (traces) ranked by avg_score
+    
     Each entry includes:
     - Model name and provider
     - Judge model used
-    - Per-guideline scores (raw mean, max_score, normalized)
-    - Total failures across all guidelines
-    - Normalized average score (used for ranking)
+    - Per-metric scores (mean, std, failed)
+    - Total failures across all metrics
+    - Average score (used for ranking)
     """
-    logger.debug(f"Getting leaderboard for dataset: {dataset_name}")
-    return await LeaderboardService(session).get_leaderboard(dataset_name)
+    logger.debug("Getting leaderboard for all datasets")
+    return await LeaderboardService(session).get_leaderboard()
