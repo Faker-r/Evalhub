@@ -13,11 +13,12 @@ class LeaderboardRepository:
         self.session = session
 
     async def get_completed_traces_by_dataset(self, dataset_name: str) -> list[Trace]:
-        """Get all completed traces for a dataset (across all users)."""
+        """Get all completed traces for a dataset (across all users) that count on leaderboard."""
         query = (
             select(Trace)
             .where(Trace.dataset_name == dataset_name)
             .where(Trace.status == "completed")
+            .where(Trace.count_on_leaderboard == True)
             .order_by(Trace.created_at.desc())
         )
         result = await self.session.execute(query)

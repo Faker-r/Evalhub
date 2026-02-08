@@ -124,6 +124,7 @@ class TaskEvaluationRequest(BaseModel):
     dataset_config: DatasetConfig
     model_completion_config: ModelConfig
     judge_config: ModelConfig | None = None
+    count_on_leaderboard: bool = False
 
 
 class TaskEvaluationResponse(BaseModel):
@@ -152,6 +153,7 @@ class FlexibleEvaluationRequest(BaseModel):
     guideline_names: list[str] | None = None
     model_completion_config: ModelConfig
     judge_config: ModelConfig | None = None
+    count_on_leaderboard: bool = False
 
 
 class TraceSamplesRequest(BaseModel):

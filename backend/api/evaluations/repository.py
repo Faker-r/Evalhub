@@ -25,6 +25,7 @@ class EvaluationRepository:
         guideline_names: list[str],
         completion_model_config: dict,
         judge_model_config: dict,
+        count_on_leaderboard: bool = False,
     ) -> Trace:
         """Create a new trace for an evaluation run."""
         trace = Trace(
@@ -34,6 +35,7 @@ class EvaluationRepository:
             completion_model_config=completion_model_config,
             judge_model_config=judge_model_config,
             status="running",
+            count_on_leaderboard=count_on_leaderboard,
             created_at=datetime.utcnow(),
         )
         self.session.add(trace)

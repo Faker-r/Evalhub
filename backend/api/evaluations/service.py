@@ -386,6 +386,7 @@ class EvaluationService:
             guideline_names=[],
             completion_model_config=completion_config,
             judge_model_config=judge_config,
+            count_on_leaderboard=request.count_on_leaderboard,
         )
 
     async def _create_flexible_trace(self, request: FlexibleEvaluationRequest) -> Trace:
@@ -410,6 +411,7 @@ class EvaluationService:
             guideline_names=guideline_names,
             completion_model_config=completion_config,
             judge_model_config=judge_config,
+            count_on_leaderboard=request.count_on_leaderboard,
         )
 
     async def _update_trace_guidelines(

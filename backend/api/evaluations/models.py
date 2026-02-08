@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 
 from api.core.database import Base
@@ -21,6 +21,7 @@ class Trace(Base):
         String, nullable=False, default="running"
     )  # running, completed, failed
     summary = Column(JSONB, nullable=True)  # Final scores summary
+    count_on_leaderboard = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     @property
