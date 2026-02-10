@@ -24,6 +24,7 @@ trap cleanup EXIT INT TERM
 # 1. Start Redis
 echo "Starting Redis..."
 redis-server --daemonize yes --port 6379
+sleep 1
 echo "Redis running on :6379"
 
 # 2. Start Celery workers (background, solo pool for CUDA compatibility)
@@ -36,7 +37,7 @@ for i in $(seq 1 "$NUM_WORKERS"); do
         --pool=solo \
         -n "worker${i}@%h" &
     CELERY_PIDS+=($!)
-    echo "Celery worker $i PID: ${CELERY_PIDS[-1]}"
+    echo "Celery worker $i PID: $!"
 done
 
 # 3. Start FastAPI (foreground — Ctrl+C hits this, triggers cleanup)
