@@ -72,10 +72,10 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
 
   // Fetch OpenRouter providers on mount
   useEffect(() => {
-    if (apiSource === 'openrouter' && openRouterTab === 'by-provider') {
+    if (apiSource === 'openrouter') {
       fetchOpenRouterProviders();
     }
-  }, [apiSource, openRouterTab]);
+  }, [apiSource]);
 
   // Fetch all OpenRouter models when selecting by model
   useEffect(() => {
@@ -148,7 +148,18 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
     setLoadingOpenRouterModels(true);
     try {
       const response = await apiClient.getOpenRouterModels();
-      setOpenRouterModels(response.models);
+      const modelsWithProviderCounts = await Promise.all(
+        response.models.map(async (model) => {
+          try {
+            const providerResponse = await apiClient.getOpenRouterProvidersByModel(model.id);
+            return { ...model, providerCount: providerResponse.providers.length };
+          } catch {
+            return { ...model, providerCount: 0 };
+          }
+        })
+      );
+      const sortedModels = modelsWithProviderCounts.sort((a, b) => b.providerCount - a.providerCount);
+      setOpenRouterModels(sortedModels);
     } catch (error) {
       toast.error('Failed to load OpenRouter models. Check if API key is configured.');
       console.error('Error fetching OpenRouter models:', error);
@@ -173,8 +184,20 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
   const fetchOpenRouterProvidersByModel = async (modelId: string) => {
     setLoadingOpenRouterProvidersByModel(true);
     try {
-      const response = await apiClient.getOpenRouterProvidersByModel(modelId);
-      setOpenRouterProvidersByModel(response.providers);
+      const [providersResponse, providerNamesResponse] = await Promise.all([
+        apiClient.getOpenRouterProviders(),
+        apiClient.getOpenRouterProvidersByModel(modelId),
+      ]);
+      
+      const providerNameToSlug = new Map(
+        providersResponse.providers.map((p) => [p.name, p.slug])
+      );
+      
+      const providerSlugs = providerNamesResponse.providers
+        .map((name) => providerNameToSlug.get(name))
+        .filter((slug): slug is string => Boolean(slug));
+      
+      setOpenRouterProvidersByModel(providerSlugs);
     } catch (error) {
       console.error('Error fetching OpenRouter providers by model:', error);
       setOpenRouterProvidersByModel([]);
@@ -242,7 +265,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
       is_openrouter: true,
       openrouter_model_id: modelId,
       openrouter_model_name: model?.name || modelId,
-      openrouter_provider_slug: value.openrouter_provider_slug || undefined,
+      openrouter_provider_slug: openRouterTab === 'by-provider' ? value.openrouter_provider_slug : undefined,
     });
   };
 
@@ -467,19 +490,39 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
               {/* Show available providers for selected model */}
               {value.openrouter_model_id && (
                 <div className="space-y-2">
-                  <Label>Available Providers</Label>
+                  <Label>Provider</Label>
                   {loadingOpenRouterProvidersByModel ? (
                     <Skeleton className="h-10 w-full" />
                   ) : (
-                    <div className="text-sm text-muted-foreground p-3 border rounded-md">
-                      {openRouterProvidersByModel.length === 0 ? (
-                        <span>Provider information not available</span>
-                      ) : (
-                        <span>
-                          This model is available from {openRouterProvidersByModel.length} provider(s)
-                        </span>
-                      )}
-                    </div>
+                    <Select
+                      value={value.openrouter_provider_slug || ''}
+                      onValueChange={(providerSlug) => {
+                        onChange({
+                          ...value,
+                          openrouter_provider_slug: providerSlug,
+                        });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a provider" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px] overflow-y-auto">
+                        {openRouterProvidersByModel.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground">
+                            Provider information not available
+                          </div>
+                        ) : (
+                          openRouterProvidersByModel.map((providerSlug) => {
+                            const provider = openRouterProviders.find((p) => p.slug === providerSlug);
+                            return (
+                              <SelectItem key={providerSlug} value={providerSlug}>
+                                {provider?.name || providerSlug}
+                              </SelectItem>
+                            );
+                          })
+                        )}
+                      </SelectContent>
+                    </Select>
                   )}
                 </div>
               )}
