@@ -1,25 +1,9 @@
-import asyncio
-import functools
-import json
-import statistics
-import sys
-import threading
-import traceback
-from concurrent.futures import ProcessPoolExecutor
-from concurrent.futures.process import BrokenProcessPool
-
 from fastapi import HTTPException, status
-from numpy import isin
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.core.database import get_session
 from api.core.exceptions import NotFoundException
 from api.core.logging import get_logger
 from api.core.s3 import S3Storage
-from api.evaluations.eval_worker import (
-    run_flexible_lighteval_pipeline_worker,
-    run_lighteval_task_pipeline_worker,
-)
 from api.evaluations.models import Trace
 from api.evaluations.repository import EvaluationRepository
 from api.evaluations.schemas import (
@@ -33,50 +17,13 @@ from api.evaluations.schemas import (
     TraceSamplesRequest,
     TraceSamplesResponse,
 )
+from api.evaluations.tasks import run_flexible_evaluation_task, run_task_evaluation_task
 from api.guidelines.models import Guideline
 from api.guidelines.schemas import GuidelineScoringScale
 from api.guidelines.service import GuidelineService
 from api.models_and_providers.service import ModelsAndProvidersService
 
 logger = get_logger(__name__)
-
-# Process pool for running evaluations in separate processes
-# This allows evaluations to run on their own main thread, fixing thread-affinity issues
-# and preventing blocking of the FastAPI event loop
-_process_pool: ProcessPoolExecutor | None = None
-_pool_lock = threading.Lock()
-
-
-def get_process_pool() -> ProcessPoolExecutor:
-    """Get or create the process pool for evaluation workers."""
-    global _process_pool
-    with _pool_lock:
-        if _process_pool is None:
-            _process_pool = ProcessPoolExecutor(max_workers=4)
-    return _process_pool
-
-
-def _recreate_process_pool() -> ProcessPoolExecutor:
-    global _process_pool
-    with _pool_lock:
-        if _process_pool is not None:
-            try:
-                _process_pool.shutdown(wait=False)
-            except Exception:
-                pass
-        _process_pool = ProcessPoolExecutor(max_workers=4)
-        logger.warning("Process pool recreated after worker crash")
-    return _process_pool
-
-
-def shutdown_process_pool():
-    """Shutdown the process pool gracefully."""
-    global _process_pool
-    with _pool_lock:
-        if _process_pool is not None:
-            _process_pool.shutdown(wait=True)
-            _process_pool = None
-
 
 OPENROUTER_PROVIDER_SLUG = "openrouter"
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
@@ -101,9 +48,29 @@ class EvaluationService:
         # Initialize trace in database
         trace = await self._create_task_trace(request)
 
-        # Start background evaluation
-        asyncio.create_task(
-            EvaluationService._run_task_evaluation_background(trace.id, request)
+        # Prepare serializable data for Celery task
+        model_config_data = await self._get_serializable_model_config(
+            request.model_completion_config
+        )
+        task_name = self._build_task_name(request)
+
+        request_data = {
+            "task_name": request.task_name,
+            "completion_model": request.model_completion_config.model_name,
+            "model_provider": request.model_completion_config.model_provider,
+            "n_samples": request.dataset_config.n_samples,
+            "n_fewshots": request.dataset_config.n_fewshots,
+        }
+
+        # Dispatch to Celery
+        run_task_evaluation_task.delay(
+            trace_id=trace.id,
+            user_id=self.user_id,
+            task_name=task_name,
+            n_samples=request.dataset_config.n_samples,
+            n_fewshots=request.dataset_config.n_fewshots,
+            model_config_data=model_config_data,
+            request_data=request_data,
         )
 
         # Return immediately with running status
@@ -120,108 +87,67 @@ class EvaluationService:
             created_at=trace.created_at,
         )
 
-    @staticmethod
-    async def _run_task_evaluation_background(
-        trace_id: int, request: TaskEvaluationRequest
-    ):
-        """Run task evaluation in background using a separate process."""
-        pipeline_output = None
-        user_id = None
-        async for session in get_session():
-            repository = EvaluationRepository(session)
-            try:
-                trace = await repository.get_trace_by_id(trace_id)
-                user_id = trace.user_id
-                service = EvaluationService(session, trace.user_id)
-                model_config_data = await service._get_serializable_model_config(
-                    request.model_completion_config
-                )
-                task_name = service._build_task_name(request)
-                loop = asyncio.get_event_loop()
-                pool = get_process_pool()
-                try:
-                    pipeline_output = await loop.run_in_executor(
-                        pool,
-                        functools.partial(
-                            run_lighteval_task_pipeline_worker,
-                            task_name=task_name,
-                            n_samples=request.dataset_config.n_samples,
-                            n_fewshots=request.dataset_config.n_fewshots,
-                            model_config_data=model_config_data,
-                        ),
-                    )
-                except BrokenProcessPool:
-                    logger.error(
-                        "Process pool crashed during task evaluation, recreating pool"
-                    )
-                    _recreate_process_pool()
-                    raise Exception(
-                        "Evaluation worker process crashed unexpectedly. "
-                        "This may be due to memory exhaustion."
-                    )
-                if not pipeline_output.get("success", False):
-                    raise Exception(
-                        f"Worker failed: {pipeline_output.get('error', 'Unknown error')}\n"
-                        f"{pipeline_output.get('traceback', '')}"
-                    )
-            except Exception as e:
-                logger.error("Evaluation failed: %s", e)
-                pipeline_output = None
-                async for fail_session in get_session():
-                    fail_repo = EvaluationRepository(fail_session)
-                    await fail_repo.update_trace_status(
-                        trace_id,
-                        "failed",
-                        {"error": str(e), "traceback": traceback.format_exc()},
-                    )
-                    break
-            break
-
-        if pipeline_output is None:
-            return
-
-        async for session in get_session():
-            repository = EvaluationRepository(session)
-            service = EvaluationService(session, user_id)
-            try:
-                trace = await repository.get_trace_by_id(trace_id)
-                metric_docs = pipeline_output.get("metric_docs", {})
-                metric_names = list(pipeline_output["scores"].keys())
-                trace = await service._update_trace_guidelines(trace, metric_names)
-                await service._write_task_results(
-                    trace, request, pipeline_output, metric_names
-                )
-                summary = service._extract_task_summary(pipeline_output)
-                await repository.update_trace_status(
-                    trace_id,
-                    "completed",
-                    {"scores": summary, "metric_docs": metric_docs},
-                )
-                trace = await repository.get_trace_by_id(trace_id)
-                await service._upload_trace_jsonl_simple(trace)
-            except Exception as e:
-                logger.error("Evaluation failed: %s", e)
-                async for fail_session in get_session():
-                    fail_repo = EvaluationRepository(fail_session)
-                    await fail_repo.update_trace_status(
-                        trace_id,
-                        "failed",
-                        {"error": str(e), "traceback": traceback.format_exc()},
-                    )
-                    break
-            break
-
     async def run_flexible_evaluation(
         self, request: FlexibleEvaluationRequest
     ) -> TaskEvaluationResponse:
         """Run a flexible evaluation on a dataset with configurable parsing and judging."""
         trace = await self._create_flexible_trace(request)
 
-        asyncio.create_task(
-            EvaluationService._run_flexible_evaluation_background(trace.id, request)
+        # Prepare serializable data for Celery task
+        dataset_content = self._load_dataset_content(request.dataset_name)
+
+        guidelines_data = []
+        if request.judge_type == JudgeType.LLM_AS_JUDGE and request.guideline_names:
+            guidelines = await self._load_guidelines(request.guideline_names)
+            guidelines_data = [self._convert_guideline_to_dict(g) for g in guidelines]
+
+        model_config_data = await self._get_serializable_model_config(
+            request.model_completion_config
+        )
+
+        judge_config_data = None
+        if request.judge_config:
+            judge_config_data = await self._get_serializable_judge_config(
+                request.judge_config
+            )
+
+        text_config_data = (
+            request.text_config.model_dump() if request.text_config else None
+        )
+        mc_config_data = (
+            request.mc_config.model_dump() if request.mc_config else None
         )
 
         judge_model = request.judge_config.model_name if request.judge_config else ""
+
+        request_data = {
+            "dataset_name": request.dataset_name,
+            "input_field": request.input_field,
+            "output_type": request.output_type.value,
+            "judge_type": request.judge_type.value,
+            "completion_model": request.model_completion_config.model_name,
+            "model_provider": request.model_completion_config.model_provider,
+            "judge_model": judge_model,
+        }
+
+        # Dispatch to Celery
+        run_flexible_evaluation_task.delay(
+            trace_id=trace.id,
+            user_id=self.user_id,
+            dataset_name=request.dataset_name,
+            dataset_content=dataset_content,
+            input_field=request.input_field,
+            output_type=request.output_type.value,
+            judge_type=request.judge_type.value,
+            text_config=text_config_data,
+            mc_config=mc_config_data,
+            guidelines_data=guidelines_data,
+            model_config_data=model_config_data,
+            judge_config_data=judge_config_data,
+            request_data=request_data,
+        )
+
+        # Return immediately with running status
         guideline_names = request.guideline_names or []
         if request.judge_type != JudgeType.LLM_AS_JUDGE:
             guideline_names = [request.judge_type.value]
@@ -237,123 +163,6 @@ class EvaluationService:
             judge_model=judge_model,
             created_at=trace.created_at,
         )
-
-    @staticmethod
-    async def _run_flexible_evaluation_background(
-        trace_id: int, request: FlexibleEvaluationRequest
-    ):
-        """Run flexible evaluation in background using a separate process."""
-        pipeline_output = None
-        user_id = None
-        guidelines = []
-        async for session in get_session():
-            repository = EvaluationRepository(session)
-            try:
-                trace = await repository.get_trace_by_id(trace_id)
-                user_id = trace.user_id
-                service = EvaluationService(session, trace.user_id)
-                dataset_content = service._load_dataset_content(request.dataset_name)
-                guidelines = []
-                guidelines_data = []
-                if (
-                    request.judge_type == JudgeType.LLM_AS_JUDGE
-                    and request.guideline_names
-                ):
-                    guidelines = await service._load_guidelines(request.guideline_names)
-                    guidelines_data = [
-                        service._convert_guideline_to_dict(g) for g in guidelines
-                    ]
-                model_config_data = await service._get_serializable_model_config(
-                    request.model_completion_config
-                )
-                judge_config_data = None
-                if request.judge_config:
-                    judge_config_data = await service._get_serializable_judge_config(
-                        request.judge_config
-                    )
-                text_config_data = (
-                    request.text_config.model_dump() if request.text_config else None
-                )
-                mc_config_data = (
-                    request.mc_config.model_dump() if request.mc_config else None
-                )
-                loop = asyncio.get_event_loop()
-                pool = get_process_pool()
-                try:
-                    pipeline_output = await loop.run_in_executor(
-                        pool,
-                        functools.partial(
-                            run_flexible_lighteval_pipeline_worker,
-                            dataset_name=request.dataset_name,
-                            dataset_content=dataset_content,
-                            input_field=request.input_field,
-                            output_type=request.output_type.value,
-                            judge_type=request.judge_type.value,
-                            text_config=text_config_data,
-                            mc_config=mc_config_data,
-                            guidelines_data=guidelines_data,
-                            model_config_data=model_config_data,
-                            judge_config_data=judge_config_data,
-                        ),
-                    )
-                except BrokenProcessPool:
-                    logger.error(
-                        "Process pool crashed during flexible evaluation, recreating pool"
-                    )
-                    _recreate_process_pool()
-                    raise Exception(
-                        "Evaluation worker process crashed unexpectedly. "
-                        "This may be due to memory exhaustion."
-                    )
-                if not pipeline_output.get("success", False):
-                    raise Exception(
-                        f"Worker failed: {pipeline_output.get('error', 'Unknown error')}\n"
-                        f"{pipeline_output.get('traceback', '')}"
-                    )
-            except Exception as e:
-                logger.error("Flexible evaluation failed: %s", e)
-                pipeline_output = None
-                async for fail_session in get_session():
-                    fail_repo = EvaluationRepository(fail_session)
-                    await fail_repo.update_trace_status(
-                        trace_id,
-                        "failed",
-                        {"error": str(e), "traceback": traceback.format_exc()},
-                    )
-                    break
-            break
-
-        if pipeline_output is None:
-            return
-
-        async for session in get_session():
-            repository = EvaluationRepository(session)
-            service = EvaluationService(session, user_id)
-            try:
-                trace = await repository.get_trace_by_id(trace_id)
-                metric_names = list(pipeline_output["scores"].keys())
-                await service._write_flexible_results(
-                    trace, request, pipeline_output, metric_names
-                )
-                summary = service._extract_flexible_summary(
-                    pipeline_output, request, guidelines
-                )
-                await repository.update_trace_status(
-                    trace_id, "completed", {"scores": summary}
-                )
-                trace = await repository.get_trace_by_id(trace_id)
-                await service._upload_trace_jsonl_simple(trace)
-            except Exception as e:
-                logger.error("Flexible evaluation failed: %s", e)
-                async for fail_session in get_session():
-                    fail_repo = EvaluationRepository(fail_session)
-                    await fail_repo.update_trace_status(
-                        trace_id,
-                        "failed",
-                        {"error": str(e), "traceback": traceback.format_exc()},
-                    )
-                    break
-            break
 
     # ==================== Lighteval Integration ====================
 
@@ -413,16 +222,6 @@ class EvaluationService:
             judge_model_config=judge_config,
             count_on_leaderboard=request.count_on_leaderboard,
         )
-
-    async def _update_trace_guidelines(
-        self, trace: Trace, guideline_names: list[str]
-    ) -> Trace:
-        """Update trace with guideline names."""
-        if guideline_names:
-            trace.guideline_names = guideline_names
-            await self.session.commit()
-            await self.session.refresh(trace)
-        return trace
 
     def _convert_guideline_to_dict(self, guideline: Guideline) -> dict:
         """Convert Guideline model to dict format for GuidelineJudgeMetric."""
@@ -524,224 +323,10 @@ class EvaluationService:
         """Get judge config as a serializable dict for worker processes."""
         return await self._create_judge_client_parameters(judge_config)
 
-    async def _write_task_results(
-        self,
-        trace: Trace,
-        request: TaskEvaluationRequest,
-        pipeline_output: dict,
-        metric_names: list[str],
-    ) -> None:
-        """Write task evaluation results to database as events."""
-        # Create spec event
-        await self.repository.create_event(
-            trace_id=trace.id,
-            event_type="spec",
-            data={
-                "task_name": request.task_name,
-                "completion_model": request.model_completion_config.model_name,
-                "model_provider": request.model_completion_config.model_provider,
-                "guideline_names": metric_names,
-                "sample_count": request.dataset_config.n_samples,
-                "n_fewshots": request.dataset_config.n_fewshots,
-            },
-        )
-
-        # Upload evaluation results directory to S3
-        s3_path = self.s3.upload_eval_results(trace.id, pipeline_output["temp_dir"])
-
-        # Create sampling event with S3 path
-        await self.repository.create_event(
-            trace_id=trace.id,
-            event_type="sampling",
-            data={"s3_path": s3_path},
-        )
-
-        # Create report event
-        await self.repository.create_event(
-            trace_id=trace.id,
-            event_type="report",
-            data={
-                "scores": pipeline_output["summary"],
-            },
-        )
-
-    async def _write_flexible_results(
-        self,
-        trace: Trace,
-        request: FlexibleEvaluationRequest,
-        pipeline_output: dict,
-        metric_names: list[str],
-    ) -> None:
-        """Write flexible evaluation results to database as events."""
-        judge_model = request.judge_config.model_name if request.judge_config else ""
-        await self.repository.create_event(
-            trace_id=trace.id,
-            event_type="spec",
-            data={
-                "dataset_name": request.dataset_name,
-                "input_field": request.input_field,
-                "output_type": request.output_type.value,
-                "judge_type": request.judge_type.value,
-                "completion_model": request.model_completion_config.model_name,
-                "model_provider": request.model_completion_config.model_provider,
-                "judge_model": judge_model,
-                "guideline_names": metric_names,
-                "sample_count": pipeline_output["sample_count"],
-            },
-        )
-
-        s3_path = self.s3.upload_eval_results(trace.id, pipeline_output["temp_dir"])
-
-        await self.repository.create_event(
-            trace_id=trace.id,
-            event_type="sampling",
-            data={"s3_path": s3_path},
-        )
-
-        await self.repository.create_event(
-            trace_id=trace.id,
-            event_type="report",
-            data={"scores": pipeline_output["summary"]},
-        )
-
-    def _extract_summary(
-        self, pipeline_output: dict, guidelines: list[Guideline]
-    ) -> dict:
-        """Extract summary statistics from pipeline output."""
-        summary = {}
-
-        for guideline in guidelines:
-            metric_name = guideline.name
-            scores = pipeline_output["scores"].get(metric_name, [])
-            failed_count = pipeline_output["sample_count"] - len(scores)
-
-            # Calculate statistics based on scoring scale
-            if guideline.scoring_scale in [
-                GuidelineScoringScale.BOOLEAN,
-                GuidelineScoringScale.CUSTOM_CATEGORY,
-            ]:
-                # Categorical: distribution + mode
-                distribution = {}
-                for score in scores:
-                    key = str(score)
-                    distribution[key] = distribution.get(key, 0) + 1
-
-                mode = None
-                if distribution:
-                    mode = max(distribution, key=distribution.get)
-
-                summary[metric_name] = {
-                    "type": "categorical",
-                    "distribution": distribution,
-                    "mode": mode,
-                    "failed": failed_count,
-                }
-            else:
-                # Numeric/Percentage: mean, std
-                if scores:
-                    mean = statistics.mean(scores)
-                    std = statistics.stdev(scores) if len(scores) > 1 else 0.0
-
-                    summary[metric_name] = {
-                        "type": "numeric",
-                        "mean": round(mean, 2),
-                        "std": round(std, 2),
-                        "failed": failed_count,
-                    }
-                else:
-                    summary[metric_name] = {
-                        "type": "numeric",
-                        "mean": 0.0,
-                        "std": 0.0,
-                        "failed": failed_count,
-                    }
-
-        return summary
-
-    def _extract_task_summary(self, pipeline_output: dict) -> dict:
-        """Extract summary statistics from task pipeline output."""
-        summary = {}
-        task_results = pipeline_output["summary"]
-
-        for metric_name, value in task_results.items():
-            if metric_name.endswith("_stderr"):
-                continue
-
-            summary[metric_name] = {
-                "mean": round(value, 2),
-                "std": round(task_results.get(metric_name + "_stderr", 0), 2),
-                "failed": 0,
-            }
-
-        return summary
-
-    def _extract_flexible_summary(
-        self,
-        pipeline_output: dict,
-        request: FlexibleEvaluationRequest,
-        guidelines: list[Guideline],
-    ) -> dict:
-        """Extract summary statistics from flexible evaluation output."""
-        if request.judge_type == JudgeType.LLM_AS_JUDGE:
-            return self._extract_summary(pipeline_output, guidelines)
-
-        summary = {}
-        for metric_name, scores in pipeline_output["scores"].items():
-            if isinstance(scores, (int, float)):
-                summary[metric_name] = {
-                    "type": "numeric",
-                    "mean": round(scores, 4),
-                    "std": 0.0,
-                    "failed": 0,
-                }
-            elif isinstance(scores, list):
-                if scores:
-                    mean = statistics.mean(scores)
-                    std = statistics.stdev(scores) if len(scores) > 1 else 0.0
-                    summary[metric_name] = {
-                        "type": "numeric",
-                        "mean": round(mean, 4),
-                        "std": round(std, 4),
-                        "failed": pipeline_output["sample_count"] - len(scores),
-                    }
-                else:
-                    summary[metric_name] = {
-                        "type": "numeric",
-                        "mean": 0.0,
-                        "std": 0.0,
-                        "failed": pipeline_output["sample_count"],
-                    }
-
-        return summary
-
     def _build_task_name(self, request: TaskEvaluationRequest) -> str:
         if "|" in request.task_name:
             return request.task_name
         return f"{request.task_name}|{request.dataset_config.n_fewshots}"
-
-    async def _upload_trace_jsonl_simple(self, trace: Trace) -> None:
-        """Upload trace events as JSONL to S3."""
-        events = await self.repository.get_events_by_trace(trace.id)
-
-        lines = []
-        for event in events:
-            line_data = {
-                "event_type": event.event_type,
-                "trace_id": event.trace_id,
-                "sample_id": event.sample_id,
-                "guideline_name": event.guideline_name,
-                "data": event.data,
-                "created_at": (
-                    event.created_at.isoformat() if event.created_at else None
-                ),
-            }
-            line_data = {k: v for k, v in line_data.items() if v is not None}
-            lines.append(json.dumps(line_data))
-
-        content = "\n".join(lines)
-        safe_model_name = trace.completion_model.replace("/", "-")
-        filename = f"{trace.id}_{safe_model_name}-{trace.dataset_name}"
-        self.s3.upload_trace(filename, content)
 
     async def _load_guidelines(self, guideline_names: list[str]) -> list[Guideline]:
         """Load guidelines from database."""

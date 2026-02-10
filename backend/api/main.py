@@ -9,7 +9,6 @@ from api.core.logging import get_logger, setup_logging
 from api.datasets.routes import router as datasets_router
 from api.evaluation_comparison.routes import router as evaluation_comparison_router
 from api.evaluations.routes import router as evaluations_router
-from api.evaluations.service import shutdown_process_pool
 from api.guidelines.routes import router as guidelines_router
 from api.leaderboard.routes import router as leaderboard_router
 from api.models_and_providers.routes import router as models_and_providers_router
@@ -32,8 +31,6 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     logger.info("Shutting down Evalhub application")
-    shutdown_process_pool()
-    logger.info("Process pool shutdown complete")
 
 
 app = FastAPI(
