@@ -13,9 +13,11 @@ set -e
 
 cleanup() {
     echo "Shutting down..."
-    kill "${CELERY_PIDS[@]}" $API_PID 2>/dev/null
-    redis-cli shutdown nosave 2>/dev/null
-    wait 2>/dev/null
+    kill -TERM "${CELERY_PIDS[@]}" $API_PID 2>/dev/null || true
+    sleep 2
+    kill -9 "${CELERY_PIDS[@]}" $API_PID 2>/dev/null || true
+    redis-cli shutdown nosave 2>/dev/null || true
+    wait 2>/dev/null || true
     echo "All processes stopped."
 }
 
