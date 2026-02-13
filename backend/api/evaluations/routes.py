@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.database import get_session
 from api.core.logging import get_logger
+from api.core.redis_client import get_eval_progress
 from api.core.security import CurrentUser, get_current_user
 from api.evaluations.schemas import (
     FlexibleEvaluationRequest,
@@ -104,3 +106,15 @@ async def get_trace_samples(
     )
     request = TraceSamplesRequest(trace_id=trace_id, n_samples=n_samples)
     return await EvaluationService(session, current_user.id).get_trace_samples(request)
+
+
+@router.get("/traces/{trace_id}/progress")
+async def get_trace_progress(
+    trace_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Get real-time progress for a running evaluation."""
+    progress = await get_eval_progress(trace_id)
+    if progress is None:
+        return JSONResponse(content=None)
+    return progress

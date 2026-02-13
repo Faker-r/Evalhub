@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -10,6 +11,42 @@ import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+const STAGE_LABELS: Record<string, string> = {
+  starting: "Starting...",
+  model_inference: "Running inference...",
+  computing_metrics: "Computing metrics...",
+  aggregating: "Aggregating results...",
+  uploading: "Uploading results...",
+  finalizing: "Finalizing...",
+  evaluating: "Evaluating...",
+};
+
+function EvalProgressCell({ traceId }: { traceId: number }) {
+  const { data: progress } = useQuery({
+    queryKey: ["evalProgress", traceId],
+    queryFn: () => apiClient.getEvalProgress(traceId),
+    refetchInterval: 2000,
+  });
+
+  if (!progress) {
+    return (
+      <span className="text-sm text-muted-foreground">
+        In progress...
+      </span>
+    );
+  }
+
+  const label = STAGE_LABELS[progress.stage] || progress.detail || progress.stage;
+  const percent = progress.percent ?? 0;
+
+  return (
+    <div className="w-40 space-y-1">
+      <Progress value={percent} className="h-2" />
+      <p className="text-xs text-muted-foreground">{percent}% — {label}</p>
+    </div>
+  );
+}
 
 export default function Results() {
   const { isAuthenticated } = useAuth();
@@ -568,9 +605,7 @@ export default function Results() {
                           </Dialog>
                         )}
                         {trace.status === "running" && (
-                          <span className="text-sm text-muted-foreground">
-                            In progress...
-                          </span>
+                          <EvalProgressCell traceId={trace.id} />
                         )}
                       </TableCell>
                     </TableRow>
