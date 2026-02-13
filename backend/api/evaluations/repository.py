@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.exceptions import NotFoundException
 from api.core.logging import get_logger
+from api.core.redis_client import clear_eval_progress
 from api.evaluations.models import Trace, TraceEvent
 
 logger = get_logger(__name__)
@@ -69,6 +70,32 @@ class EvaluationRepository:
             raise NotFoundException(f"Trace not found: {trace_id}")
 
         return trace
+
+    async def mark_stale_traces_failed(
+        self, user_id: str, timeout_seconds: int = 4200
+    ) -> None:
+        """Mark traces stuck in 'running' beyond timeout as failed.
+
+        Celery hard time limit is 3900s (65 min). Default timeout of 4200s
+        (70 min) provides a buffer above that.
+        """
+        cutoff = datetime.utcnow() - timedelta(seconds=timeout_seconds)
+        query = select(Trace).where(
+            Trace.user_id == user_id,
+            Trace.status == "running",
+            Trace.created_at < cutoff,
+        )
+        result = await self.session.execute(query)
+        stale_traces = list(result.scalars().all())
+
+        for trace in stale_traces:
+            trace.status = "failed"
+            trace.summary = {"error": "Evaluation timed out — worker lost"}
+            clear_eval_progress(trace.id)
+            logger.info(f"Marked stale trace {trace.id} as failed")
+
+        if stale_traces:
+            await self.session.commit()
 
     async def get_traces_by_user(self, user_id: str) -> list[Trace]:
         """Get all traces for a user."""

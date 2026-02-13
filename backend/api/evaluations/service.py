@@ -340,6 +340,7 @@ class EvaluationService:
 
     async def get_traces(self) -> list[Trace]:
         """Get all traces for the current user."""
+        await self.repository.mark_stale_traces_failed(self.user_id)
         return await self.repository.get_traces_by_user(self.user_id)
 
     async def get_trace(self, trace_id: int) -> Trace:
