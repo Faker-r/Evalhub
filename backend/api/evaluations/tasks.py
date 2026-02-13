@@ -18,6 +18,7 @@ from lighteval.tasks.registry import Registry
 
 from api.core.celery_app import celery_app
 from api.core.logging import get_logger
+from api.core.redis_client import clear_eval_progress, set_eval_progress
 from api.evaluations.eval_pipeline.dataset_task import DatasetTask
 from api.evaluations.eval_pipeline.eval_pipeline import (
     CustomTaskEvaluationPipeline,
@@ -64,6 +65,7 @@ def _run_task_pipeline(
     n_samples: int | None,
     n_fewshots: int | None,
     model_config_data: dict,
+    progress_callback=None,
 ) -> dict:
     """Run a task evaluation pipeline. Raises on failure."""
     temp_dir = tempfile.mkdtemp()
@@ -84,14 +86,27 @@ def _run_task_pipeline(
     else:
         full_task_name = task_name
 
+    # Wrap the raw lighteval callback (completed, total) into our standard
+    # (stage, percent, detail) format so _run_task_pipeline callers get a
+    # consistent interface.
+    def _lighteval_cb(progress_tuple):
+        completed, total = progress_tuple
+        pct = int(completed / max(total, 1) * 80)
+        progress_callback("model_inference", pct, f"Sample {completed}/{total}")
+
     pipeline = Pipeline(
         tasks=full_task_name,
         pipeline_parameters=pipeline_params,
         evaluation_tracker=evaluation_tracker,
         model_config=model_config,
+        progress_callback=_lighteval_cb if progress_callback else None,
     )
 
     pipeline.evaluate()
+
+    if progress_callback:
+        progress_callback("post_processing", 85, "Processing results...")
+
     pipeline.save_and_push_results()
 
     results = pipeline.get_results()
@@ -140,6 +155,7 @@ def _run_flexible_pipeline(
     guidelines_data: list[dict],
     model_config_data: dict,
     judge_config_data: dict | None,
+    progress_callback=None,
 ) -> dict:
     """Run a flexible evaluation pipeline. Raises on failure."""
     from api.evaluations.schemas import (
@@ -202,6 +218,7 @@ def _run_flexible_pipeline(
         params=CustomTaskEvaluationPipelineParameters(
             max_samples=None, save_details=True, use_cache=True
         ),
+        progress_callback=progress_callback,
     )
 
     results = pipeline.evaluate()
@@ -535,13 +552,17 @@ def run_task_evaluation_task(
     """Celery task: run a task evaluation pipeline, post-process results, handle errors."""
     try:
         logger.info(f"Starting task evaluation for trace {trace_id}")
+        set_eval_progress(trace_id, "starting", 0, "Initializing...")
 
-        # Run the pipeline
+        def _progress_cb(stage: str, percent: int | None, detail: str = "") -> None:
+            set_eval_progress(trace_id, stage, percent, detail)
+
         pipeline_output = _run_task_pipeline(
             task_name=task_name,
             n_samples=n_samples,
             n_fewshots=n_fewshots,
             model_config_data=model_config_data,
+            progress_callback=_progress_cb,
         )
 
         # Post-process
@@ -552,6 +573,7 @@ def run_task_evaluation_task(
         _update_trace_guidelines(trace_id, metric_names)
 
         # Upload eval results to S3
+        set_eval_progress(trace_id, "uploading", 90, "Uploading results...")
         from api.core.s3 import S3Storage
 
         s3 = S3Storage()
@@ -571,6 +593,7 @@ def run_task_evaluation_task(
         }
 
         # Write events, complete trace, get trace data for JSONL
+        set_eval_progress(trace_id, "finalizing", 95, "Saving to database...")
         trace_data = _write_events_and_complete_trace(
             trace_id=trace_id,
             spec_data=spec_data,
@@ -588,6 +611,8 @@ def run_task_evaluation_task(
     except Exception as e:
         logger.error(f"Task evaluation failed for trace {trace_id}: {e}")
         _mark_trace_failed(trace_id, str(e), traceback.format_exc())
+    finally:
+        clear_eval_progress(trace_id)
 
 
 @celery_app.task(
@@ -616,6 +641,10 @@ def run_flexible_evaluation_task(
     """Celery task: run a flexible evaluation pipeline, post-process results, handle errors."""
     try:
         logger.info(f"Starting flexible evaluation for trace {trace_id}")
+        set_eval_progress(trace_id, "starting", 0, "Initializing...")
+
+        def _progress_cb(stage: str, percent: int | None, detail: str = "") -> None:
+            set_eval_progress(trace_id, stage, percent, detail)
 
         # Run the pipeline
         pipeline_output = _run_flexible_pipeline(
@@ -629,12 +658,14 @@ def run_flexible_evaluation_task(
             guidelines_data=guidelines_data,
             model_config_data=model_config_data,
             judge_config_data=judge_config_data,
+            progress_callback=_progress_cb,
         )
 
         # Post-process
         metric_names = list(pipeline_output["scores"].keys())
 
         # Upload eval results to S3
+        set_eval_progress(trace_id, "uploading", 90, "Uploading results...")
         from api.core.s3 import S3Storage
 
         s3 = S3Storage()
@@ -657,6 +688,7 @@ def run_flexible_evaluation_task(
         }
 
         # Write events, complete trace, get trace data for JSONL
+        set_eval_progress(trace_id, "finalizing", 95, "Saving to database...")
         trace_data = _write_events_and_complete_trace(
             trace_id=trace_id,
             spec_data=spec_data,
@@ -673,3 +705,5 @@ def run_flexible_evaluation_task(
     except Exception as e:
         logger.error(f"Flexible evaluation failed for trace {trace_id}: {e}")
         _mark_trace_failed(trace_id, str(e), traceback.format_exc())
+    finally:
+        clear_eval_progress(trace_id)

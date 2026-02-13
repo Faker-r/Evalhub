@@ -437,6 +437,12 @@ class ApiClient {
     return this.request<{ samples: any[] }>(`/evaluations/traces/${traceId}/samples`);
   }
 
+  async getEvalProgress(traceId: number) {
+    return this.request<{ stage: string; percent: number | null; detail: string } | null>(
+      `/evaluations/traces/${traceId}/progress`
+    );
+  }
+
   // Leaderboard endpoints
   async getLeaderboard() {
     return this.request<{
