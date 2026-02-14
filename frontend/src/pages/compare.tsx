@@ -65,6 +65,7 @@ type ModelConfig = {
   openrouter_model_id?: string;
   openrouter_model_name?: string;
   openrouter_provider_slug?: string;
+  openrouter_provider_name?: string;
 };
 
 function configToPair(config: ModelConfig): { model: string; provider: string; label: string } | null {
@@ -663,7 +664,7 @@ export default function Compare() {
                                       output_type: "Output type",
                                       judge_type: "Judge type",
                                       completion_model: "Completion model",
-                                      model_provider: "Provider",
+                                      model_provider: "Model provider",
                                       judge_model: "Judge model",
                                       guideline_names: "Guidelines",
                                       sample_count: "Samples",

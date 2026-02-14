@@ -23,6 +23,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { label: "Leaderboard", href: "/" },
+    { label: "Models", href: "/models" },
+    { label: "Providers", href: "/providers" },
     { label: "Benchmarks", href: "/benchmarks" },
     { label: "Datasets", href: "/datasets" },
     { label: "Guidelines", href: "/guidelines" },
@@ -237,9 +239,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div>
             <h4 className="font-bold mb-4 text-sm">Platform</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-black">Leaderboard</a></li>
-              <li><a href="#" className="hover:text-black">Datasets</a></li>
-              <li><a href="#" className="hover:text-black">API</a></li>
+              <li><Link href="/" className="hover:text-black">Leaderboard</Link></li>
+              <li><Link href="/models" className="hover:text-black">Models</Link></li>
+              <li><Link href="/providers" className="hover:text-black">Providers</Link></li>
             </ul>
           </div>
 

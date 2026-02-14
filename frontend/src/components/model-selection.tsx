@@ -31,6 +31,7 @@ interface ModelConfig {
   openrouter_model_id?: string;
   openrouter_model_name?: string;
   openrouter_provider_slug?: string;
+  openrouter_provider_name?: string;
 }
 
 interface ModelSelectionProps {
@@ -168,10 +169,10 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
     }
   };
 
-  const fetchOpenRouterModelsByProvider = async (providerName: string) => {
+  const fetchOpenRouterModelsByProvider = async (providerSlug: string) => {
     setLoadingOpenRouterModels(true);
     try {
-      const response = await apiClient.getOpenRouterModelsByProvider(providerName);
+      const response = await apiClient.getOpenRouterModelsByProvider(providerSlug);
       setOpenRouterModels(response.models);
     } catch (error) {
       toast.error('Failed to load models for provider');
@@ -211,11 +212,10 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
     const provider = standardProviders.find((p) => p.id === id);
 
     if (provider) {
-      // Reset to provider-only config, clear model selection
       onChange({
         provider_id: provider.id,
         provider_name: provider.name,
-        provider_slug: provider.slug || provider.name,
+        provider_slug: provider.slug ?? undefined,
         is_openrouter: false,
       });
     }
@@ -236,9 +236,9 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
         onChange({
           provider_id: provider.id,
           provider_name: provider.name,
-          provider_slug: provider.slug || provider.name,
+          provider_slug: provider.slug ?? undefined,
           model_id: model.id,
-          model_name: model.api_name,
+          model_name: model.display_name,
           api_name: model.api_name,
           api_base: provider.base_url,
           is_openrouter: false,
@@ -247,11 +247,12 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
     }
   };
 
-  const handleOpenRouterProviderChange = (providerName: string) => {
-    // Reset to provider-only config, clear model selection
+  const handleOpenRouterProviderChange = (providerSlug: string) => {
+    const provider = openRouterProviders.find((p) => p.slug === providerSlug);
     onChange({
       is_openrouter: true,
-      openrouter_provider_slug: providerName,
+      openrouter_provider_slug: providerSlug,
+      openrouter_provider_name: provider?.name,
     });
     setOpenRouterModels([]);
   };
@@ -497,9 +498,11 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
                     <Select
                       value={value.openrouter_provider_slug || ''}
                       onValueChange={(providerSlug) => {
+                        const provider = openRouterProviders.find((p) => p.slug === providerSlug);
                         onChange({
                           ...value,
                           openrouter_provider_slug: providerSlug,
+                          openrouter_provider_name: provider?.name,
                         });
                       }}
                     >
@@ -539,7 +542,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
                 <span className="text-muted-foreground">Provider:</span>
                 <span className="font-medium">
                   {value.is_openrouter
-                    ? (value.openrouter_provider_slug || 'OpenRouter')
+                    ? (value.openrouter_provider_name || value.openrouter_provider_slug || 'OpenRouter')
                     : value.provider_name}
                 </span>
               </div>

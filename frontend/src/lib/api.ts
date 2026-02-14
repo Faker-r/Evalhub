@@ -8,39 +8,31 @@ interface ApiError {
   detail: string | { msg: string }[];
 }
 
-type OpenRouterModel = {
-  id: string;
-  name: string;
-  description?: string;
-  pricing?: unknown;
-  context_length?: number;
-  canonical_slug?: string;
-  top_provider?: unknown;
-};
-
-type OpenRouterProvider = {
+export interface OpenRouterProviderSummary {
   name: string;
   slug: string;
+  model_count: number;
   privacy_policy_url?: string | null;
   terms_of_service_url?: string | null;
   status_page_url?: string | null;
-};
+}
 
-type OpenRouterModelsResponse = { data: OpenRouterModel[] };
-type OpenRouterProvidersResponse = { data: OpenRouterProvider[] };
-type OpenRouterModelEndpointsResponse = {
-  data: {
-    endpoints: {
-      provider_name?: string;
-    }[];
-  };
-};
+export interface OpenRouterModelSummary {
+  id: string;
+  name: string;
+  description?: string;
+  pricing?: Record<string, unknown>;
+  context_length?: number;
+  canonical_slug?: string;
+  architecture?: Record<string, unknown>;
+  top_provider?: Record<string, unknown>;
+  supported_parameters?: string[];
+  per_request_limits?: Record<string, unknown>;
+  provider_slugs?: string[];
+}
 
 class ApiClient {
   private token: string | null = null;
-  private openRouterHostedModelsByProviderSlugPromise: Promise<
-    Record<string, OpenRouterModel[]>
-  > | null = null;
 
   constructor() {
     // Load token from localStorage on initialization
@@ -100,70 +92,6 @@ class ApiClient {
     }
 
     return response.json();
-  }
-
-  private async getOpenRouterHostedModelsByProviderSlug(): Promise<Record<string, OpenRouterModel[]>> {
-    if (!this.openRouterHostedModelsByProviderSlugPromise) {
-      this.openRouterHostedModelsByProviderSlugPromise = (async () => {
-        const [providersResp, modelsResp] = await Promise.all([
-          fetch('https://openrouter.ai/api/v1/providers'),
-          fetch('https://openrouter.ai/api/v1/models'),
-        ]);
-        if (!providersResp.ok) throw new Error('Failed to fetch OpenRouter providers');
-        if (!modelsResp.ok) throw new Error('Failed to fetch OpenRouter models');
-
-        const providersJson = (await providersResp.json()) as OpenRouterProvidersResponse;
-        const modelsJson = (await modelsResp.json()) as OpenRouterModelsResponse;
-
-        const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
-
-        const slugByNormalizedName: Record<string, string> = {};
-        for (const p of providersJson.data) {
-          slugByNormalizedName[normalize(p.name)] = p.slug;
-          slugByNormalizedName[normalize(p.slug)] = p.slug;
-        }
-
-        const modelIdsByProviderSlug: Record<string, Set<string>> = {};
-
-        await Promise.all(
-          modelsJson.data.map(async (m) => {
-            const modelId = m.id;
-            const [author, slug] = modelId.split('/', 2);
-            if (!author || !slug) return;
-
-            const resp = await fetch(
-              `https://openrouter.ai/api/v1/models/${encodeURIComponent(
-                author
-              )}/${encodeURIComponent(slug)}/endpoints`
-            );
-            if (!resp.ok) return;
-
-            const json = (await resp.json()) as OpenRouterModelEndpointsResponse;
-            for (const endpoint of json.data.endpoints) {
-              const providerName = endpoint.provider_name;
-              if (!providerName) continue;
-              const providerSlug = slugByNormalizedName[normalize(providerName)];
-              if (!providerSlug) continue;
-              (modelIdsByProviderSlug[providerSlug] ||= new Set()).add(modelId);
-            }
-          })
-        );
-
-        const modelById: Record<string, OpenRouterModel> = {};
-        for (const m of modelsJson.data) modelById[m.id] = m;
-
-        const modelsByProviderSlug: Record<string, OpenRouterModel[]> = {};
-        for (const [providerSlug, ids] of Object.entries(modelIdsByProviderSlug)) {
-          modelsByProviderSlug[providerSlug] = Array.from(ids)
-            .map((id) => modelById[id])
-            .filter(Boolean);
-        }
-
-        return modelsByProviderSlug;
-      })();
-    }
-
-    return this.openRouterHostedModelsByProviderSlugPromise;
   }
 
   // Auth endpoints
@@ -303,7 +231,7 @@ class ApiClient {
     guideline_names: string[];
     model_completion_config: {
       model_name: string;
-      model_id: string;
+      model_id: number;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
@@ -312,7 +240,7 @@ class ApiClient {
     };
     judge_config: {
       model_name: string;
-      model_id: string;
+      model_id: number;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
@@ -335,7 +263,7 @@ class ApiClient {
     };
     model_completion_config: {
       model_name: string;
-      model_id: string;
+      model_id: number;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
@@ -344,7 +272,7 @@ class ApiClient {
     };
     judge_config?: {
       model_name: string;
-      model_id: string;
+      model_id: number;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
@@ -368,7 +296,7 @@ class ApiClient {
     guideline_names?: string[];
     model_completion_config: {
       model_name: string;
-      model_id: string;
+      model_id: number;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
@@ -377,7 +305,7 @@ class ApiClient {
     };
     judge_config?: {
       model_name: string;
-      model_id: string;
+      model_id: number;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
@@ -610,72 +538,50 @@ class ApiClient {
   }
 
   // OpenRouter endpoints
-  async getOpenRouterModels() {
-    const response = await fetch('https://openrouter.ai/api/v1/models');
-    if (!response.ok) throw new Error('Failed to fetch OpenRouter models');
-
-    const json = (await response.json()) as OpenRouterModelsResponse;
-    return {
-      models: json.data.map((m) => ({
-        id: m.id,
-        name: m.name,
-        description: m.description,
-        pricing: m.pricing,
-        context_length: m.context_length,
-      })),
-    };
+  async getOpenRouterModels(params?: {
+    limit?: number;
+    offset?: number;
+    provider_slug?: string;
+    search?: string;
+    sort?: string;
+  }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit != null) searchParams.set('limit', String(params.limit));
+    if (params?.offset != null) searchParams.set('offset', String(params.offset));
+    if (params?.provider_slug) searchParams.set('provider_slug', params.provider_slug);
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.sort) searchParams.set('sort', params.sort);
+    const q = searchParams.toString();
+    return this.request<{
+      models: OpenRouterModelSummary[];
+      total: number;
+    }>(`/models-and-providers/openrouter/models${q ? '?' + q : ''}`);
   }
 
-  async getOpenRouterProviders() {
-    const providersResp = await fetch('https://openrouter.ai/api/v1/providers');
-    if (!providersResp.ok) throw new Error('Failed to fetch OpenRouter providers');
-    const providersJson = (await providersResp.json()) as OpenRouterProvidersResponse;
-
-    const hostedModelsByProviderSlug = await this.getOpenRouterHostedModelsByProviderSlug();
-    const providers = providersJson.data
-      .map((p) => ({
-        name: p.name,
-        slug: p.slug,
-        model_count: hostedModelsByProviderSlug[p.slug]?.length || 0,
-      }))
-      .filter((p) => p.model_count > 0)
-      .sort((a, b) => b.model_count - a.model_count);
-    return {
-      providers,
-    };
+  async getOpenRouterProviders(params?: { limit?: number; offset?: number; search?: string; sort?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit != null) searchParams.set('limit', String(params.limit));
+    if (params?.offset != null) searchParams.set('offset', String(params.offset));
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.sort) searchParams.set('sort', params.sort);
+    const q = searchParams.toString();
+    return this.request<{
+      providers: OpenRouterProviderSummary[];
+      total: number;
+    }>(`/models-and-providers/openrouter/providers${q ? '?' + q : ''}`);
   }
 
-  async getOpenRouterModelsByProvider(providerName: string) {
-    const hostedModelsByProviderSlug = await this.getOpenRouterHostedModelsByProviderSlug();
-    const models = (hostedModelsByProviderSlug[providerName] || []).map((m) => ({
-      id: m.id,
-      name: m.name,
-      description: m.description,
-      pricing: m.pricing,
-      context_length: m.context_length,
-    }));
-
-    return { models };
+  async getOpenRouterModelsByProvider(providerSlug: string) {
+    return this.request<{
+      models: OpenRouterModelSummary[];
+      total: number;
+    }>(`/models-and-providers/openrouter/providers/${encodeURIComponent(providerSlug)}/models`);
   }
 
   async getOpenRouterProvidersByModel(modelId: string) {
-    const [author, slug] = modelId.split('/', 2);
-    if (!author || !slug) return { model_id: modelId, providers: [] };
-
-    const response = await fetch(
-      `https://openrouter.ai/api/v1/models/${encodeURIComponent(author)}/${encodeURIComponent(
-        slug
-      )}/endpoints`
+    return this.request<{ model_id: string; providers: string[] }>(
+      `/models-and-providers/openrouter/models/${encodeURIComponent(modelId)}/providers`
     );
-    if (!response.ok) return { model_id: modelId, providers: [] };
-
-    const json = (await response.json()) as OpenRouterModelEndpointsResponse;
-    return {
-      model_id: modelId,
-      providers: json.data.endpoints
-        .map((e) => e.provider_name)
-        .filter((x): x is string => Boolean(x)),
-    };
   }
 
   async getOverlappingDatasets(modelProviderPairs: { model: string; provider: string }[]) {
@@ -714,4 +620,3 @@ class ApiClient {
 
 // Export singleton instance
 export const apiClient = new ApiClient();
-

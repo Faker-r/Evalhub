@@ -18,6 +18,12 @@ import {
 import { ArrowUpRight, TrendingUp, Loader2, ArrowUpDown } from "lucide-react";
 import { apiClient } from "@/lib/api";
 
+function formatModelProvider(provider: string) {
+  if (!provider) return "—";
+  if (provider.toLowerCase() === "openrouter") return "OpenRouter (routing)";
+  return provider;
+}
+
 export function LeaderboardTable() {
   const [selectedDataset, setSelectedDataset] = useState<string>("all");
   const [sortByMetric, setSortByMetric] = useState<string>("all");
@@ -212,7 +218,7 @@ export function LeaderboardTable() {
                       <TableRow>
                         <TableHead className="w-[60px] font-bold text-black" rowSpan={2}>Rank</TableHead>
                         <TableHead className="font-bold text-black" rowSpan={2}>Model</TableHead>
-                        <TableHead className="font-bold text-black" rowSpan={2}>Provider</TableHead>
+                        <TableHead className="font-bold text-black" rowSpan={2}>Model provider</TableHead>
                         {datasetMetricStructure.map(({ dataset, metrics }) => (
                           <TableHead 
                             key={dataset} 
@@ -241,7 +247,7 @@ export function LeaderboardTable() {
                     <TableRow>
                       <TableHead className="w-[60px] font-bold text-black">Rank</TableHead>
                       <TableHead className="font-bold text-black">Model</TableHead>
-                      <TableHead className="font-bold text-black">Provider</TableHead>
+                      <TableHead className="font-bold text-black">Model provider</TableHead>
                       {metricNames.map(metricName => (
                         <TableHead key={metricName} className="text-right font-bold text-black">
                           <div className="flex items-center justify-end gap-1">
@@ -271,7 +277,7 @@ export function LeaderboardTable() {
                             <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 text-mint-600 transition-opacity" />
                           </div>
                         </TableCell>
-                        <TableCell>{entry.model_provider}</TableCell>
+                        <TableCell>{formatModelProvider(entry.model_provider)}</TableCell>
                         {datasetMetricStructure.map(({ dataset, metrics }) => 
                           metrics.map(metric => {
                             const score = entry.scoresByDataset?.get(dataset)?.get(metric);
@@ -311,7 +317,7 @@ export function LeaderboardTable() {
                               <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 text-mint-600 transition-opacity" />
                             </div>
                           </TableCell>
-                          <TableCell>{entry.model_provider}</TableCell>
+                          <TableCell>{formatModelProvider(entry.model_provider)}</TableCell>
                           {metricNames.map(metricName => {
                             const score = scoresByMetric.get(metricName);
                             const isSortedBy = sortByMetric === metricName;

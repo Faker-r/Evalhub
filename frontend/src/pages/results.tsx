@@ -115,6 +115,12 @@ export default function Results() {
     return date.toLocaleString();
   };
 
+  const formatModelProvider = (provider: string) => {
+    if (!provider) return "—";
+    if (provider.toLowerCase() === "openrouter") return "OpenRouter (routing)";
+    return provider;
+  };
+
   const renderScores = (scores: any, metricDocs: any) => {
     if (!scores) return null;
 
@@ -385,8 +391,8 @@ export default function Results() {
                       <TableCell>
                         <div className="text-sm">
                           <div className="font-medium">{trace.completion_model}</div>
-                          <div className="text-muted-foreground text-xs">
-                            {trace.model_provider}
+                          <div className="text-muted-foreground text-xs" title="Model provider (host)">
+                            {formatModelProvider(trace.model_provider)}
                           </div>
                         </div>
                       </TableCell>
@@ -440,8 +446,8 @@ export default function Results() {
                                               <p className="font-medium">{traceDetails.spec.completion_model ?? selectedTrace.completion_model}</p>
                                             </div>
                                             <div>
-                                              <span className="text-sm text-muted-foreground">Provider:</span>
-                                              <p className="font-medium">{traceDetails.spec.model_provider ?? selectedTrace.model_provider}</p>
+                                              <span className="text-sm text-muted-foreground">Model provider:</span>
+                                              <p className="font-medium">{formatModelProvider(traceDetails.spec.model_provider ?? selectedTrace.model_provider)}</p>
                                             </div>
                                           </div>
                                           {traceDetails.spec.judge_model ? (
@@ -451,8 +457,8 @@ export default function Results() {
                                                 <p className="font-medium">{traceDetails.spec.judge_model}</p>
                                               </div>
                                               <div>
-                                                <span className="text-sm text-muted-foreground">Judge Provider:</span>
-                                                <p className="font-medium">{traceDetails.judge_model_provider}</p>
+                                                <span className="text-sm text-muted-foreground">Judge model provider:</span>
+                                                <p className="font-medium">{formatModelProvider(traceDetails.judge_model_provider)}</p>
                                               </div>
                                             </div>
                                           ) : null}
@@ -489,8 +495,8 @@ export default function Results() {
                                               <p className="font-medium">{selectedTrace.completion_model}</p>
                                             </div>
                                             <div>
-                                              <span className="text-sm text-muted-foreground">Provider:</span>
-                                              <p className="font-medium">{selectedTrace.model_provider}</p>
+                                              <span className="text-sm text-muted-foreground">Model provider:</span>
+                                              <p className="font-medium">{formatModelProvider(selectedTrace.model_provider)}</p>
                                             </div>
                                           </div>
                                           {selectedTrace.judge_model ? (
@@ -500,8 +506,8 @@ export default function Results() {
                                                 <p className="font-medium">{selectedTrace.judge_model}</p>
                                               </div>
                                               <div>
-                                                <span className="text-sm text-muted-foreground">Judge Provider:</span>
-                                                <p className="font-medium">{selectedTrace.judge_model_provider ?? ""}</p>
+                                                <span className="text-sm text-muted-foreground">Judge model provider:</span>
+                                                <p className="font-medium">{formatModelProvider(selectedTrace.judge_model_provider ?? "")}</p>
                                               </div>
                                             </div>
                                           ) : null}

@@ -69,6 +69,7 @@ interface ModelConfig {
   openrouter_model_id?: string;
   openrouter_model_name?: string;
   openrouter_provider_slug?: string;
+  openrouter_provider_name?: string;
 }
 
 const STEPS = [
@@ -86,9 +87,9 @@ function convertModelConfigToAPI(config: ModelConfig) {
     return {
       api_source: "openrouter",
       model_name: config.openrouter_model_name || config.openrouter_model_id || '',
-      model_id: '-1', // OpenRouter models don't have a database ID
+      model_id: -1,
       api_name: config.openrouter_model_id || '',
-      model_provider: 'openrouter',
+      model_provider: config.openrouter_provider_name || 'openrouter',
       model_provider_slug: config.openrouter_provider_slug || 'openrouter',
       model_provider_id: 0,
     };
@@ -96,10 +97,10 @@ function convertModelConfigToAPI(config: ModelConfig) {
     return {
       api_source: "standard",
       model_name: config.model_name || '',
-      model_id: String(config.model_id ?? 0), // Convert integer database ID to string for API
-      api_name: config.api_name || config.model_name || '',
+      model_id: config.model_id ?? 0,
+      api_name: config.api_name || '',
       model_provider: config.provider_name || '',
-      model_provider_slug: config.provider_slug || config.provider_name || '',
+      model_provider_slug: config.provider_slug ?? '',
       model_provider_id: config.provider_id || 0,
     };
   }
@@ -1054,7 +1055,7 @@ export default function Submit() {
                                   <span className="text-muted-foreground">Judge Provider:</span>
                                   <span className="font-medium">
                                     {judgeModelConfig.is_openrouter
-                                      ? (judgeModelConfig.openrouter_provider_slug || 'OpenRouter')
+                                      ? (judgeModelConfig.openrouter_provider_name || judgeModelConfig.openrouter_provider_slug || 'OpenRouter')
                                       : judgeModelConfig.provider_name}
                                   </span>
                                 </div>
@@ -1094,7 +1095,7 @@ export default function Submit() {
                           <span className="text-muted-foreground">Completion Provider:</span>
                           <span className="font-medium">
                             {completionModelConfig.is_openrouter
-                              ? (completionModelConfig.openrouter_provider_slug || 'OpenRouter')
+                              ? (completionModelConfig.openrouter_provider_name || completionModelConfig.openrouter_provider_slug || 'OpenRouter')
                               : completionModelConfig.provider_name}
                           </span>
                         </div>
@@ -1104,7 +1105,7 @@ export default function Submit() {
                           <p className="text-sm text-yellow-800">
                             Warning: No API keys configured. Please add your{" "}
                             {completionModelConfig.is_openrouter
-                              ? (completionModelConfig.openrouter_provider_slug || 'OpenRouter')
+                              ? (completionModelConfig.openrouter_provider_name || completionModelConfig.openrouter_provider_slug || 'OpenRouter')
                               : completionModelConfig.provider_name} API key in your profile settings.
                           </p>
                         </div>

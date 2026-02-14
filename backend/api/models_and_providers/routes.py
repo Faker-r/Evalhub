@@ -11,6 +11,9 @@ from api.models_and_providers.schemas import (
     ModelListResponse,
     ModelResponse,
     ModelUpdate,
+    OpenRouterModelListResponse,
+    OpenRouterProviderListResponse,
+    OpenRouterProvidersByModelResponse,
     ProviderCreate,
     ProviderListResponse,
     ProviderResponse,
@@ -197,3 +200,80 @@ async def delete_model(
     """
     logger.debug(f"Deleting model: {model_id}")
     await ModelsAndProvidersService(session).delete_model(model_id)
+
+
+# ==================== OpenRouter Endpoints ====================
+
+
+@router.get("/openrouter/models", response_model=OpenRouterModelListResponse)
+async def get_openrouter_models(
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    provider_slug: str | None = Query(None),
+    search: str | None = Query(None),
+    sort: str = Query("name", description="name | context | input | output"),
+) -> OpenRouterModelListResponse:
+    """Get OpenRouter models, paginated."""
+    return await ModelsAndProvidersService(session).get_openrouter_models(
+        limit=limit,
+        offset=offset,
+        provider_slug=provider_slug,
+        search=search or None,
+        sort=sort,
+    )
+
+
+@router.get("/openrouter/providers", response_model=OpenRouterProviderListResponse)
+async def get_openrouter_providers(
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    search: str | None = Query(None),
+    sort: str = Query("models", description="models | name"),
+) -> OpenRouterProviderListResponse:
+    """Get OpenRouter providers with hosted model counts, paginated."""
+    return await ModelsAndProvidersService(session).get_openrouter_providers(
+        limit=limit,
+        offset=offset,
+        search=search or None,
+        sort=sort,
+    )
+
+
+@router.get(
+    "/openrouter/providers/{provider_slug}/models",
+    response_model=OpenRouterModelListResponse,
+)
+async def get_openrouter_models_by_provider(
+    provider_slug: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> OpenRouterModelListResponse:
+    """Get OpenRouter models hosted by provider slug.
+
+    Requires authentication.
+    """
+    return await ModelsAndProvidersService(session).get_openrouter_models_by_provider(
+        provider_slug
+    )
+
+
+@router.get(
+    "/openrouter/models/{model_id:path}/providers",
+    response_model=OpenRouterProvidersByModelResponse,
+)
+async def get_openrouter_providers_by_model(
+    model_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> OpenRouterProvidersByModelResponse:
+    """Get provider names for a given OpenRouter model ID.
+
+    Requires authentication.
+    """
+    return await ModelsAndProvidersService(session).get_openrouter_providers_by_model(
+        model_id
+    )
