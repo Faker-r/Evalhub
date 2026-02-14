@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye, Info } from "lucide-react";
+import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye, Info, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,7 +32,7 @@ function EvalProgressCell({ traceId }: { traceId: number }) {
   if (!progress) {
     return (
       <span className="text-sm text-muted-foreground">
-        In progress...
+        Processing...
       </span>
     );
   }
@@ -601,6 +601,55 @@ export default function Results() {
                                   </div>
                                 </div>
                               )}
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                        {trace.status === "failed" && trace.summary?.error && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-2 text-red-600 hover:text-red-700"
+                              >
+                                <AlertTriangle className="w-4 h-4" />
+                                View Error
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>Evaluation Error #{trace.id}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <Card>
+                                  <CardContent className="grid grid-cols-2 gap-4 pt-6">
+                                    <div>
+                                      <span className="text-sm text-muted-foreground">Dataset:</span>
+                                      <p className="font-medium">{trace.dataset_name}</p>
+                                    </div>
+                                    <div className="flex gap-4">
+                                      <div>
+                                        <span className="text-sm text-muted-foreground">Model:</span>
+                                        <p className="font-medium">{trace.completion_model}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-sm text-muted-foreground">Provider:</span>
+                                        <p className="font-medium">{trace.model_provider}</p>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <span className="text-sm text-muted-foreground">Created:</span>
+                                      <p className="font-medium">{formatDate(trace.created_at)}</p>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                                <div>
+                                  <h4 className="text-sm font-semibold text-red-700 mb-2">Error Message</h4>
+                                  <pre className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-md text-sm whitespace-pre-wrap font-mono overflow-x-auto">
+                                    {trace.summary.error}
+                                  </pre>
+                                </div>
+                              </div>
                             </DialogContent>
                           </Dialog>
                         )}

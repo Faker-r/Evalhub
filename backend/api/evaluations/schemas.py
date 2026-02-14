@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class OutputType(str, Enum):
@@ -57,6 +57,14 @@ class TraceResponse(BaseModel):
     status: str
     summary: dict | None
     created_at: datetime
+
+    @model_validator(mode="after")
+    def strip_traceback_from_summary(self) -> "TraceResponse":
+        if self.summary and "traceback" in self.summary:
+            self.summary = {
+                k: v for k, v in self.summary.items() if k != "traceback"
+            }
+        return self
 
 
 class TraceListResponse(BaseModel):
