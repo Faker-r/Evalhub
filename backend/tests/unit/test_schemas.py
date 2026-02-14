@@ -254,11 +254,11 @@ class TestEvaluationSchemas:
         data = {
             "api_source": "standard",
             "model_name": "gpt-4o-mini",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "gpt-4o-mini",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1,
+            "model_provider_id": "1",
         }
         
         config = ModelConfig(**data)
@@ -272,11 +272,11 @@ class TestEvaluationSchemas:
         data = {
             "api_source": "openrouter",
             "model_name": "anthropic/claude-3-opus",
-            "model_id": 2,
+            "model_id": "2",
             "api_name": "anthropic/claude-3-opus",
             "model_provider": "anthropic",
             "model_provider_slug": "anthropic",
-            "model_provider_id": 2,
+            "model_provider_id": "2",
         }
         
         config = ModelConfig(**data)
@@ -288,11 +288,11 @@ class TestEvaluationSchemas:
         data = {
             "api_source": "invalid_source",  # Invalid
             "model_name": "test",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "test",
             "model_provider": "test",
             "model_provider_slug": "test",
-            "model_provider_id": 1,
+            "model_provider_id": "1",
         }
         
         with pytest.raises(ValidationError):
@@ -327,11 +327,11 @@ class TestEvaluationSchemas:
         model_config = {
             "api_source": "standard",
             "model_name": "gpt-4o-mini",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "gpt-4o-mini",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1,
+            "model_provider_id": "1",
         }
         
         data = {
@@ -351,11 +351,11 @@ class TestEvaluationSchemas:
         model_config = {
             "api_source": "standard",
             "model_name": "gpt-4o-mini",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "gpt-4o-mini",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1,
+            "model_provider_id": "1",
         }
         
         data = {
@@ -378,11 +378,11 @@ class TestEvaluationSchemas:
         model_config = {
             "api_source": "standard",
             "model_name": "gpt-4o-mini",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "gpt-4o-mini",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1,
+            "model_provider_id": "1",
         }
         
         data = {

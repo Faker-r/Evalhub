@@ -54,10 +54,10 @@ import {
 import { cn } from "@/lib/utils";
 
 type ModelConfig = {
-  provider_id?: number;
+  provider_id?: string;
   provider_name?: string;
   provider_slug?: string;
-  model_id?: number;
+  model_id?: string;
   model_name?: string;
   api_name?: string;
   api_base?: string;

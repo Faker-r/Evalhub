@@ -183,7 +183,7 @@ def create_evaluation_request(
             model_slug=model_name,
             model_provider=model_provider,
             model_provider_slug=model_provider,
-            model_provider_id=0,
+            model_provider_id="0",
         ),
         judge_config=None,  # Use default metrics, no judge needed for lighteval tasks
     )

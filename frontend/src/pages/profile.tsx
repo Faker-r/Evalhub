@@ -48,7 +48,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!newKey.providerId && providers.length > 0) {
-      setNewKey((prev) => ({ ...prev, providerId: providers[0].id.toString() }));
+      setNewKey((prev) => ({ ...prev, providerId: String(providers[0].id) }));
     }
   }, [newKey.providerId, providers]);
 
@@ -64,7 +64,7 @@ export default function Profile() {
   // Add API key mutation
   const addKeyMutation = useMutation({
     mutationFn: (data: { providerId: string; apiKey: string }) =>
-      apiClient.createApiKey(Number(data.providerId), data.apiKey),
+      apiClient.createApiKey(data.providerId, data.apiKey),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       setAddKeyModalOpen(false);
@@ -85,7 +85,7 @@ export default function Profile() {
 
   // Delete API key mutation
   const deleteKeyMutation = useMutation({
-    mutationFn: (providerId: number) => apiClient.deleteApiKey(providerId),
+    mutationFn: (providerId: string) => apiClient.deleteApiKey(providerId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       toast({

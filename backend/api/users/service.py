@@ -53,9 +53,9 @@ class UserService:
         self.s3.upload_api_key(user_id, provider.slug, api_key_data.api_key)
         logger.info(f"Stored API key for user {user_id}, provider {provider.slug}")
 
-        return ApiKeyResponse(provider_id=provider.id, provider_name=provider.name)
+        return ApiKeyResponse(provider_id=str(provider.id), provider_name=provider.name)
 
-    async def get_api_key(self, user_id: str, provider_id: int) -> str:
+    async def get_api_key(self, user_id: str, provider_id: str) -> str:
         """Get an API key for a user (internal use only).
 
         Args:
@@ -108,7 +108,7 @@ class UserService:
 
             if provider:
                 api_keys.append(
-                    ApiKeyResponse(provider_id=provider.id, provider_name=provider.name)
+                    ApiKeyResponse(provider_id=str(provider.id), provider_name=provider.name)
                 )
             else:
                 # Provider exists in S3 but not in database - log warning
@@ -118,7 +118,7 @@ class UserService:
 
         return api_keys
 
-    async def delete_api_key(self, user_id: str, provider_id: int) -> None:
+    async def delete_api_key(self, user_id: str, provider_id: str) -> None:
         """Delete an API key for a user.
 
         Args:

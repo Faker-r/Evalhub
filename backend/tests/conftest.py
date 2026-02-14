@@ -147,20 +147,20 @@ def sample_evaluation_request() -> dict:
         "model_completion_config": {
             "api_source": "standard",
             "model_name": "gpt-4o-mini",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "gpt-4o-mini",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1
+            "model_provider_id": "1"
         },
         "judge_config": {
             "api_source": "standard",
             "model_name": "gpt-4o",
-            "model_id": 2,
+            "model_id": "2",
             "api_name": "gpt-4o",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1
+            "model_provider_id": "1"
         }
     }
 
@@ -178,11 +178,11 @@ def sample_task_evaluation_request() -> dict:
         "model_completion_config": {
             "api_source": "standard",
             "model_name": "gpt-4o-mini",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "gpt-4o-mini",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1
+            "model_provider_id": "1"
         }
     }
 
@@ -199,11 +199,11 @@ def sample_flexible_evaluation_request() -> dict:
         "model_completion_config": {
             "api_source": "standard",
             "model_name": "gpt-4o-mini",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "gpt-4o-mini",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1
+            "model_provider_id": "1"
         }
     }
 

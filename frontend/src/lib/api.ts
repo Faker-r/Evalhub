@@ -128,8 +128,8 @@ class ApiClient {
     return this.request<{ id: number; email: string }>('/users/me');
   }
 
-  async createApiKey(providerId: number, apiKey: string) {
-    return this.request<{ provider_id: number; provider_name: string }>(
+  async createApiKey(providerId: string, apiKey: string) {
+    return this.request<{ provider_id: string; provider_name: string }>(
       '/users/api-keys',
       {
         method: 'POST',
@@ -140,11 +140,11 @@ class ApiClient {
 
   async getApiKeys() {
     return this.request<{
-      api_key_providers: { provider_id: number; provider_name: string }[];
+      api_key_providers: { provider_id: string; provider_name: string }[];
     }>('/users/api-keys');
   }
 
-  async deleteApiKey(providerId: number) {
+  async deleteApiKey(providerId: string) {
     return this.request(`/users/api-keys/${providerId}`, {
       method: 'DELETE',
     });
@@ -231,20 +231,20 @@ class ApiClient {
     guideline_names: string[];
     model_completion_config: {
       model_name: string;
-      model_id: number;
+      model_id: string;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
-      model_provider_id: number;
+      model_provider_id: string;
       api_base?: string;
     };
     judge_config: {
       model_name: string;
-      model_id: number;
+      model_id: string;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
-      model_provider_id: number;
+      model_provider_id: string;
       api_base?: string;
     };
   }) {
@@ -263,20 +263,20 @@ class ApiClient {
     };
     model_completion_config: {
       model_name: string;
-      model_id: number;
+      model_id: string;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
-      model_provider_id: number;
+      model_provider_id: string;
       api_base?: string;
     };
     judge_config?: {
       model_name: string;
-      model_id: number;
+      model_id: string;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
-      model_provider_id: number;
+      model_provider_id: string;
       api_base?: string;
     };
   }) {
@@ -296,20 +296,20 @@ class ApiClient {
     guideline_names?: string[];
     model_completion_config: {
       model_name: string;
-      model_id: number;
+      model_id: string;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
-      model_provider_id: number;
+      model_provider_id: string;
       api_base?: string;
     };
     judge_config?: {
       model_name: string;
-      model_id: number;
+      model_id: string;
       api_name: string;
       model_provider: string;
       model_provider_slug: string;
-      model_provider_id: number;
+      model_provider_id: string;
       api_base?: string;
     };
   }) {
@@ -511,21 +511,21 @@ class ApiClient {
     }>(`/models-and-providers/providers${query ? '?' + query : ''}`);
   }
 
-  async getModels(params?: { page?: number; page_size?: number; provider_id?: number }) {
+  async getModels(params?: { page?: number; page_size?: number; provider_id?: string }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
-    if (params?.provider_id) queryParams.append('provider_id', params.provider_id.toString());
+    if (params?.provider_id) queryParams.append('provider_id', params.provider_id);
 
     const query = queryParams.toString();
     return this.request<{
       models: {
-        id: number;
+        id: string;
         display_name: string;
         developer: string;
         api_name: string;
         providers: {
-          id: number;
+          id: string;
           name: string;
           slug: string | null;
           base_url: string;

@@ -40,7 +40,7 @@ async def test_task_evaluation_service():
             model_slug="deepseek-ai/DeepSeek-V3.2",
             model_provider="baseten",
             model_provider_slug="baseten",
-            model_provider_id=0,
+            model_provider_id="0",
         ),
         judge_config=ModelConfig(
             model_name="gpt-4o",
@@ -48,7 +48,7 @@ async def test_task_evaluation_service():
             model_slug="gpt-4o",
             model_provider="openai",
             model_provider_slug="openai",
-            model_provider_id=0,
+            model_provider_id="0",
         ),
     )
     print(

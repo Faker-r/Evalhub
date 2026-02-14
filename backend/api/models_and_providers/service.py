@@ -1,6 +1,7 @@
 """Models and providers service."""
 
 import asyncio
+import uuid
 from urllib.parse import quote
 
 import httpx
@@ -71,7 +72,7 @@ class ModelsAndProvidersService:
                 f"Provider with name '{provider_data.name}' already exists"
             )
 
-        provider = Provider(**provider_data.model_dump())
+        provider = Provider(id=str(uuid.uuid4()), **provider_data.model_dump())
         self.session.add(provider)
         await self.session.commit()
         await self.session.refresh(provider)
@@ -79,7 +80,7 @@ class ModelsAndProvidersService:
         logger.info(f"Created provider: {provider.name}")
         return ProviderResponse.model_validate(provider)
 
-    async def get_provider(self, provider_id: int) -> ProviderResponse:
+    async def get_provider(self, provider_id: str) -> ProviderResponse:
         """Get a provider by ID.
 
         Args:
@@ -152,7 +153,7 @@ class ModelsAndProvidersService:
         )
 
     async def update_provider(
-        self, provider_id: int, provider_data: ProviderUpdate
+        self, provider_id: str, provider_data: ProviderUpdate
     ) -> ProviderResponse:
         """Update a provider.
 
@@ -195,7 +196,7 @@ class ModelsAndProvidersService:
         logger.info(f"Updated provider: {provider.name}")
         return ProviderResponse.model_validate(provider)
 
-    async def delete_provider(self, provider_id: int) -> None:
+    async def delete_provider(self, provider_id: str) -> None:
         """Delete a provider.
 
         Args:
@@ -242,7 +243,7 @@ class ModelsAndProvidersService:
 
         # Create model
         model_dict = model_data.model_dump(exclude={"provider_ids"})
-        model = Model(**model_dict)
+        model = Model(id=str(uuid.uuid4()), **model_dict)
         model.providers = providers
 
         self.session.add(model)
@@ -252,7 +253,7 @@ class ModelsAndProvidersService:
         logger.info(f"Created model: {model.display_name}")
         return ModelResponse.model_validate(model)
 
-    async def get_model(self, model_id: int) -> ModelResponse:
+    async def get_model(self, model_id: str) -> ModelResponse:
         """Get a model by ID.
 
         Args:
@@ -281,7 +282,7 @@ class ModelsAndProvidersService:
         self,
         page: int = 1,
         page_size: int = 50,
-        provider_id: int | None = None,
+        provider_id: str | None = None,
     ) -> ModelListResponse:
         """List all models with pagination.
 
@@ -319,7 +320,7 @@ class ModelsAndProvidersService:
         )
 
     async def update_model(
-        self, model_id: int, model_data: ModelUpdate
+        self, model_id: str, model_data: ModelUpdate
     ) -> ModelResponse:
         """Update a model.
 
@@ -369,7 +370,7 @@ class ModelsAndProvidersService:
         logger.info(f"Updated model: {model.display_name}")
         return ModelResponse.model_validate(model)
 
-    async def delete_model(self, model_id: int) -> None:
+    async def delete_model(self, model_id: str) -> None:
         """Delete a model.
 
         Args:

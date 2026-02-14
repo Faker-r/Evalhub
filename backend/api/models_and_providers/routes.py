@@ -62,7 +62,7 @@ async def list_providers(
 
 @router.get("/providers/{provider_id}", response_model=ProviderResponse)
 async def get_provider(
-    provider_id: int,
+    provider_id: str,
     session: AsyncSession = Depends(get_session),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> ProviderResponse:
@@ -90,7 +90,7 @@ async def get_provider_by_name(
 
 @router.put("/providers/{provider_id}", response_model=ProviderResponse)
 async def update_provider(
-    provider_id: int,
+    provider_id: str,
     provider_data: ProviderUpdate,
     session: AsyncSession = Depends(get_session),
     current_user: CurrentUser = Depends(get_current_user),
@@ -107,7 +107,7 @@ async def update_provider(
 
 @router.delete("/providers/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_provider(
-    provider_id: int,
+    provider_id: str,
     session: AsyncSession = Depends(get_session),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> None:
@@ -142,7 +142,7 @@ async def create_model(
 async def list_models(
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(50, ge=1, le=100, description="Number of items per page"),
-    provider_id: int | None = Query(None, description="Filter by provider ID"),
+    provider_id: str | None = Query(None, description="Filter by provider ID"),
     session: AsyncSession = Depends(get_session),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> ModelListResponse:
@@ -161,7 +161,7 @@ async def list_models(
 
 @router.get("/models/{model_id}", response_model=ModelResponse)
 async def get_model(
-    model_id: int,
+    model_id: str,
     session: AsyncSession = Depends(get_session),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> ModelResponse:
@@ -175,7 +175,7 @@ async def get_model(
 
 @router.put("/models/{model_id}", response_model=ModelResponse)
 async def update_model(
-    model_id: int,
+    model_id: str,
     model_data: ModelUpdate,
     session: AsyncSession = Depends(get_session),
     current_user: CurrentUser = Depends(get_current_user),
@@ -190,7 +190,7 @@ async def update_model(
 
 @router.delete("/models/{model_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_model(
-    model_id: int,
+    model_id: str,
     session: AsyncSession = Depends(get_session),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> None:

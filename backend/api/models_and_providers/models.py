@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table
+from sqlalchemy import Column, DateTime, ForeignKey, String, Table
 from sqlalchemy.orm import relationship
 
 from api.core.database import Base
@@ -13,13 +13,13 @@ model_provider_association = Table(
     Base.metadata,
     Column(
         "model_id",
-        Integer,
+        String(36),
         ForeignKey("models.id", ondelete="CASCADE"),
         primary_key=True,
     ),
     Column(
         "provider_id",
-        Integer,
+        String(36),
         ForeignKey("providers.id", ondelete="CASCADE"),
         primary_key=True,
     ),
@@ -31,7 +31,7 @@ class Provider(Base):
 
     __tablename__ = "providers"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(String(36), primary_key=True)
     name = Column(String, nullable=False, unique=True, index=True)
     slug = Column(String)
     base_url = Column(String, nullable=False)
@@ -53,7 +53,7 @@ class Model(Base):
 
     __tablename__ = "models"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(String(36), primary_key=True)
     display_name = Column(String, nullable=False)
     developer = Column(String, nullable=False)
     api_name = Column(String, nullable=False, index=True)

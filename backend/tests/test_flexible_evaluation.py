@@ -43,7 +43,7 @@ async def test_text_exact_match():
             model_slug="gpt-5.1",
             model_provider="openai",
             model_provider_slug="openai",
-            model_provider_id=0,
+            model_provider_id="0",
         ),
     )
 
@@ -68,7 +68,7 @@ async def test_text_f1_score():
             model_slug="gpt-5.1",
             model_provider="openai",
             model_provider_slug="openai",
-            model_provider_id=0,
+            model_provider_id="0",
         ),
     )
 
@@ -94,7 +94,7 @@ async def test_text_llm_judge():
             model_slug="gpt-4o-mini",
             model_provider="openai",
             model_provider_slug="openai",
-            model_provider_id=0,
+            model_provider_id="0",
         ),
         judge_config=ModelConfig(
             model_name="gpt-4o",
@@ -102,7 +102,7 @@ async def test_text_llm_judge():
             model_slug="gpt-4o",
             model_provider="openai",
             model_provider_slug="openai",
-            model_provider_id=0,
+            model_provider_id="0",
         ),
     )
 

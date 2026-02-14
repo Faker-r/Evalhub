@@ -36,7 +36,7 @@ class ProviderUpdate(BaseModel):
 class ProviderResponse(StandardProviderBase):
     """Provider response schema."""
 
-    id: int
+    id: str
 
     class Config:
         from_attributes = True
@@ -69,7 +69,7 @@ class StandardModelBase(BaseModelSchema):
 class ModelCreate(StandardModelBase):
     """Model creation schema."""
 
-    provider_ids: list[int]
+    provider_ids: list[str]
 
 
 class ModelUpdate(BaseModel):
@@ -78,13 +78,13 @@ class ModelUpdate(BaseModel):
     display_name: str | None = None
     developer: str | None = None
     api_name: str | None = None
-    provider_ids: list[int] | None = None
+    provider_ids: list[str] | None = None
 
 
 class ModelResponse(StandardModelBase):
     """Model response schema."""
 
-    id: int
+    id: str
     providers: list[ProviderResponse]
 
     class Config:

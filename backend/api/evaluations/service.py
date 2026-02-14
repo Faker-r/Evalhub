@@ -244,7 +244,7 @@ class EvaluationService:
         }
 
     async def _get_model_api_name_and_base_url(
-        self, model_provider_id: int, model_id: int
+        self, model_provider_id: str, model_id: str
     ) -> tuple[str, str]:
         provider = await self.model_providers_service.get_provider(model_provider_id)
         if not provider:

@@ -58,11 +58,11 @@ def model_config_openrouter(api_name: str, model_name: str, provider: str) -> di
     return {
         "api_source": "openrouter",
         "model_name": model_name,
-        "model_id": -1,
+        "model_id": "",
         "api_name": api_name,
         "model_provider": provider,
         "model_provider_slug": slug,
-        "model_provider_id": 0,
+        "model_provider_id": "0",
     }
 
 

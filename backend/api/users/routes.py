@@ -59,7 +59,7 @@ async def list_api_keys(
 
 @router.delete("/api-keys/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_api_key(
-    provider_id: int,
+    provider_id: str,
     current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> None:

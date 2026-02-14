@@ -16,7 +16,7 @@ async def debug_task_evaluation():
             "model_slug": "deepseek-ai/DeepSeek-V3.2",
             "model_provider": "baseten",
             "model_provider_slug": "baseten",
-            "model_provider_id": 0,
+            "model_provider_id": "0",
             # "model_name":"openai/gpt-4.1",
             # "model_provider":"openai"
         },

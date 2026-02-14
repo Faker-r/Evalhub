@@ -40,7 +40,7 @@ def main() -> None:
         "api_name": "deepseek-ai/DeepSeek-V3.2",
         "model_provider": "Baseten",
         "model_provider_slug": "baseten",
-        "model_provider_id": 2
+        "model_provider_id": "2"
     }
 
     openai_gpt_4_1_config = {
@@ -50,7 +50,7 @@ def main() -> None:
         "api_name": "gpt-4.1",
         "model_provider": "OpenAI",
         "model_provider_slug": "openai",
-        "model_provider_id": 3
+        "model_provider_id": "3"
     }
 
     openrouter_together_openai_oss_20b_config = {
@@ -60,7 +60,7 @@ def main() -> None:
         "api_name": "openai/gpt-oss-20b",
         "model_provider": "together",
         "model_provider_slug": "together",
-        "model_provider_id": 0
+        "model_provider_id": "0"
     }
 
 

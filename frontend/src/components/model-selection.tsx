@@ -18,10 +18,10 @@ import { toast } from 'sonner';
 
 interface ModelConfig {
   // For standard providers
-  provider_id?: number;
+  provider_id?: string;
   provider_name?: string;
   provider_slug?: string;
-  model_id?: number; // Database ID as integer
+  model_id?: string;
   model_name?: string;
   api_name?: string;
   api_base?: string;
@@ -119,7 +119,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
     }
   };
 
-  const fetchStandardModels = async (providerId: number) => {
+  const fetchStandardModels = async (providerId: string) => {
     setLoadingStandardModels(true);
     try {
       const response = await apiClient.getModels({ provider_id: providerId, page_size: 100 });
@@ -208,8 +208,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
   };
 
   const handleStandardProviderChange = (providerId: string) => {
-    const id = parseInt(providerId);
-    const provider = standardProviders.find((p) => p.id === id);
+    const provider = standardProviders.find((p) => p.id === providerId);
 
     if (provider) {
       onChange({
@@ -223,10 +222,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
   };
 
   const handleStandardModelChange = (modelId: string) => {
-    const id = parseInt(modelId);
-
-    // Find the selected model
-    const model = standardModels.find((m) => m.id === id);
+    const model = standardModels.find((m) => m.id === modelId);
 
     if (model) {
       // Find the provider for this model from the model's providers array
@@ -316,7 +312,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
                 <Skeleton className="h-10 w-full" />
               ) : (
                 <Select
-                  value={value.provider_id?.toString() || ''}
+                  value={value.provider_id || ''}
                   onValueChange={handleStandardProviderChange}
                 >
                   <SelectTrigger>
@@ -329,7 +325,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
                       </div>
                     ) : (
                       standardProviders.map((provider) => (
-                        <SelectItem key={provider.id} value={provider.id.toString()}>
+                        <SelectItem key={provider.id} value={String(provider.id)}>
                           {provider.name}
                         </SelectItem>
                       ))
@@ -347,7 +343,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
                   <Skeleton className="h-10 w-full" />
                 ) : (
                   <Select
-                    value={value.model_id?.toString() || ''}
+                    value={value.model_id || ''}
                     onValueChange={handleStandardModelChange}
                   >
                     <SelectTrigger>
@@ -360,7 +356,7 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
                         </div>
                       ) : (
                         standardModels.map((model) => (
-                          <SelectItem key={model.id} value={model.id.toString()}>
+                          <SelectItem key={model.id} value={String(model.id)}>
                             {model.display_name}
                           </SelectItem>
                         ))

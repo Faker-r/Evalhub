@@ -57,10 +57,10 @@ const ExpandableCell = ({ value }: ExpandableCellProps) => {
   
 interface ModelConfig {
   // For standard providers
-  provider_id?: number;
+  provider_id?: string;
   provider_name?: string;
   provider_slug?: string;
-  model_id?: number; // Database ID as integer
+  model_id?: string;
   model_name?: string;
   api_name?: string;
 
@@ -87,21 +87,21 @@ function convertModelConfigToAPI(config: ModelConfig) {
     return {
       api_source: "openrouter",
       model_name: config.openrouter_model_name || config.openrouter_model_id || '',
-      model_id: -1,
+      model_id: "",
       api_name: config.openrouter_model_id || '',
       model_provider: config.openrouter_provider_name || 'openrouter',
       model_provider_slug: config.openrouter_provider_slug || 'openrouter',
-      model_provider_id: 0,
+      model_provider_id: "",
     };
   } else {
     return {
       api_source: "standard",
       model_name: config.model_name || '',
-      model_id: config.model_id ?? 0,
+      model_id: config.model_id ?? "",
       api_name: config.api_name || '',
       model_provider: config.provider_name || '',
       model_provider_slug: config.provider_slug ?? '',
-      model_provider_id: config.provider_id || 0,
+      model_provider_id: config.provider_id || "",
     };
   }
 }
