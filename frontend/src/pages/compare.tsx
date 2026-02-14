@@ -52,21 +52,7 @@ import {
   getNumericForDiff,
 } from "@/lib/comparison-adapter";
 import { cn } from "@/lib/utils";
-
-type ModelConfig = {
-  provider_id?: string;
-  provider_name?: string;
-  provider_slug?: string;
-  model_id?: string;
-  model_name?: string;
-  api_name?: string;
-  api_base?: string;
-  is_openrouter?: boolean;
-  openrouter_model_id?: string;
-  openrouter_model_name?: string;
-  openrouter_provider_slug?: string;
-  openrouter_provider_name?: string;
-};
+import type { ModelConfig } from "@/types/model-config";
 
 function configToPair(config: ModelConfig): { model: string; provider: string; label: string } | null {
   if (config.is_openrouter) {

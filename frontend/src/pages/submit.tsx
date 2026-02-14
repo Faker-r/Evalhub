@@ -3,17 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server, ChevronDown, Eye, Search } from "lucide-react";
 import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
+import { apiClient, type EvaluationModelConfig } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
 import { ModelSelection } from "@/components/model-selection";
+import type { ModelConfig } from "@/types/model-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -55,23 +56,6 @@ const ExpandableCell = ({ value }: ExpandableCellProps) => {
   );
 };
   
-interface ModelConfig {
-  // For standard providers
-  provider_id?: string;
-  provider_name?: string;
-  provider_slug?: string;
-  model_id?: string;
-  model_name?: string;
-  api_name?: string;
-
-  // For OpenRouter
-  is_openrouter?: boolean;
-  openrouter_model_id?: string;
-  openrouter_model_name?: string;
-  openrouter_provider_slug?: string;
-  openrouter_provider_name?: string;
-}
-
 const STEPS = [
   { id: 1, title: "Select Source", icon: Database },
   { id: 2, title: "Dataset Configuration", icon: FileText },
@@ -82,26 +66,55 @@ const STEPS = [
 type SelectionType = "dataset" | "benchmark" | null;
 
 // Helper function to convert ModelConfig to API format
-function convertModelConfigToAPI(config: ModelConfig) {
+function convertModelConfigToAPI(config: ModelConfig): EvaluationModelConfig {
   if (config.is_openrouter) {
     return {
       api_source: "openrouter",
-      model_name: config.openrouter_model_name || config.openrouter_model_id || '',
-      model_id: "",
-      api_name: config.openrouter_model_id || '',
-      model_provider: config.openrouter_provider_name || 'openrouter',
-      model_provider_slug: config.openrouter_provider_slug || 'openrouter',
-      model_provider_id: "",
+      model: {
+        id: config.openrouter_model_id || "",
+        name: config.openrouter_model_name || config.openrouter_model_id || "",
+        description: config.openrouter_model_description,
+        pricing: config.openrouter_model_pricing,
+        context_length: config.openrouter_model_context_length,
+        canonical_slug: config.openrouter_model_canonical_slug,
+        architecture: config.openrouter_model_architecture,
+        top_provider: config.openrouter_model_top_provider,
+        supported_parameters: config.openrouter_model_supported_parameters,
+        per_request_limits: config.openrouter_model_per_request_limits,
+        provider_slugs: config.openrouter_model_provider_slugs,
+      },
+      provider: {
+        name:
+          config.openrouter_provider_name ||
+          config.openrouter_provider_slug ||
+          "openrouter",
+        slug: config.openrouter_provider_slug || "openrouter",
+      },
     };
   } else {
+    const provider = {
+      id: config.provider_id || "",
+      name: config.provider_name || "",
+      slug: config.provider_slug || null,
+      base_url: config.api_base || "",
+    };
     return {
       api_source: "standard",
-      model_name: config.model_name || '',
-      model_id: config.model_id ?? "",
-      api_name: config.api_name || '',
-      model_provider: config.provider_name || '',
-      model_provider_slug: config.provider_slug ?? '',
-      model_provider_id: config.provider_id || "",
+      model: {
+        id: config.model_id || "",
+        display_name: config.model_name || "",
+        developer: config.model_developer || "",
+        api_name: config.api_name || "",
+        providers: config.model_providers?.length
+          ? config.model_providers.map((p) => ({
+              id: p.id,
+              name: p.name,
+              slug: p.slug || null,
+              base_url: p.base_url,
+            }))
+          : [provider],
+      },
+      provider,
     };
   }
 }
@@ -146,6 +159,8 @@ export default function Submit() {
   // Model configuration
   const [completionModelConfig, setCompletionModelConfig] = useState<ModelConfig>({});
   const [judgeModelConfig, setJudgeModelConfig] = useState<ModelConfig>({});
+  const judgeSectionRef = useRef<HTMLDivElement | null>(null);
+  const wasCompletionConfiguredRef = useRef(false);
 
   // Fetch datasets
   const { data: datasetsData } = useQuery({
@@ -186,6 +201,11 @@ export default function Submit() {
   const guidelines = guidelinesData?.guidelines || [];
   const apiKeys = apiKeysData?.api_key_providers || [];
 
+  const isOpenRouterSelectionComplete = (config: ModelConfig) =>
+    Boolean(config.openrouter_provider_slug && config.openrouter_model_id);
+
+  const isCompletionConfigured = isOpenRouterSelectionComplete(completionModelConfig);
+
   // Handle pre-selection from URL params (from benchmarks page)
   const searchString = useSearch();
   useEffect(() => {
@@ -206,6 +226,20 @@ export default function Submit() {
       }
     }
   }, [benchmarks, searchString]);
+
+  useEffect(() => {
+    if (judgeType !== "llm_as_judge") {
+      wasCompletionConfiguredRef.current = false;
+      return;
+    }
+
+    if (!wasCompletionConfiguredRef.current && isCompletionConfigured) {
+      setTimeout(() => {
+        judgeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+    }
+    wasCompletionConfiguredRef.current = isCompletionConfigured;
+  }, [isCompletionConfigured, judgeType, judgeSectionRef, wasCompletionConfiguredRef]);
 
   // Filter datasets and benchmarks
   const filteredDatasets = datasets.filter((ds: any) =>
@@ -340,8 +374,49 @@ export default function Submit() {
     if (currentStep < STEPS.length) setCurrentStep(currentStep + 1);
   };
 
+  const resetDatasetStepState = () => {
+    setInputField("");
+    setOutputType(null);
+    setGoldAnswerField("");
+    setChoicesField("");
+    setJudgeType(null);
+    setSelectedGuidelines([]);
+  };
+
+  const resetBenchmarkStepState = () => {
+    setSelectedTask("");
+    setNumFewShots(0);
+    setNumSamples(undefined);
+    setExpandedTasks(new Set());
+    setTaskDetails({});
+    setLoadingTasks(new Set());
+  };
+
+  const resetModelStepState = () => {
+    setCompletionModelConfig({});
+    setJudgeModelConfig({});
+  };
+
+  const resetDownstreamState = (targetStep: number) => {
+    // Returning to step 1 invalidates step 2+ state.
+    if (targetStep <= 1) {
+      resetDatasetStepState();
+      resetBenchmarkStepState();
+      resetModelStepState();
+      return;
+    }
+
+    // Returning to step 2 invalidates step 3+ state.
+    if (targetStep <= 2) {
+      resetModelStepState();
+    }
+  };
+
   const handleBack = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
+    if (currentStep <= 1) return;
+    const targetStep = currentStep - 1;
+    resetDownstreamState(targetStep);
+    setCurrentStep(targetStep);
   };
 
   const handleSubmit = () => {
@@ -376,24 +451,17 @@ export default function Submit() {
   };
 
   const handleSelectDataset = (ds: any) => {
+    resetDownstreamState(1);
     setSelectedDataset(ds.name);
     setSelectionType("dataset");
     setSelectedBenchmark(null);
-    setSelectedTask("");
-    // Reset flexible evaluation state
-    setInputField("");
-    setOutputType(null);
-    setGoldAnswerField("");
-    setChoicesField("");
-    setJudgeType(null);
-    setSelectedGuidelines([]);
   };
 
   const handleSelectBenchmark = (benchmark: any) => {
+    resetDownstreamState(1);
     setSelectedBenchmark(benchmark);
     setSelectionType("benchmark");
     setSelectedDataset("");
-    setSelectedGuidelines([]);
   };
 
   const toggleTask = async (taskName: string) => {
@@ -969,22 +1037,35 @@ export default function Submit() {
                 )}
 
                 {currentStep === 3 && (
-                  <div className={cn(
-                    "grid gap-6",
-                    judgeType === "llm_as_judge" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
-                  )}>
-                    <ModelSelection
-                      value={completionModelConfig}
-                      onChange={setCompletionModelConfig}
-                      label="Completion Model"
-                    />
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Step 3.1
+                      </p>
+                      <ModelSelection
+                        value={completionModelConfig}
+                        onChange={setCompletionModelConfig}
+                        label="Completion Model"
+                      />
+                    </div>
 
                     {judgeType === "llm_as_judge" && (
-                      <ModelSelection
-                        value={judgeModelConfig}
-                        onChange={setJudgeModelConfig}
-                        label="Judge Model"
-                      />
+                      <div ref={judgeSectionRef} className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Step 3.2
+                        </p>
+                        {isCompletionConfigured ? (
+                          <ModelSelection
+                            value={judgeModelConfig}
+                            onChange={setJudgeModelConfig}
+                            label="Judge Model"
+                          />
+                        ) : (
+                          <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                            Configure the completion model first, then select the judge model.
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

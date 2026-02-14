@@ -1,8 +1,15 @@
 from datetime import datetime
 from enum import Enum
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from api.models_and_providers.schemas import (
+    ModelResponse,
+    OpenRouterModelBase,
+    OpenRouterProviderBase,
+    ProviderResponse,
+)
 
 
 class OutputType(str, Enum):
@@ -105,24 +112,26 @@ class DatasetConfig(BaseModel):
     n_fewshots: int | None = None
 
 
-class ModelConfig(BaseModel):
-    """Request schema for running a task evaluation."""
+class StandardEvaluationModelConfig(BaseModel):
+    """Evaluation model config for standard providers."""
 
-    api_source: Literal["standard", "openrouter"]
-    model_name: str
-    model_id: str
-    api_name: str
-    model_provider: str
-    model_provider_slug: str
-    model_provider_id: str
+    api_source: Literal["standard"]
+    model: ModelResponse
+    provider: ProviderResponse
 
 
-class ModelConfigStored(BaseModel):
-    """Config shape stored on Trace (completion_model_config / judge_model_config)."""
+class OpenRouterEvaluationModelConfig(BaseModel):
+    """Evaluation model config for OpenRouter providers."""
 
-    api_source: Literal["standard", "openrouter"]
-    api_name: str
-    provider_slug: str
+    api_source: Literal["openrouter"]
+    model: OpenRouterModelBase
+    provider: OpenRouterProviderBase
+
+
+EvaluationModelConfig = Annotated[
+    StandardEvaluationModelConfig | OpenRouterEvaluationModelConfig,
+    Field(discriminator="api_source"),
+]
 
 
 class TaskEvaluationRequest(BaseModel):
@@ -130,8 +139,8 @@ class TaskEvaluationRequest(BaseModel):
 
     task_name: str
     dataset_config: DatasetConfig
-    model_completion_config: ModelConfig
-    judge_config: ModelConfig | None = None
+    model_completion_config: EvaluationModelConfig
+    judge_config: EvaluationModelConfig | None = None
     count_on_leaderboard: bool = False
 
 
@@ -159,8 +168,8 @@ class FlexibleEvaluationRequest(BaseModel):
     mc_config: MultipleChoiceConfig | None = None
     judge_type: JudgeType
     guideline_names: list[str] | None = None
-    model_completion_config: ModelConfig
-    judge_config: ModelConfig | None = None
+    model_completion_config: EvaluationModelConfig
+    judge_config: EvaluationModelConfig | None = None
     count_on_leaderboard: bool = False
 
 

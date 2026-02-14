@@ -7,9 +7,10 @@ from api.core.s3 import S3Storage
 from api.evaluations.models import Trace
 from api.evaluations.repository import EvaluationRepository
 from api.evaluations.schemas import (
+    EvaluationModelConfig,
     FlexibleEvaluationRequest,
     JudgeType,
-    ModelConfig,
+    StandardEvaluationModelConfig,
     TaskEvaluationRequest,
     TaskEvaluationResponse,
     TraceDetailsResponse,
@@ -56,8 +57,10 @@ class EvaluationService:
 
         request_data = {
             "task_name": request.task_name,
-            "completion_model": request.model_completion_config.model_name,
-            "model_provider": request.model_completion_config.model_provider,
+            "completion_model": self._get_display_model_name(
+                request.model_completion_config
+            ),
+            "model_provider": self._get_provider_slug(request.model_completion_config),
             "n_samples": request.dataset_config.n_samples,
             "n_fewshots": request.dataset_config.n_fewshots,
         }
@@ -74,15 +77,19 @@ class EvaluationService:
         )
 
         # Return immediately with running status
-        judge_model = request.judge_config.model_name if request.judge_config else ""
+        judge_model = (
+            self._get_display_model_name(request.judge_config)
+            if request.judge_config
+            else ""
+        )
         return TaskEvaluationResponse(
             trace_id=trace.id,
             status="running",
             task_name=request.task_name,
             sample_count=0,
             guideline_names=[],
-            completion_model=request.model_completion_config.model_name,
-            model_provider=request.model_completion_config.model_provider,
+            completion_model=self._get_display_model_name(request.model_completion_config),
+            model_provider=self._get_provider_slug(request.model_completion_config),
             judge_model=judge_model,
             created_at=trace.created_at,
         )
@@ -118,15 +125,21 @@ class EvaluationService:
             request.mc_config.model_dump() if request.mc_config else None
         )
 
-        judge_model = request.judge_config.model_name if request.judge_config else ""
+        judge_model = (
+            self._get_display_model_name(request.judge_config)
+            if request.judge_config
+            else ""
+        )
 
         request_data = {
             "dataset_name": request.dataset_name,
             "input_field": request.input_field,
             "output_type": request.output_type.value,
             "judge_type": request.judge_type.value,
-            "completion_model": request.model_completion_config.model_name,
-            "model_provider": request.model_completion_config.model_provider,
+            "completion_model": self._get_display_model_name(
+                request.model_completion_config
+            ),
+            "model_provider": self._get_provider_slug(request.model_completion_config),
             "judge_model": judge_model,
         }
 
@@ -158,8 +171,8 @@ class EvaluationService:
             task_name=request.dataset_name,
             sample_count=0,
             guideline_names=guideline_names,
-            completion_model=request.model_completion_config.model_name,
-            model_provider=request.model_completion_config.model_provider,
+            completion_model=self._get_display_model_name(request.model_completion_config),
+            model_provider=self._get_provider_slug(request.model_completion_config),
             judge_model=judge_model,
             created_at=trace.created_at,
         )
@@ -170,12 +183,9 @@ class EvaluationService:
         """Load dataset content from S3."""
         return self.s3.download_dataset(dataset_name)
 
-    def _to_stored_config(self, config: ModelConfig) -> dict:
-        return {
-            "api_source": config.api_source,
-            "api_name": config.api_name,
-            "provider_slug": config.model_provider_slug,
-        }
+    def _to_stored_config(self, config: EvaluationModelConfig) -> dict:
+        """Persist full immutable snapshot for trace configs."""
+        return config.model_dump(mode="json")
 
     async def _create_task_trace(self, request: TaskEvaluationRequest) -> Trace:
         """Create initial trace in database."""
@@ -183,11 +193,7 @@ class EvaluationService:
         judge_config = (
             self._to_stored_config(request.judge_config)
             if request.judge_config
-            else {
-                "api_source": "standard",
-                "api_name": "",
-                "provider_slug": request.model_completion_config.model_provider_slug,
-            }
+            else {}
         )
         return await self.repository.create_trace(
             user_id=self.user_id,
@@ -204,11 +210,7 @@ class EvaluationService:
         judge_config = (
             self._to_stored_config(request.judge_config)
             if request.judge_config
-            else {
-                "api_source": "standard",
-                "api_name": "",
-                "provider_slug": request.model_completion_config.model_provider_slug,
-            }
+            else {}
         )
         guideline_names = request.guideline_names or []
         if request.judge_type != JudgeType.LLM_AS_JUDGE:
@@ -243,27 +245,38 @@ class EvaluationService:
             "scoring_scale_config": config_dict,
         }
 
-    async def _get_model_api_name_and_base_url(
-        self, model_provider_id: str, model_id: str
-    ) -> tuple[str, str]:
-        provider = await self.model_providers_service.get_provider(model_provider_id)
-        if not provider:
-            raise ValueError(f"Provider with id {model_provider_id} not found")
+    def _get_display_model_name(self, config: EvaluationModelConfig) -> str:
+        if isinstance(config, StandardEvaluationModelConfig):
+            return config.model.display_name
+        return config.model.name
 
-        model = await self.model_providers_service.get_model(model_id)
+    def _get_provider_slug(self, config: EvaluationModelConfig) -> str:
+        if isinstance(config, StandardEvaluationModelConfig):
+            return config.provider.slug or ""
+        return config.provider.slug
+
+    async def _get_model_api_name_and_base_url(
+        self, config: StandardEvaluationModelConfig
+    ) -> tuple[str, str]:
+        provider = await self.model_providers_service.get_provider(config.provider.id)
+        if not provider:
+            raise ValueError(f"Provider with id {config.provider.id} not found")
+
+        model = await self.model_providers_service.get_model(config.model.id)
         if not model:
-            raise ValueError(f"Model with id {model_id} not found")
+            raise ValueError(f"Model with id {config.model.id} not found")
 
         return model.api_name, provider.base_url
 
-    async def _create_judge_client_parameters(self, judge_config: ModelConfig) -> dict:
-        if judge_config.api_source == "standard":
+    async def _create_judge_client_parameters(
+        self, judge_config: EvaluationModelConfig
+    ) -> dict:
+        if isinstance(judge_config, StandardEvaluationModelConfig):
             model_api_key = self.s3.download_api_key(
-                self.user_id, judge_config.model_provider_slug
+                self.user_id, judge_config.provider.slug or ""
             )
             model_name, model_url = await self._get_model_api_name_and_base_url(
-                judge_config.model_provider_id,
-                judge_config.model_id,
+                judge_config,
             )
             return {
                 "model_name": model_name,
@@ -275,28 +288,28 @@ class EvaluationService:
                 self.user_id, OPENROUTER_PROVIDER_SLUG
             )
             return {
-                "model_name": judge_config.api_name,
+                "model_name": judge_config.model.id,
                 "base_url": OPENROUTER_API_BASE,
                 "api_key": model_api_key,
                 "extra_body": {
                     "provider": {
-                        "order": [judge_config.model_provider_slug],
+                        "order": [judge_config.provider.slug],
                         "allow_fallbacks": False,
                     }
                 },
             }
 
     async def _get_serializable_model_config(
-        self, model_completion_config: ModelConfig
+        self, model_completion_config: EvaluationModelConfig
     ) -> dict:
         """Get model config as a serializable dict for worker processes."""
-        if model_completion_config.api_source == "standard":
+        if isinstance(model_completion_config, StandardEvaluationModelConfig):
             model_api_key = self.s3.download_api_key(
-                self.user_id, model_completion_config.model_provider_slug
+                self.user_id,
+                model_completion_config.provider.slug or "",
             )
             model_name, model_url = await self._get_model_api_name_and_base_url(
-                model_completion_config.model_provider_id,
-                model_completion_config.model_id,
+                model_completion_config,
             )
             return {
                 "model_name": model_name,
@@ -308,18 +321,20 @@ class EvaluationService:
                 self.user_id, OPENROUTER_PROVIDER_SLUG
             )
             return {
-                "model_name": model_completion_config.api_name,
+                "model_name": model_completion_config.model.id,
                 "base_url": OPENROUTER_API_BASE,
                 "api_key": model_api_key,
                 "extra_body": {
                     "provider": {
-                        "order": [model_completion_config.model_provider_slug],
+                        "order": [model_completion_config.provider.slug],
                         "allow_fallbacks": False,
                     }
                 },
             }
 
-    async def _get_serializable_judge_config(self, judge_config: ModelConfig) -> dict:
+    async def _get_serializable_judge_config(
+        self, judge_config: EvaluationModelConfig
+    ) -> dict:
         """Get judge config as a serializable dict for worker processes."""
         return await self._create_judge_client_parameters(judge_config)
 

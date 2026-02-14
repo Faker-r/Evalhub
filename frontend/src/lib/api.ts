@@ -31,6 +31,36 @@ export interface OpenRouterModelSummary {
   provider_slugs?: string[];
 }
 
+export interface ProviderSnapshot {
+  id: string;
+  name: string;
+  slug: string | null;
+  base_url: string;
+}
+
+export interface ModelSnapshot {
+  id: string;
+  display_name: string;
+  developer: string;
+  api_name: string;
+  providers: ProviderSnapshot[];
+}
+
+export type EvaluationModelConfig =
+  | {
+      api_source: 'standard';
+      model: ModelSnapshot;
+      provider: ProviderSnapshot;
+    }
+  | {
+      api_source: 'openrouter';
+      model: OpenRouterModelSummary;
+      provider: {
+        name: string;
+        slug: string;
+      };
+    };
+
 class ApiClient {
   private token: string | null = null;
 
@@ -229,24 +259,8 @@ class ApiClient {
   async createEvaluation(data: {
     dataset_name: string;
     guideline_names: string[];
-    model_completion_config: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: string;
-      api_base?: string;
-    };
-    judge_config: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: string;
-      api_base?: string;
-    };
+    model_completion_config: EvaluationModelConfig;
+    judge_config: EvaluationModelConfig;
   }) {
     return this.request('/evaluations', {
       method: 'POST',
@@ -261,24 +275,8 @@ class ApiClient {
       n_samples?: number;
       n_fewshots?: number;
     };
-    model_completion_config: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: string;
-      api_base?: string;
-    };
-    judge_config?: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: string;
-      api_base?: string;
-    };
+    model_completion_config: EvaluationModelConfig;
+    judge_config?: EvaluationModelConfig;
   }) {
     return this.request('/evaluations/tasks', {
       method: 'POST',
@@ -294,24 +292,8 @@ class ApiClient {
     mc_config?: { choices_field: string; gold_answer_field: string };
     judge_type: 'llm_as_judge' | 'f1_score' | 'exact_match';
     guideline_names?: string[];
-    model_completion_config: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: string;
-      api_base?: string;
-    };
-    judge_config?: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: string;
-      api_base?: string;
-    };
+    model_completion_config: EvaluationModelConfig;
+    judge_config?: EvaluationModelConfig;
   }) {
     return this.request('/evaluations/flexible', {
       method: 'POST',

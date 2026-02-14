@@ -28,10 +28,20 @@ class EvaluationComparisonService:
         if not model_provider_pairs:
             return [], {}, {}
 
+        model_name_expr = func.coalesce(
+            Trace.completion_model_config["model"]["api_name"].astext,
+            Trace.completion_model_config["model"]["id"].astext,
+            Trace.completion_model_config["api_name"].astext,
+        )
+        provider_slug_expr = func.coalesce(
+            Trace.completion_model_config["provider"]["slug"].astext,
+            Trace.completion_model_config["provider_slug"].astext,
+        )
+
         pair_filter = or_(
             and_(
-                Trace.completion_model_config["api_name"].astext == m,
-                Trace.completion_model_config["provider_slug"].astext == p,
+                model_name_expr == m,
+                provider_slug_expr == p,
             )
             for m, p in model_provider_pairs
         )
@@ -41,8 +51,8 @@ class EvaluationComparisonService:
             .over(
                 partition_by=[
                     Trace.dataset_name,
-                    Trace.completion_model_config["api_name"].astext,
-                    Trace.completion_model_config["provider_slug"].astext,
+                    model_name_expr,
+                    provider_slug_expr,
                 ],
                 order_by=Trace.created_at.desc(),
             )
@@ -77,7 +87,19 @@ class EvaluationComparisonService:
         by_dataset_pair: dict[str, dict[tuple[str, str], Trace]] = defaultdict(dict)
         for row in rows:
             cfg = row.completion_model_config or {}
-            key = (cfg.get("api_name", ""), cfg.get("provider_slug", ""))
+            model = cfg.get("model") if isinstance(cfg, dict) else None
+            provider = cfg.get("provider") if isinstance(cfg, dict) else None
+            model_name = (
+                model.get("api_name") or model.get("id") or cfg.get("api_name", "")
+                if isinstance(model, dict)
+                else cfg.get("api_name", "")
+            )
+            provider_slug = (
+                provider.get("slug") or cfg.get("provider_slug", "")
+                if isinstance(provider, dict)
+                else cfg.get("provider_slug", "")
+            )
+            key = (model_name, provider_slug)
             by_dataset_pair[row.dataset_name][key] = trace_map[row.id]
         overlapping_datasets = list(by_dataset_pair.keys())
 

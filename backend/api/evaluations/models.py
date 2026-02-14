@@ -26,19 +26,35 @@ class Trace(Base):
 
     @property
     def completion_model(self) -> str:
-        return (self.completion_model_config or {}).get("api_name", "")
+        config = self.completion_model_config or {}
+        model = config.get("model")
+        if isinstance(model, dict):
+            return model.get("api_name") or model.get("id") or ""
+        return config.get("api_name", "")
 
     @property
     def model_provider(self) -> str:
-        return (self.completion_model_config or {}).get("provider_slug", "")
+        config = self.completion_model_config or {}
+        provider = config.get("provider")
+        if isinstance(provider, dict):
+            return provider.get("slug") or provider.get("name") or ""
+        return config.get("provider_slug", "")
 
     @property
     def judge_model(self) -> str:
-        return (self.judge_model_config or {}).get("api_name", "")
+        config = self.judge_model_config or {}
+        model = config.get("model")
+        if isinstance(model, dict):
+            return model.get("api_name") or model.get("id") or ""
+        return config.get("api_name", "")
 
     @property
     def judge_model_provider(self) -> str:
-        return (self.judge_model_config or {}).get("provider_slug", "")
+        config = self.judge_model_config or {}
+        provider = config.get("provider")
+        if isinstance(provider, dict):
+            return provider.get("slug") or provider.get("name") or ""
+        return config.get("provider_slug", "")
 
 
 class TraceEvent(Base):

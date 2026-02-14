@@ -7,6 +7,8 @@ from api.core.logging import get_logger
 from api.core.redis_client import get_eval_progress
 from api.core.security import CurrentUser, get_current_user
 from api.evaluations.schemas import (
+    EvaluationModelConfig,
+    StandardEvaluationModelConfig,
     FlexibleEvaluationRequest,
     TaskEvaluationRequest,
     TaskEvaluationResponse,
@@ -23,6 +25,12 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/evaluations", tags=["evaluations"])
 
 
+def _model_log_name(config: EvaluationModelConfig) -> str:
+    if isinstance(config, StandardEvaluationModelConfig):
+        return config.model.api_name
+    return config.model.id
+
+
 @router.post(
     "/tasks", response_model=TaskEvaluationResponse, status_code=status.HTTP_201_CREATED
 )
@@ -34,7 +42,7 @@ async def run_task_evaluation(
     """Run an evaluation on a task."""
     logger.debug(
         f"Running task evaluation: task={request.task_name}, "
-        f"model={request.model_completion_config.model_name}, user={current_user.email}"
+        f"model={_model_log_name(request.model_completion_config)}, user={current_user.email}"
     )
     return await EvaluationService(session, current_user.id).run_task_evaluation(
         request

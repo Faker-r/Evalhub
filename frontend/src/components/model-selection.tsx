@@ -1,38 +1,13 @@
-/**
- * ModelSelection Component
- *
- * Multi-step model selection supporting:
- * 1. Standard Providers (from database)
- * 2. OpenRouter (by provider or by model)
- */
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
-import { apiClient } from '@/lib/api';
-import { toast } from 'sonner';
-
-interface ModelConfig {
-  // For standard providers
-  provider_id?: string;
-  provider_name?: string;
-  provider_slug?: string;
-  model_id?: string;
-  model_name?: string;
-  api_name?: string;
-  api_base?: string;
-
-  // For OpenRouter
-  is_openrouter?: boolean;
-  openrouter_model_id?: string;
-  openrouter_model_name?: string;
-  openrouter_provider_slug?: string;
-  openrouter_provider_name?: string;
-}
+import { apiClient, type OpenRouterModelSummary, type OpenRouterProviderSummary } from "@/lib/api";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { OpenRouterModelCatalog, OpenRouterProviderCatalog } from "@/components/openrouter-catalog";
+import type { ModelConfig } from "@/types/model-config";
 
 interface ModelSelectionProps {
   value: ModelConfig;
@@ -40,230 +15,110 @@ interface ModelSelectionProps {
   label?: string;
 }
 
-type ApiSource = 'standard' | 'openrouter';
-type OpenRouterTab = 'by-provider' | 'by-model';
+type OpenRouterTab = "by-provider" | "by-model";
 
-export function ModelSelection({ value, onChange, label = 'Model Selection' }: ModelSelectionProps) {
-  // Derive API source from value prop
-  const apiSource: ApiSource = value.is_openrouter ? 'openrouter' : 'standard';
-  const [openRouterTab, setOpenRouterTab] = useState<OpenRouterTab>('by-provider');
+export function ModelSelection({ value, onChange, label = "Model Selection" }: ModelSelectionProps) {
+  const [openRouterTab, setOpenRouterTab] = useState<OpenRouterTab>("by-provider");
+  const byProviderStep2Ref = useRef<HTMLDivElement | null>(null);
+  const byModelStep2Ref = useRef<HTMLDivElement | null>(null);
 
-  // Standard providers state
-  const [standardProviders, setStandardProviders] = useState<any[]>([]);
-  const [standardModels, setStandardModels] = useState<any[]>([]);
-
-  // OpenRouter state
-  const [openRouterProviders, setOpenRouterProviders] = useState<any[]>([]);
-  const [openRouterModels, setOpenRouterModels] = useState<any[]>([]);
-  const [openRouterProvidersByModel, setOpenRouterProvidersByModel] = useState<any[]>([]);
-
-  // Loading states
-  const [loadingStandardProviders, setLoadingStandardProviders] = useState(false);
-  const [loadingStandardModels, setLoadingStandardModels] = useState(false);
-  const [loadingOpenRouterProviders, setLoadingOpenRouterProviders] = useState(false);
-  const [loadingOpenRouterModels, setLoadingOpenRouterModels] = useState(false);
-  const [loadingOpenRouterProvidersByModel, setLoadingOpenRouterProvidersByModel] = useState(false);
-
-  // Fetch standard providers on mount
+  // Temporarily force OpenRouter-only selection flow.
   useEffect(() => {
-    if (apiSource === 'standard') {
-      fetchStandardProviders();
+    if (value.is_openrouter === false) {
+      onChange({ is_openrouter: true });
     }
-  }, [apiSource]);
+  }, [value.is_openrouter, onChange]);
 
-  // Fetch OpenRouter providers on mount
-  useEffect(() => {
-    if (apiSource === 'openrouter') {
-      fetchOpenRouterProviders();
-    }
-  }, [apiSource]);
+  const { data: openRouterProviderSlugsByModelData, isLoading: loadingOpenRouterProvidersByModel } = useQuery({
+    queryKey: ["openrouter-providers-by-model-selection", value.openrouter_model_id],
+    queryFn: () => apiClient.getOpenRouterProvidersByModel(value.openrouter_model_id || ""),
+    enabled: openRouterTab === "by-model" && !!value.openrouter_model_id,
+  });
 
-  // Fetch all OpenRouter models when selecting by model
-  useEffect(() => {
-    if (apiSource === 'openrouter' && openRouterTab === 'by-model') {
-      fetchAllOpenRouterModels();
-    }
-  }, [apiSource, openRouterTab]);
+  const openRouterProviderSlugsByModel = openRouterProviderSlugsByModelData?.providers || [];
 
-  // Fetch standard models when provider changes
-  useEffect(() => {
-    if (value.provider_id && !value.is_openrouter) {
-      fetchStandardModels(value.provider_id);
-    }
-  }, [value.provider_id]);
-
-  // Fetch OpenRouter models when provider changes
-  useEffect(() => {
-    if (value.openrouter_provider_slug && openRouterTab === 'by-provider' && value.is_openrouter) {
-      fetchOpenRouterModelsByProvider(value.openrouter_provider_slug);
-    }
-  }, [value.openrouter_provider_slug, openRouterTab]);
-
-  // Fetch providers by model when OpenRouter model changes
-  useEffect(() => {
-    if (value.openrouter_model_id && openRouterTab === 'by-model' && value.is_openrouter) {
-      fetchOpenRouterProvidersByModel(value.openrouter_model_id);
-    }
-  }, [value.openrouter_model_id, openRouterTab]);
-
-  const fetchStandardProviders = async () => {
-    setLoadingStandardProviders(true);
-    try {
-      const response = await apiClient.getProviders({ page_size: 100 });
-      setStandardProviders(response.providers.filter((p) => p.name !== 'OpenRouter'));
-    } catch (error) {
-      toast.error('Failed to load providers');
-      console.error('Error fetching standard providers:', error);
-    } finally {
-      setLoadingStandardProviders(false);
-    }
-  };
-
-  const fetchStandardModels = async (providerId: string) => {
-    setLoadingStandardModels(true);
-    try {
-      const response = await apiClient.getModels({ provider_id: providerId, page_size: 100 });
-      setStandardModels(response.models);
-    } catch (error) {
-      toast.error('Failed to load models');
-      console.error('Error fetching standard models:', error);
-    } finally {
-      setLoadingStandardModels(false);
-    }
-  };
-
-  const fetchOpenRouterProviders = async () => {
-    setLoadingOpenRouterProviders(true);
-    try {
-      const response = await apiClient.getOpenRouterProviders();
-      setOpenRouterProviders(response.providers);
-    } catch (error) {
-      toast.error('Failed to load OpenRouter providers. Check if API key is configured.');
-      console.error('Error fetching OpenRouter providers:', error);
-    } finally {
-      setLoadingOpenRouterProviders(false);
-    }
-  };
-
-  const fetchAllOpenRouterModels = async () => {
-    setLoadingOpenRouterModels(true);
-    try {
-      const response = await apiClient.getOpenRouterModels();
-      const modelsWithProviderCounts = await Promise.all(
-        response.models.map(async (model) => {
-          try {
-            const providerResponse = await apiClient.getOpenRouterProvidersByModel(model.id);
-            return { ...model, providerCount: providerResponse.providers.length };
-          } catch {
-            return { ...model, providerCount: 0 };
-          }
-        })
-      );
-      const sortedModels = modelsWithProviderCounts.sort((a, b) => b.providerCount - a.providerCount);
-      setOpenRouterModels(sortedModels);
-    } catch (error) {
-      toast.error('Failed to load OpenRouter models. Check if API key is configured.');
-      console.error('Error fetching OpenRouter models:', error);
-    } finally {
-      setLoadingOpenRouterModels(false);
-    }
-  };
-
-  const fetchOpenRouterModelsByProvider = async (providerSlug: string) => {
-    setLoadingOpenRouterModels(true);
-    try {
-      const response = await apiClient.getOpenRouterModelsByProvider(providerSlug);
-      setOpenRouterModels(response.models);
-    } catch (error) {
-      toast.error('Failed to load models for provider');
-      console.error('Error fetching OpenRouter models by provider:', error);
-    } finally {
-      setLoadingOpenRouterModels(false);
-    }
-  };
-
-  const fetchOpenRouterProvidersByModel = async (modelId: string) => {
-    setLoadingOpenRouterProvidersByModel(true);
-    try {
-      const [providersResponse, providerNamesResponse] = await Promise.all([
-        apiClient.getOpenRouterProviders(),
-        apiClient.getOpenRouterProvidersByModel(modelId),
-      ]);
-      
-      const providerNameToSlug = new Map(
-        providersResponse.providers.map((p) => [p.name, p.slug])
-      );
-      
-      const providerSlugs = providerNamesResponse.providers
-        .map((name) => providerNameToSlug.get(name))
-        .filter((slug): slug is string => Boolean(slug));
-      
-      setOpenRouterProvidersByModel(providerSlugs);
-    } catch (error) {
-      console.error('Error fetching OpenRouter providers by model:', error);
-      setOpenRouterProvidersByModel([]);
-    } finally {
-      setLoadingOpenRouterProvidersByModel(false);
-    }
-  };
-
-  const handleStandardProviderChange = (providerId: string) => {
-    const provider = standardProviders.find((p) => p.id === providerId);
-
-    if (provider) {
+  const handleOpenRouterProviderChange = (provider: OpenRouterProviderSummary | null) => {
+    if (!provider) {
       onChange({
-        provider_id: provider.id,
-        provider_name: provider.name,
-        provider_slug: provider.slug ?? undefined,
-        is_openrouter: false,
+        is_openrouter: true,
+        openrouter_provider_slug: undefined,
+        openrouter_provider_name: undefined,
+        openrouter_model_id: undefined,
+        openrouter_model_name: undefined,
+        openrouter_model_description: undefined,
+        openrouter_model_pricing: undefined,
+        openrouter_model_context_length: undefined,
+        openrouter_model_canonical_slug: undefined,
+        openrouter_model_architecture: undefined,
+        openrouter_model_top_provider: undefined,
+        openrouter_model_supported_parameters: undefined,
+        openrouter_model_per_request_limits: undefined,
+        openrouter_model_provider_slugs: undefined,
       });
+      return;
     }
-    setStandardModels([]);
-  };
 
-  const handleStandardModelChange = (modelId: string) => {
-    const model = standardModels.find((m) => m.id === modelId);
-
-    if (model) {
-      // Find the provider for this model from the model's providers array
-      const provider = model.providers.find((p: any) => p.id === value.provider_id);
-
-      if (provider) {
-        onChange({
-          provider_id: provider.id,
-          provider_name: provider.name,
-          provider_slug: provider.slug ?? undefined,
-          model_id: model.id,
-          model_name: model.display_name,
-          api_name: model.api_name,
-          api_base: provider.base_url,
-          is_openrouter: false,
-        });
-      }
-    }
-  };
-
-  const handleOpenRouterProviderChange = (providerSlug: string) => {
-    const provider = openRouterProviders.find((p) => p.slug === providerSlug);
     onChange({
       is_openrouter: true,
-      openrouter_provider_slug: providerSlug,
-      openrouter_provider_name: provider?.name,
+      openrouter_provider_slug: provider.slug,
+      openrouter_provider_name: provider.name,
+      openrouter_model_id: undefined,
+      openrouter_model_name: undefined,
+      openrouter_model_description: undefined,
+      openrouter_model_pricing: undefined,
+      openrouter_model_context_length: undefined,
+      openrouter_model_canonical_slug: undefined,
+      openrouter_model_architecture: undefined,
+      openrouter_model_top_provider: undefined,
+      openrouter_model_supported_parameters: undefined,
+      openrouter_model_per_request_limits: undefined,
+      openrouter_model_provider_slugs: undefined,
     });
-    setOpenRouterModels([]);
+    setTimeout(() => byProviderStep2Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
-  const handleOpenRouterModelChange = (modelId: string) => {
-    // Find the model to get its name
-    const model = openRouterModels.find((m) => m.id === modelId);
+  const handleOpenRouterModelChange = (model: OpenRouterModelSummary | null) => {
+    if (!model) {
+      onChange({
+        ...value,
+        is_openrouter: true,
+        openrouter_model_id: undefined,
+        openrouter_model_name: undefined,
+        openrouter_model_description: undefined,
+        openrouter_model_pricing: undefined,
+        openrouter_model_context_length: undefined,
+        openrouter_model_canonical_slug: undefined,
+        openrouter_model_architecture: undefined,
+        openrouter_model_top_provider: undefined,
+        openrouter_model_supported_parameters: undefined,
+        openrouter_model_per_request_limits: undefined,
+        openrouter_model_provider_slugs: undefined,
+        ...(openRouterTab === "by-model"
+          ? { openrouter_provider_slug: undefined, openrouter_provider_name: undefined }
+          : {}),
+      });
+      return;
+    }
 
-    // Set the config for OpenRouter
     onChange({
       is_openrouter: true,
-      openrouter_model_id: modelId,
-      openrouter_model_name: model?.name || modelId,
-      openrouter_provider_slug: openRouterTab === 'by-provider' ? value.openrouter_provider_slug : undefined,
+      openrouter_model_id: model.id,
+      openrouter_model_name: model.name || model.id,
+      openrouter_model_description: model.description,
+      openrouter_model_pricing: model.pricing,
+      openrouter_model_context_length: model.context_length,
+      openrouter_model_canonical_slug: model.canonical_slug,
+      openrouter_model_architecture: model.architecture,
+      openrouter_model_top_provider: model.top_provider,
+      openrouter_model_supported_parameters: model.supported_parameters,
+      openrouter_model_per_request_limits: model.per_request_limits,
+      openrouter_model_provider_slugs: model.provider_slugs,
+      openrouter_provider_slug: value.openrouter_provider_slug,
+      openrouter_provider_name: value.openrouter_provider_name,
     });
+    if (openRouterTab === "by-model") {
+      setTimeout(() => byModelStep2Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+    }
   };
 
   return (
@@ -273,263 +128,91 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
         <CardDescription>Select the model configuration for this evaluation</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Step 1: API Source Selection */}
-        <div className="space-y-3">
-          <Label>API Source</Label>
-          <RadioGroup
-            value={apiSource}
-            onValueChange={(val) => {
-              // Reset config when switching API source
-              if (val === 'openrouter') {
-                onChange({ is_openrouter: true });
-              } else {
-                onChange({ is_openrouter: false });
-              }
-            }}
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="standard" id={`standard-${label}`} />
-              <Label htmlFor={`standard-${label}`} className="font-normal cursor-pointer">
-                Standard Providers
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="openrouter" id={`openrouter-${label}`} />
-              <Label htmlFor={`openrouter-${label}`} className="font-normal cursor-pointer">
-                OpenRouter
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
+        <Tabs value={openRouterTab} onValueChange={(tab) => setOpenRouterTab(tab as OpenRouterTab)}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="by-provider">By Provider</TabsTrigger>
+            <TabsTrigger value="by-model">By Model</TabsTrigger>
+          </TabsList>
 
-        {/* Step 2a: Standard Provider Flow */}
-        {apiSource === 'standard' && (
-          <div className="space-y-4">
-            {/* Provider Selection */}
+          <TabsContent value="by-provider" className="space-y-6 mt-4">
             <div className="space-y-2">
-              <Label>Provider</Label>
-              {loadingStandardProviders ? (
-                <Skeleton className="h-10 w-full" />
-              ) : (
-                <Select
-                  value={value.provider_id || ''}
-                  onValueChange={handleStandardProviderChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a provider" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto">
-                    {standardProviders.length === 0 ? (
-                      <div className="p-2 text-sm text-muted-foreground">
-                        No providers available. Contact admin to add providers.
-                      </div>
-                    ) : (
-                      standardProviders.map((provider) => (
-                        <SelectItem key={provider.id} value={String(provider.id)}>
-                          {provider.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              )}
+              <Label>1. Choose Provider</Label>
+              <OpenRouterProviderCatalog
+                pageSize={12}
+                selectable
+                selectedProviderSlug={value.openrouter_provider_slug}
+                onSelectProvider={handleOpenRouterProviderChange}
+                showHostedModelsLink={false}
+              />
             </div>
 
-            {/* Model Selection */}
-            {value.provider_id && (
-              <div className="space-y-2">
-                <Label>Model</Label>
-                {loadingStandardModels ? (
+            {value.openrouter_provider_slug && (
+              <div ref={byProviderStep2Ref} className="space-y-2">
+                <Label>2. Choose Model</Label>
+                <p className="text-xs text-muted-foreground">
+                  Provider selected. Pick one hosted model below to complete the pair.
+                </p>
+                <OpenRouterModelCatalog
+                  pageSize={12}
+                  selectable
+                  fixedProviderSlug={value.openrouter_provider_slug}
+                  selectedModelId={value.openrouter_model_id}
+                  onSelectModel={handleOpenRouterModelChange}
+                />
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="by-model" className="space-y-6 mt-4">
+            <div className="space-y-2">
+              <Label>1. Choose Model</Label>
+              <OpenRouterModelCatalog
+                pageSize={12}
+                selectable
+                selectedModelId={value.openrouter_model_id}
+                onSelectModel={handleOpenRouterModelChange}
+              />
+            </div>
+
+            {value.openrouter_model_id && (
+              <div ref={byModelStep2Ref} className="space-y-2">
+                <Label>2. Choose Provider</Label>
+                <p className="text-xs text-muted-foreground">
+                  Model selected. Choose one provider from the compatible hosts below.
+                </p>
+                {loadingOpenRouterProvidersByModel ? (
                   <Skeleton className="h-10 w-full" />
                 ) : (
-                  <Select
-                    value={value.model_id || ''}
-                    onValueChange={handleStandardModelChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a model" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px] overflow-y-auto">
-                      {standardModels.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground">
-                          No models available for this provider.
-                        </div>
-                      ) : (
-                        standardModels.map((model) => (
-                          <SelectItem key={model.id} value={String(model.id)}>
-                            {model.display_name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <OpenRouterProviderCatalog
+                    pageSize={12}
+                    selectable
+                    selectedProviderSlug={value.openrouter_provider_slug}
+                    onSelectProvider={(provider) => {
+                      if (!provider) {
+                        onChange({
+                          ...value,
+                          is_openrouter: true,
+                          openrouter_provider_slug: undefined,
+                          openrouter_provider_name: undefined,
+                        });
+                        return;
+                      }
+                      onChange({
+                        ...value,
+                        is_openrouter: true,
+                        openrouter_provider_slug: provider.slug,
+                        openrouter_provider_name: provider.name,
+                      });
+                    }}
+                    onlyProviderSlugs={openRouterProviderSlugsByModel}
+                    showHostedModelsLink={false}
+                  />
                 )}
               </div>
             )}
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
 
-        {/* Step 2b: OpenRouter Flow */}
-        {apiSource === 'openrouter' && (
-          <Tabs value={openRouterTab} onValueChange={(val) => setOpenRouterTab(val as OpenRouterTab)}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="by-provider">By Provider</TabsTrigger>
-              <TabsTrigger value="by-model">By Model</TabsTrigger>
-            </TabsList>
-
-            {/* By Provider Tab */}
-            <TabsContent value="by-provider" className="space-y-4 mt-4">
-              {/* Provider Selection */}
-              <div className="space-y-2">
-                <Label>Provider</Label>
-                {loadingOpenRouterProviders ? (
-                  <Skeleton className="h-10 w-full" />
-                ) : (
-                  <Select
-                    value={value.openrouter_provider_slug || ''}
-                    onValueChange={handleOpenRouterProviderChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a provider" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px] overflow-y-auto">
-                      {openRouterProviders.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground">
-                          No providers available. Check OpenRouter API key configuration.
-                        </div>
-                      ) : (
-                        openRouterProviders.map((provider) => (
-                          <SelectItem key={provider.slug} value={provider.slug}>
-                            {provider.name} ({provider.model_count} models)
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              {/* Model Selection */}
-              {value.openrouter_provider_slug && (
-                <div className="space-y-2">
-                  <Label>Model</Label>
-                  {loadingOpenRouterModels ? (
-                    <Skeleton className="h-10 w-full" />
-                  ) : (
-                    <Select
-                      value={value.openrouter_model_id || ''}
-                      onValueChange={handleOpenRouterModelChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a model" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px] overflow-y-auto">
-                        {openRouterModels.length === 0 ? (
-                          <div className="p-2 text-sm text-muted-foreground">
-                            No models available for this provider.
-                          </div>
-                        ) : (
-                          openRouterModels.map((model) => (
-                            <SelectItem key={model.id} value={model.id}>
-                              <div className="flex flex-col">
-                                <span>{model.name}</span>
-                                {model.description && (
-                                  <span className="text-xs text-muted-foreground truncate max-w-md">
-                                    {model.description}
-                                  </span>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-              )}
-            </TabsContent>
-
-            {/* By Model Tab */}
-            <TabsContent value="by-model" className="space-y-4 mt-4">
-              {/* Model Selection */}
-              <div className="space-y-2">
-                <Label>Model</Label>
-                {loadingOpenRouterModels ? (
-                  <Skeleton className="h-10 w-full" />
-                ) : (
-                  <Select
-                    value={value.openrouter_model_id || ''}
-                    onValueChange={handleOpenRouterModelChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Search and select a model" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      {openRouterModels.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground">
-                          No models available. Check OpenRouter API key configuration.
-                        </div>
-                      ) : (
-                        openRouterModels.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            <div className="flex flex-col">
-                              <span>{model.name}</span>
-                              <span className="text-xs text-muted-foreground">{model.id}</span>
-                            </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              {/* Show available providers for selected model */}
-              {value.openrouter_model_id && (
-                <div className="space-y-2">
-                  <Label>Provider</Label>
-                  {loadingOpenRouterProvidersByModel ? (
-                    <Skeleton className="h-10 w-full" />
-                  ) : (
-                    <Select
-                      value={value.openrouter_provider_slug || ''}
-                      onValueChange={(providerSlug) => {
-                        const provider = openRouterProviders.find((p) => p.slug === providerSlug);
-                        onChange({
-                          ...value,
-                          openrouter_provider_slug: providerSlug,
-                          openrouter_provider_name: provider?.name,
-                        });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a provider" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px] overflow-y-auto">
-                        {openRouterProvidersByModel.length === 0 ? (
-                          <div className="p-2 text-sm text-muted-foreground">
-                            Provider information not available
-                          </div>
-                        ) : (
-                          openRouterProvidersByModel.map((providerSlug) => {
-                            const provider = openRouterProviders.find((p) => p.slug === providerSlug);
-                            return (
-                              <SelectItem key={providerSlug} value={providerSlug}>
-                                {provider?.name || providerSlug}
-                              </SelectItem>
-                            );
-                          })
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        )}
-
-        {/* Current Selection Display */}
         {(value.model_name || value.openrouter_model_id) && (
           <div className="pt-4 border-t space-y-2">
             <Label>Current Selection</Label>
@@ -538,16 +221,14 @@ export function ModelSelection({ value, onChange, label = 'Model Selection' }: M
                 <span className="text-muted-foreground">Provider:</span>
                 <span className="font-medium">
                   {value.is_openrouter
-                    ? (value.openrouter_provider_name || value.openrouter_provider_slug || 'OpenRouter')
+                    ? value.openrouter_provider_name || value.openrouter_provider_slug || "OpenRouter"
                     : value.provider_name}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Model:</span>
                 <span className="font-medium">
-                  {value.is_openrouter
-                    ? (value.openrouter_model_name || value.openrouter_model_id)
-                    : value.model_name}
+                  {value.is_openrouter ? value.openrouter_model_name || value.openrouter_model_id : value.model_name}
                 </span>
               </div>
               {value.api_base && (
