@@ -14,7 +14,9 @@ def _serialize(value: Any) -> str:
     return json.dumps(value)
 
 
-def _deserialize(raw: str, revive: type[T] | Callable[[Any], T] | None = None) -> T | dict[str, Any]:
+def _deserialize(
+    raw: str, revive: type[T] | Callable[[Any], T] | None = None
+) -> T | dict[str, Any]:
     data = json.loads(raw)
     if revive is None:
         return data
@@ -27,7 +29,9 @@ class CacheService:
     def __init__(self):
         self._redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
-    def get(self, key: str, revive: type[T] | Callable[[Any], T] | None = None) -> T | dict[str, Any] | None:
+    def get(
+        self, key: str, revive: type[T] | Callable[[Any], T] | None = None
+    ) -> T | dict[str, Any] | None:
         raw = self._redis_client.get(key)
         if raw is None:
             return None
@@ -57,5 +61,7 @@ def cache_response(
             result = await func(*args, **kwargs)
             cache_service.set(key, result, ex=ttl)
             return result
+
         return async_wrapper
+
     return decorator

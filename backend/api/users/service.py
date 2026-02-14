@@ -108,7 +108,9 @@ class UserService:
 
             if provider:
                 api_keys.append(
-                    ApiKeyResponse(provider_id=str(provider.id), provider_name=provider.name)
+                    ApiKeyResponse(
+                        provider_id=str(provider.id), provider_name=provider.name
+                    )
                 )
             else:
                 # Provider exists in S3 but not in database - log warning

@@ -23,7 +23,7 @@ async def get_leaderboard(
     Each dataset includes:
     - Dataset name and sample count
     - List of entries (traces) ranked by avg_score
-    
+
     Each entry includes:
     - Model name and provider
     - Judge model used

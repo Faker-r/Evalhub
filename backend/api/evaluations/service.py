@@ -88,7 +88,9 @@ class EvaluationService:
             task_name=request.task_name,
             sample_count=0,
             guideline_names=[],
-            completion_model=self._get_display_model_name(request.model_completion_config),
+            completion_model=self._get_display_model_name(
+                request.model_completion_config
+            ),
             model_provider=self._get_provider_slug(request.model_completion_config),
             judge_model=judge_model,
             created_at=trace.created_at,
@@ -121,9 +123,7 @@ class EvaluationService:
         text_config_data = (
             request.text_config.model_dump() if request.text_config else None
         )
-        mc_config_data = (
-            request.mc_config.model_dump() if request.mc_config else None
-        )
+        mc_config_data = request.mc_config.model_dump() if request.mc_config else None
 
         judge_model = (
             self._get_display_model_name(request.judge_config)
@@ -171,7 +171,9 @@ class EvaluationService:
             task_name=request.dataset_name,
             sample_count=0,
             guideline_names=guideline_names,
-            completion_model=self._get_display_model_name(request.model_completion_config),
+            completion_model=self._get_display_model_name(
+                request.model_completion_config
+            ),
             model_provider=self._get_provider_slug(request.model_completion_config),
             judge_model=judge_model,
             created_at=trace.created_at,
@@ -191,9 +193,7 @@ class EvaluationService:
         """Create initial trace in database."""
         completion_config = self._to_stored_config(request.model_completion_config)
         judge_config = (
-            self._to_stored_config(request.judge_config)
-            if request.judge_config
-            else {}
+            self._to_stored_config(request.judge_config) if request.judge_config else {}
         )
         return await self.repository.create_trace(
             user_id=self.user_id,
@@ -208,9 +208,7 @@ class EvaluationService:
         """Create initial trace for flexible evaluation."""
         completion_config = self._to_stored_config(request.model_completion_config)
         judge_config = (
-            self._to_stored_config(request.judge_config)
-            if request.judge_config
-            else {}
+            self._to_stored_config(request.judge_config) if request.judge_config else {}
         )
         guideline_names = request.guideline_names or []
         if request.judge_type != JudgeType.LLM_AS_JUDGE:

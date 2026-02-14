@@ -21,14 +21,13 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     # Add missing category column to guidelines table
     op.add_column("guidelines", sa.Column("category", sa.String(), nullable=True))
-    
+
     # Update existing rows to have a default category (if any exist)
     op.execute("UPDATE guidelines SET category = 'general' WHERE category IS NULL")
-    
+
     # Make the column non-nullable after setting defaults
     op.alter_column("guidelines", "category", nullable=False)
 
 
 def downgrade() -> None:
     op.drop_column("guidelines", "category")
-

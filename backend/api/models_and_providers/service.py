@@ -414,7 +414,9 @@ class ModelsAndProvidersService:
     ) -> OpenRouterModelListResponse:
         """Get OpenRouter models with provider slug mappings, paginated."""
         models_response = await self._get_openrouter_models_base()
-        provider_slugs_by_model_id = await self._get_openrouter_provider_slugs_by_model_id()
+        provider_slugs_by_model_id = (
+            await self._get_openrouter_provider_slugs_by_model_id()
+        )
 
         models = []
         for model in models_response.models:
@@ -516,7 +518,9 @@ class ModelsAndProvidersService:
             models_response.models, providers_by_model_results, strict=False
         ):
             if isinstance(result, Exception):
-                logger.warning(f"Failed to fetch providers for model '{model.id}': {result}")
+                logger.warning(
+                    f"Failed to fetch providers for model '{model.id}': {result}"
+                )
                 continue
             for provider_name in result.providers:
                 provider_slug = slug_by_normalized_name.get(normalize(provider_name))
@@ -593,8 +597,7 @@ class ModelsAndProvidersService:
                 providers = [
                     p
                     for p in providers
-                    if q in (p.name or "").lower()
-                    or q in (p.slug or "").lower()
+                    if q in (p.name or "").lower() or q in (p.slug or "").lower()
                 ]
         total = len(providers)
         page = providers[offset : offset + limit]
@@ -642,7 +645,9 @@ class ModelsAndProvidersService:
             for endpoint in parsed.data.endpoints
             if endpoint.provider_name
         ]
-        return OpenRouterProvidersByModelResponse(model_id=model_id, providers=providers)
+        return OpenRouterProvidersByModelResponse(
+            model_id=model_id, providers=providers
+        )
 
     async def _fetch_openrouter_json(self, path: str) -> dict:
         """Fetch JSON from OpenRouter API."""
@@ -651,4 +656,3 @@ class ModelsAndProvidersService:
             response = await client.get(url)
             response.raise_for_status()
             return response.json()
-

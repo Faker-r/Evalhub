@@ -31,4 +31,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("models", "slug")
     op.drop_column("providers", "slug")
-

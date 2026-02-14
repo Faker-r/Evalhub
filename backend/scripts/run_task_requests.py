@@ -24,7 +24,11 @@ MODELS_AND_PROVIDERS = [
     ("qwen/qwen3-coder-next", "Qwen: Qwen3 Coder Next", ["Together"]),
     ("openai/gpt-oss-120b", "OpenAI: gpt-oss-120b", ["Cerebras", "BaseTen"]),
     ("z-ai/glm-4.7-flash", "Z.AI: GLM 4.7 Flash", ["DeepInfra", "Novita"]),
-    ("mistralai/ministral-14b-2512", "Mistral: Ministral 3 14B 2512", ["Mistral", "Together"]),
+    (
+        "mistralai/ministral-14b-2512",
+        "Mistral: Ministral 3 14B 2512",
+        ["Mistral", "Together"],
+    ),
     ("deepseek/deepseek-v3.2", "DeepSeek: DeepSeek V3.2", ["Google", "DeepInfra"]),
     ("moonshotai/kimi-k2.5", "MoonshotAI: Kimi K2.5", ["BaseTen", "Together"]),
 ]
@@ -88,13 +92,14 @@ def main() -> None:
                     }
                 )
 
-    
     for i, payload in enumerate(requests_to_send):
         with httpx.Client(timeout=120.0) as client:
             task_name = payload["task_name"]
             model = payload["model_completion_config"]["api_name"]
             provider_slug = payload["model_completion_config"]["model_provider_slug"]
-            print(f"[{i + 1}/{len(requests_to_send)}] {task_name} | {model} | {provider_slug}")
+            print(
+                f"[{i + 1}/{len(requests_to_send)}] {task_name} | {model} | {provider_slug}"
+            )
             r = client.post(
                 f"{BASE_URL}/api/evaluations/tasks",
                 json=payload,
@@ -104,6 +109,7 @@ def main() -> None:
             r.raise_for_status()
 
         time.sleep(20)
+
 
 if __name__ == "__main__":
     main()

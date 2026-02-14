@@ -124,9 +124,7 @@ def _run_task_pipeline(
 
     registry = Registry(tasks=full_task_name)
     configs = [
-        config
-        for configs in registry.task_to_configs.values()
-        for config in configs
+        config for configs in registry.task_to_configs.values() for config in configs
     ]
     metrics = [metric for config in configs for metric in config.metrics]
     metric_docs = MetricDocGenerator.generate_metric_docs(metrics)
@@ -243,7 +241,11 @@ def _create_celery_session():
     Each call creates a new engine to avoid event loop binding issues
     when asyncio.run() creates a new loop per invocation.
     """
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.ext.asyncio import (
+        AsyncSession,
+        async_sessionmaker,
+        create_async_engine,
+    )
 
     from api.core.config import settings
 
@@ -259,7 +261,9 @@ def _create_celery_session():
         connect_args=connect_args,
         pool_pre_ping=True,
     )
-    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
     return engine, session_factory
 
 
@@ -525,7 +529,9 @@ def _upload_trace_jsonl(trace_data: dict) -> None:
 
     content = "\n".join(lines)
     safe_model_name = trace_data["completion_model"].replace("/", "-")
-    filename = f"{trace_data['trace_id']}_{safe_model_name}-{trace_data['dataset_name']}"
+    filename = (
+        f"{trace_data['trace_id']}_{safe_model_name}-{trace_data['dataset_name']}"
+    )
     s3.upload_trace(filename, content)
 
 
@@ -672,7 +678,9 @@ def run_flexible_evaluation_task(
         results_s3_path = s3.upload_eval_results(trace_id, pipeline_output["temp_dir"])
 
         # Extract summary
-        summary = _extract_flexible_summary(pipeline_output, judge_type, guidelines_data)
+        summary = _extract_flexible_summary(
+            pipeline_output, judge_type, guidelines_data
+        )
 
         # Build spec data from request_data
         spec_data = {

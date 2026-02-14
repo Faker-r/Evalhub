@@ -139,7 +139,11 @@ class CustomTaskEvaluationPipeline:
         # +1 unit for aggregation/logging overhead.
         metrics = self.task.metrics or []
         n_compute = len(
-            [m for m in metrics if hasattr(m, "compute") and callable(getattr(m, "compute"))]
+            [
+                m
+                for m in metrics
+                if hasattr(m, "compute") and callable(getattr(m, "compute"))
+            ]
         )
         self._total_work = n_samples * (1 + n_compute) + 1
         self._completed_work = 0

@@ -26,11 +26,13 @@ def upgrade() -> None:
     )
 
     # 2) backfill in small batches (IMPORTANT)
-    op.execute("""
+    op.execute(
+        """
         UPDATE traces
         SET count_on_leaderboard = false
         WHERE count_on_leaderboard IS NULL
-    """)
+    """
+    )
 
     # 3) add constraint + default (fast metadata change)
     op.alter_column(

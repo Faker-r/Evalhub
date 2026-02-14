@@ -27,21 +27,23 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     # Drop the unique index on task_name
     op.drop_index("ix_benchmarks_task_name", table_name="benchmarks")
-    
+
     # Rename task_name column to tasks and change type to JSONB array
     # First, create new column
     op.add_column(
         "benchmarks",
         sa.Column("tasks", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     )
-    
+
     # Migrate existing data: convert task_name string to array with single element
-    op.execute("""
+    op.execute(
+        """
         UPDATE benchmarks 
         SET tasks = jsonb_build_array(task_name)
         WHERE task_name IS NOT NULL
-    """)
-    
+    """
+    )
+
     # Drop old task_name column
     op.drop_column("benchmarks", "task_name")
 
@@ -52,19 +54,21 @@ def downgrade() -> None:
         "benchmarks",
         sa.Column("task_name", sa.String(), nullable=True),
     )
-    
+
     # Migrate data back: take first element from tasks array
-    op.execute("""
+    op.execute(
+        """
         UPDATE benchmarks 
         SET task_name = tasks->0
         WHERE tasks IS NOT NULL AND jsonb_array_length(tasks) > 0
-    """)
-    
+    """
+    )
+
     # Make task_name non-nullable
     op.alter_column("benchmarks", "task_name", nullable=False)
-    
+
     # Drop tasks column
     op.drop_column("benchmarks", "tasks")
-    
+
     # Recreate the unique index
     op.create_index("ix_benchmarks_task_name", "benchmarks", ["task_name"], unique=True)

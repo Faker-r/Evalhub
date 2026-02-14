@@ -68,9 +68,7 @@ class TraceResponse(BaseModel):
     @model_validator(mode="after")
     def strip_traceback_from_summary(self) -> "TraceResponse":
         if self.summary and "traceback" in self.summary:
-            self.summary = {
-                k: v for k, v in self.summary.items() if k != "traceback"
-            }
+            self.summary = {k: v for k, v in self.summary.items() if k != "traceback"}
         return self
 
 

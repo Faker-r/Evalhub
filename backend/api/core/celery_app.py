@@ -19,13 +19,12 @@ def create_celery_app() -> Celery:
         task_acks_late=True,
         task_reject_on_worker_lost=True,
         task_ignore_result=True,
-
         worker_prefetch_multiplier=1,
-
         task_soft_time_limit=3600,
         task_time_limit=3900,
     )
 
     return app
+
 
 celery_app = create_celery_app()

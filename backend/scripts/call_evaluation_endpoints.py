@@ -29,6 +29,7 @@ def get_token() -> str:
         r.raise_for_status()
         return r.json()["access_token"]
 
+
 def main() -> None:
     token = get_token()
     headers = {"Authorization": f"Bearer {token}"}
@@ -40,7 +41,7 @@ def main() -> None:
         "api_name": "deepseek-ai/DeepSeek-V3.2",
         "model_provider": "Baseten",
         "model_provider_slug": "baseten",
-        "model_provider_id": "2"
+        "model_provider_id": "2",
     }
 
     openai_gpt_4_1_config = {
@@ -50,7 +51,7 @@ def main() -> None:
         "api_name": "gpt-4.1",
         "model_provider": "OpenAI",
         "model_provider_slug": "openai",
-        "model_provider_id": "3"
+        "model_provider_id": "3",
     }
 
     openrouter_together_openai_oss_20b_config = {
@@ -60,10 +61,8 @@ def main() -> None:
         "api_name": "openai/gpt-oss-20b",
         "model_provider": "together",
         "model_provider_slug": "together",
-        "model_provider_id": "0"
+        "model_provider_id": "0",
     }
-
-
 
     tasks_payload = {
         "task_name": "gsm8k",
@@ -72,7 +71,7 @@ def main() -> None:
             "n_samples": 50,
             "n_fewshots": 0,
         },
-        "model_completion_config": openrouter_together_openai_oss_20b_config # baseten_deepseek_config
+        "model_completion_config": openrouter_together_openai_oss_20b_config,  # baseten_deepseek_config
     }
 
     flexible_payload = {
@@ -90,14 +89,10 @@ def main() -> None:
         "output_type": "text",
         "text_config": {},
         "judge_type": "llm_as_judge",
-        "guideline_names": [
-            "simplicity",
-            "writing_professionalism_1to10"
-        ],
+        "guideline_names": ["simplicity", "writing_professionalism_1to10"],
         "model_completion_config": openai_gpt_4_1_config,
-        "judge_config": baseten_deepseek_config
+        "judge_config": baseten_deepseek_config,
     }
-
 
     task_list = [
         {
@@ -107,7 +102,7 @@ def main() -> None:
                 "n_samples": 50,
                 "n_fewshots": 0,
             },
-            "model_completion_config": openai_gpt_4_1_config
+            "model_completion_config": openai_gpt_4_1_config,
         },
         {
             "task_name": "openbookqa",
@@ -116,7 +111,7 @@ def main() -> None:
                 "n_samples": 50,
                 "n_fewshots": 0,
             },
-            "model_completion_config": baseten_deepseek_config
+            "model_completion_config": baseten_deepseek_config,
         },
         {
             "task_name": "openbookqa",
@@ -125,8 +120,8 @@ def main() -> None:
                 "n_samples": 50,
                 "n_fewshots": 0,
             },
-            "model_completion_config": baseten_deepseek_config
-        }
+            "model_completion_config": baseten_deepseek_config,
+        },
     ]
 
     with httpx.Client(timeout=60.0) as client:

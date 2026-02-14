@@ -12,6 +12,7 @@ EVAL_PROGRESS_TTL = 3600  # 1 hour
 def _get_sync_client() -> redis.Redis:
     return redis.from_url(settings.REDIS_URL, decode_responses=True)
 
+
 def set_eval_progress(
     trace_id: int,
     stage: str,
