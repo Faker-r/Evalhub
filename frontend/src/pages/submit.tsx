@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect, useRef } from "react";
-import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server, ChevronDown, Eye, Search } from "lucide-react";
+import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server, ChevronDown, Eye, Search, HelpCircle, BookOpen } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -64,6 +66,370 @@ const STEPS = [
 ];
 
 type SelectionType = "dataset" | "benchmark" | null;
+
+// Field help tooltip component
+interface FieldHelpProps {
+  title: string;
+  description: string;
+  examples: string[];
+  tip?: string;
+}
+
+const FieldHelp = ({ title, description, examples, tip }: FieldHelpProps) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help inline-block ml-1 align-text-bottom" />
+    </TooltipTrigger>
+    <TooltipContent className="max-w-sm" side="right">
+      <div className="space-y-2">
+        <p className="font-semibold">{title}</p>
+        <p className="text-sm">{description}</p>
+        <div className="text-sm">
+          <p className="font-medium">Examples:</p>
+          <ul className="list-disc ml-4">
+            {examples.map((ex, i) => (
+              <li key={i} className="font-mono text-xs">{ex}</li>
+            ))}
+          </ul>
+        </div>
+        {tip && (
+          <p className="text-xs text-muted-foreground italic">{tip}</p>
+        )}
+      </div>
+    </TooltipContent>
+  </Tooltip>
+);
+
+// Help content for form fields
+const FIELD_HELP = {
+  inputField: {
+    title: "Input Field",
+    description: "The column name in your dataset that contains the text you want the model to respond to (the prompt or question).",
+    examples: ["question", "prompt", "input", "query", "text"],
+    tip: "Click the eye icon on a dataset to preview its fields.",
+  },
+  choicesField: {
+    title: "Choices Field",
+    description: "The column name containing the list of possible answers. This should be an array/list of options.",
+    examples: ["choices", "options", "answers", "alternatives"],
+    tip: "The field should contain an array like [\"A\", \"B\", \"C\", \"D\"] or [\"Yes\", \"No\"].",
+  },
+  goldAnswerField: {
+    title: "Gold Answer Field",
+    description: "The column name containing the correct/expected answer. For multiple choice, this can be the answer text or index.",
+    examples: ["answer", "correct_answer", "gold", "label", "target"],
+    tip: "For multiple choice: can be the answer text (e.g., 'Paris') or index (e.g., 0, 1, 2).",
+  },
+  goldAnswerFieldText: {
+    title: "Gold Answer Field (Optional)",
+    description: "The column name containing the expected/correct answer for comparison. Leave empty if your dataset doesn't have reference answers.",
+    examples: ["answer", "expected_output", "reference", "gold"],
+    tip: "Used by Exact Match and F1 Score judges to compare model output.",
+  },
+};
+
+// Visual diagram component for ASCII art
+const DiagramBlock = ({ content }: { content: string }) => (
+  <pre className="font-mono text-xs bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto whitespace-pre leading-relaxed">
+    {content}
+  </pre>
+);
+
+// Sample JSON data display component
+const SampleDataBlock = ({ json }: { json: string }) => (
+  <div className="bg-muted rounded-lg p-3 font-mono text-xs overflow-x-auto">
+    <pre className="whitespace-pre text-foreground">{json}</pre>
+  </div>
+);
+
+// Guide content for each field with visual examples
+const FIELD_GUIDES = {
+  inputField: {
+    title: "Input Field",
+    description: "The column in your dataset containing the prompt or question for the model.",
+    sample: `{
+  "question": "What is the capital of France?",  ← Enter "question"
+  "answer": "Paris",
+  "context": "France is a country in Europe..."
+}`,
+    diagram: `┌─────────────────────────────────────────────────┐
+│              YOUR DATASET                       │
+├───────────────────┬───────────┬─────────────────┤
+│  question         │  answer   │  context        │
+├───────────────────┼───────────┼─────────────────┤
+│  "What is 2+2?"   │  "4"      │  "Math quiz"    │
+│  "Capital of US?" │  "DC"     │  "Geography"    │
+└─────────▲─────────┴───────────┴─────────────────┘
+          │
+ Enter this column name: "question"`,
+    tip: "This is the text that will be sent to the model as the prompt.",
+  },
+  outputTypeText: {
+    title: "Text Output",
+    description: "The model generates free-form text responses.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│  PROMPT                     MODEL RESPONSE      │
+├─────────────────────────────────────────────────┤
+│  "Explain photosynthesis"   "Photosynthesis     │
+│                        →     is the process..." │
+│                                                 │
+│  "Write a haiku"            "Autumn moonlight   │
+│                        →     a worm digs..."    │
+└─────────────────────────────────────────────────┘
+
+Use for: Essays, summaries, explanations, creative writing`,
+  },
+  outputTypeMC: {
+    title: "Multiple Choice",
+    description: "The model selects from predefined options.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│  PROMPT                      MODEL RESPONSE     │
+├─────────────────────────────────────────────────┤
+│  "What is 2+2?"                                 │
+│  Choices: [A] 3  [B] 4  [C] 5    →    [B] 4    │
+│                                                 │
+│  "Capital of France?"                           │
+│  Choices: [A] London [B] Paris   →    [B] Paris│
+└─────────────────────────────────────────────────┘
+
+Use for: Quizzes, fact-checking, classification`,
+  },
+  choicesField: {
+    title: "Choices Field",
+    description: "The column containing the list of answer options.",
+    sample: `{
+  "question": "What is 2+2?",
+  "choices": ["3", "4", "5", "6"],  ← Enter "choices"
+  "answer": "4"
+}`,
+    diagram: `           choices field
+                 │
+                 ▼
+      ┌──────────────────┐
+      │ ["3","4","5","6"] │  ← Must be an array/list
+      └──────────────────┘
+                 │
+                 ▼
+  Model sees:  0: 3
+               1: 4  ← correct
+               2: 5
+               3: 6`,
+    tip: "The field must contain an array like [\"A\", \"B\", \"C\"] or [\"Yes\", \"No\"]",
+  },
+  goldAnswerField: {
+    title: "Gold Answer Field",
+    description: "The column containing the correct/expected answer.",
+    sample: `{
+  "question": "What is 2+2?",
+  "choices": ["3", "4", "5", "6"],
+  "answer": "4"  ← Enter "answer" (can be text or index)
+}`,
+    diagram: `Gold answer can be specified two ways:
+
+  Option A: The answer text      Option B: The index
+  ─────────────────────────      ───────────────────
+  "answer": "Paris"              "answer": 1
+       │                              │
+       ▼                              ▼
+  Matches choice text            Points to choices[1]
+  ["London","Paris"]             ["London","Paris"]
+           ▲                              ▲
+           └── "Paris"                    └── index 1 = "Paris"`,
+    tip: "For text output: this is compared against the model's response",
+  },
+  goldAnswerFieldText: {
+    title: "Gold Answer Field (Optional)",
+    description: "The expected answer to compare against the model's output.",
+    sample: `{
+  "question": "Explain gravity briefly.",
+  "reference": "Gravity is the force of attraction..."  ← Enter "reference"
+}`,
+    diagram: `Without gold answer:
+  Model output → (no comparison, judge evaluates quality)
+
+With gold answer:
+  Model output: "Gravity pulls objects together"
+  Gold answer:  "Gravity is the force of attraction"
+        │
+        ▼
+  Exact Match: 0.0 (different text)
+  F1 Score:    0.5 (some word overlap)`,
+    tip: "Leave empty if you only want quality evaluation without a reference answer.",
+  },
+  judgeLLM: {
+    title: "LLM as Judge",
+    description: "Uses another LLM to evaluate response quality based on guidelines.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│           HOW LLM AS JUDGE WORKS                │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│   Question ──► Model ──► Response               │
+│                              │                  │
+│                              ▼                  │
+│                    ┌─────────────────┐          │
+│   Guidelines ────► │  JUDGE MODEL    │          │
+│                    │  (evaluates)    │          │
+│                    └────────┬────────┘          │
+│                             │                   │
+│                             ▼                   │
+│                    Score: 8/10                  │
+│                    "Good but could be clearer"  │
+└─────────────────────────────────────────────────┘
+
+Best for: Subjective quality, writing style, helpfulness`,
+  },
+  judgeExact: {
+    title: "Exact Match",
+    description: "Checks if the model output exactly matches the gold answer.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│           HOW EXACT MATCH WORKS                 │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│   Model Response: "Paris"                       │
+│   Gold Answer:    "Paris"                       │
+│                      │                          │
+│                      ▼                          │
+│              "Paris" == "Paris"                 │
+│                      │                          │
+│                      ▼                          │
+│                  ✓ MATCH (Score: 1.0)           │
+│                                                 │
+│   Model Response: "paris"                       │
+│   Gold Answer:    "Paris"                       │
+│                      │                          │
+│                      ▼                          │
+│              "paris" != "Paris"                 │
+│                      │                          │
+│                      ▼                          │
+│                  ✗ NO MATCH (Score: 0.0)        │
+└─────────────────────────────────────────────────┘
+
+Best for: Factual Q&A, multiple choice, classification`,
+  },
+  judgeF1: {
+    title: "F1 Score",
+    description: "Measures token-level overlap between response and gold answer.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│           HOW F1 SCORE WORKS                    │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│   Model Response: "The capital is Paris"        │
+│   Gold Answer:    "Paris is the capital"        │
+│                          │                      │
+│                          ▼                      │
+│              Tokenize both strings:             │
+│   Response: [The, capital, is, Paris]           │
+│   Gold:     [Paris, is, the, capital]           │
+│                          │                      │
+│                          ▼                      │
+│              Calculate token overlap:           │
+│   Shared: {capital, is, Paris} = 3 tokens       │
+│                          │                      │
+│                          ▼                      │
+│              F1 = 2 × (P × R) / (P + R)         │
+│                  ≈ 0.86 (partial match!)        │
+└─────────────────────────────────────────────────┘
+
+Best for: Extractive Q&A, summaries, paraphrasing`,
+  },
+  // Benchmark-specific guides
+  numSamples: {
+    title: "Number of Samples",
+    description: "How many examples from the benchmark to evaluate.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│           BENCHMARK DATASET                      │
+├─────────────────────────────────────────────────┤
+│  Sample 1: "What is 2+2?"          ✓ Evaluated  │
+│  Sample 2: "Capital of France?"    ✓ Evaluated  │
+│  Sample 3: "Who wrote Hamlet?"     ✓ Evaluated  │
+│  Sample 4: "Largest planet?"       ✗ Skipped    │
+│  Sample 5: "Speed of light?"       ✗ Skipped    │
+│  ... (1000 more samples)           ✗ Skipped    │
+└─────────────────────────────────────────────────┘
+         ▲
+         │
+  numSamples = 3  (only first 3 evaluated)
+
+Leave empty to evaluate ALL samples in the benchmark.`,
+    tip: "Use a smaller number (e.g., 10-50) for quick testing, then run the full benchmark.",
+  },
+  numFewShots: {
+    title: "Few-Shot Examples",
+    description: "Examples included in the prompt to help the model understand the task format.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│           PROMPT SENT TO MODEL                   │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│  ┌─────────────────────────────────────────┐    │
+│  │ FEW-SHOT EXAMPLES (numFewShots = 2):    │    │
+│  │                                          │    │
+│  │ Example 1:                               │    │
+│  │ Q: What is the capital of Spain?         │    │
+│  │ A: Madrid                                │    │
+│  │                                          │    │
+│  │ Example 2:                               │    │
+│  │ Q: What is the capital of Italy?         │    │
+│  │ A: Rome                                  │    │
+│  └─────────────────────────────────────────┘    │
+│                                                  │
+│  ┌─────────────────────────────────────────┐    │
+│  │ ACTUAL QUESTION:                        │    │
+│  │ Q: What is the capital of France?       │    │
+│  │ A: ???  ← Model generates this          │    │
+│  └─────────────────────────────────────────┘    │
+│                                                  │
+└─────────────────────────────────────────────────┘
+
+0 = Zero-shot (no examples, just the question)
+5 = Five examples shown before each question`,
+    tip: "Few-shot learning often improves accuracy. Start with 0 or 5 to compare.",
+  },
+};
+
+// Collapsible guide section component
+interface GuideExampleProps {
+  sample?: string;
+  diagram?: string;
+  tip?: string;
+}
+
+const GuideExample = ({ sample, diagram, tip }: GuideExampleProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>{isOpen ? "Hide example" : "Show example"}</span>
+          <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", isOpen && "rotate-180")} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-3 space-y-3">
+        {sample && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Example dataset row:</p>
+            <SampleDataBlock json={sample} />
+          </div>
+        )}
+        {diagram && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">How it works:</p>
+            <DiagramBlock content={diagram} />
+          </div>
+        )}
+        {tip && (
+          <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2">
+            💡 {tip}
+          </p>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
 
 // Helper function to convert ModelConfig to API format
 function convertModelConfigToAPI(config: ModelConfig): EvaluationModelConfig {
@@ -200,6 +566,26 @@ export default function Submit() {
   const benchmarks = benchmarksData?.benchmarks || [];
   const guidelines = guidelinesData?.guidelines || [];
   const apiKeys = apiKeysData?.api_key_providers || [];
+
+  // Get the selected dataset's ID for inline preview in Step 2
+  const selectedDatasetId = datasets.find((ds: any) => ds.name === selectedDataset)?.id;
+
+  // Fetch preview for the selected dataset (for inline display in Step 2)
+  const { data: inlinePreviewData, isLoading: isInlinePreviewLoading } = useQuery({
+    queryKey: ['dataset-preview-inline', selectedDatasetId],
+    queryFn: () => selectedDatasetId ? apiClient.getDatasetPreview(selectedDatasetId) : null,
+    enabled: !!selectedDatasetId && currentStep === 2 && selectionType === "dataset",
+  });
+
+  // State for benchmark preview modal
+  const [benchmarkPreviewOpen, setBenchmarkPreviewOpen] = useState(false);
+
+  // Fetch preview for the selected benchmark (for modal display)
+  const { data: benchmarkPreviewData, isLoading: isBenchmarkPreviewLoading } = useQuery({
+    queryKey: ['benchmark-preview', selectedBenchmark?.id],
+    queryFn: () => selectedBenchmark?.id ? apiClient.getBenchmarkPreview(selectedBenchmark.id) : null,
+    enabled: !!selectedBenchmark?.id && benchmarkPreviewOpen,
+  });
 
   const isOpenRouterSelectionComplete = (config: ModelConfig) =>
     Boolean(config.openrouter_provider_slug && config.openrouter_model_id);
@@ -735,9 +1121,99 @@ export default function Submit() {
 
                 {currentStep === 2 && selectionType === "dataset" && (
                   <div className="space-y-6">
+                    {/* Dataset Preview Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-base font-semibold">Your Dataset: {selectedDataset}</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Reference your data below to find the correct field names
+                          </p>
+                        </div>
+                      </div>
+
+                      {isInlinePreviewLoading ? (
+                        <div className="flex justify-center p-6 border rounded-lg bg-muted/30">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        </div>
+                      ) : inlinePreviewData?.samples && inlinePreviewData.samples.length > 0 ? (
+                        <Collapsible defaultOpen>
+                          <CollapsibleTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex items-center justify-between w-full p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-2 text-sm">
+                                <Database className="w-4 h-4 text-muted-foreground" />
+                                <span className="font-medium">Dataset Preview</span>
+                                <span className="text-muted-foreground">
+                                  ({inlinePreviewData.samples.length} samples)
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">
+                                  Fields: {Array.from(new Set(inlinePreviewData.samples.flatMap((s: any) => Object.keys(s)))).join(", ")}
+                                </span>
+                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="mt-2 border rounded-lg overflow-hidden">
+                              <div className="max-h-64 overflow-auto">
+                                <Table>
+                                  <TableHeader className="sticky top-0 bg-background z-10">
+                                    <TableRow>
+                                      <TableHead className="w-12 text-xs">#</TableHead>
+                                      {Array.from(
+                                        new Set(inlinePreviewData.samples.flatMap((s: any) => Object.keys(s)))
+                                      ).map((key) => (
+                                        <TableHead key={key as string} className="text-xs font-mono">
+                                          {key as string}
+                                        </TableHead>
+                                      ))}
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {inlinePreviewData.samples.slice(0, 5).map((sample: any, idx: number) => (
+                                      <TableRow key={idx}>
+                                        <TableCell className="text-muted-foreground text-xs">{idx + 1}</TableCell>
+                                        {Array.from(
+                                          new Set(inlinePreviewData.samples.flatMap((s: any) => Object.keys(s)))
+                                        ).map((key) => (
+                                          <TableCell key={key as string} className="max-w-xs align-top">
+                                            <ExpandableCell value={sample[key as string]} />
+                                          </TableCell>
+                                        ))}
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                              {inlinePreviewData.samples.length > 5 && (
+                                <div className="text-xs text-center text-muted-foreground py-2 border-t bg-muted/20">
+                                  Showing 5 of {inlinePreviewData.samples.length} samples
+                                </div>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      ) : (
+                        <div className="text-center py-6 text-muted-foreground border rounded-lg bg-muted/30">
+                          No preview data available
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Separator */}
+                    <div className="border-t" />
+
                     {/* 1. Input Field */}
                     <div className="space-y-2">
-                      <Label className="text-base font-semibold">Input Field</Label>
+                      <Label className="text-base font-semibold">
+                        Input Field
+                        <FieldHelp {...FIELD_HELP.inputField} />
+                      </Label>
                       <p className="text-sm text-muted-foreground">
                         The field name in your dataset that contains the input/prompt
                       </p>
@@ -745,6 +1221,11 @@ export default function Submit() {
                         value={inputField}
                         onChange={(e) => setInputField(e.target.value)}
                         placeholder="e.g., question, input, prompt"
+                      />
+                      <GuideExample
+                        sample={FIELD_GUIDES.inputField.sample}
+                        diagram={FIELD_GUIDES.inputField.diagram}
+                        tip={FIELD_GUIDES.inputField.tip}
                       />
                     </div>
 
@@ -773,6 +1254,9 @@ export default function Submit() {
                           >
                             <div className="font-medium">Text</div>
                             <div className="text-sm text-muted-foreground">Free-form text response</div>
+                            {outputType === "text" && (
+                              <GuideExample diagram={FIELD_GUIDES.outputTypeText.diagram} />
+                            )}
                           </div>
                           <div
                             onClick={() => {
@@ -790,6 +1274,9 @@ export default function Submit() {
                           >
                             <div className="font-medium">Multiple Choice</div>
                             <div className="text-sm text-muted-foreground">Select from options</div>
+                            {outputType === "multiple_choice" && (
+                              <GuideExample diagram={FIELD_GUIDES.outputTypeMC.diagram} />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -798,7 +1285,10 @@ export default function Submit() {
                     {/* 2.1 Text config - gold answer field (optional) */}
                     {outputType === "text" && (
                       <div className="space-y-2">
-                        <Label className="text-base font-semibold">Gold Answer Field (Optional)</Label>
+                        <Label className="text-base font-semibold">
+                          Gold Answer Field (Optional)
+                          <FieldHelp {...FIELD_HELP.goldAnswerFieldText} />
+                        </Label>
                         <p className="text-sm text-muted-foreground">
                           The field name containing the expected/correct answer for comparison
                         </p>
@@ -807,6 +1297,11 @@ export default function Submit() {
                           onChange={(e) => setGoldAnswerField(e.target.value)}
                           placeholder="e.g., answer, expected_output"
                         />
+                        <GuideExample
+                          sample={FIELD_GUIDES.goldAnswerFieldText.sample}
+                          diagram={FIELD_GUIDES.goldAnswerFieldText.diagram}
+                          tip={FIELD_GUIDES.goldAnswerFieldText.tip}
+                        />
                       </div>
                     )}
 
@@ -814,7 +1309,10 @@ export default function Submit() {
                     {outputType === "multiple_choice" && (
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label className="text-base font-semibold">Choices Field</Label>
+                          <Label className="text-base font-semibold">
+                            Choices Field
+                            <FieldHelp {...FIELD_HELP.choicesField} />
+                          </Label>
                           <p className="text-sm text-muted-foreground">
                             The field name containing the list of choices
                           </p>
@@ -823,9 +1321,17 @@ export default function Submit() {
                             onChange={(e) => setChoicesField(e.target.value)}
                             placeholder="e.g., choices, options"
                           />
+                          <GuideExample
+                            sample={FIELD_GUIDES.choicesField.sample}
+                            diagram={FIELD_GUIDES.choicesField.diagram}
+                            tip={FIELD_GUIDES.choicesField.tip}
+                          />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-base font-semibold">Gold Answer Field</Label>
+                          <Label className="text-base font-semibold">
+                            Gold Answer Field
+                            <FieldHelp {...FIELD_HELP.goldAnswerField} />
+                          </Label>
                           <p className="text-sm text-muted-foreground">
                             The field name containing the correct answer
                           </p>
@@ -833,6 +1339,11 @@ export default function Submit() {
                             value={goldAnswerField}
                             onChange={(e) => setGoldAnswerField(e.target.value)}
                             placeholder="e.g., answer, correct_choice"
+                          />
+                          <GuideExample
+                            sample={FIELD_GUIDES.goldAnswerField.sample}
+                            diagram={FIELD_GUIDES.goldAnswerField.diagram}
+                            tip={FIELD_GUIDES.goldAnswerField.tip}
                           />
                         </div>
                       </div>
@@ -857,6 +1368,9 @@ export default function Submit() {
                           >
                             <div className="font-medium">LLM as Judge</div>
                             <div className="text-sm text-muted-foreground">Use an LLM to evaluate responses with guidelines</div>
+                            {judgeType === "llm_as_judge" && (
+                              <GuideExample diagram={FIELD_GUIDES.judgeLLM.diagram} />
+                            )}
                           </div>
                           <div
                             onClick={() => {
@@ -872,6 +1386,9 @@ export default function Submit() {
                           >
                             <div className="font-medium">Exact Match</div>
                             <div className="text-sm text-muted-foreground">Compare output exactly to gold answer</div>
+                            {judgeType === "exact_match" && (
+                              <GuideExample diagram={FIELD_GUIDES.judgeExact.diagram} />
+                            )}
                           </div>
                           <div
                             onClick={() => {
@@ -887,6 +1404,9 @@ export default function Submit() {
                           >
                             <div className="font-medium">F1 Score</div>
                             <div className="text-sm text-muted-foreground">Token-level F1 comparison</div>
+                            {judgeType === "f1_score" && (
+                              <GuideExample diagram={FIELD_GUIDES.judgeF1.diagram} />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -939,7 +1459,44 @@ export default function Submit() {
                 )}
 
                 {currentStep === 2 && selectionType === "benchmark" && (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
+                    {/* Benchmark Info Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-base font-semibold">Benchmark: {selectedBenchmark?.dataset_name}</Label>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedBenchmark?.description || "Configure your benchmark evaluation"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Benchmark source info - clickable to preview */}
+                      <button
+                        type="button"
+                        onClick={() => setBenchmarkPreviewOpen(true)}
+                        className="w-full p-3 border rounded-lg bg-muted/30 text-left transition-colors hover:bg-muted/50 hover:border-mint-300 cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Database className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">Source Dataset</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-mint-600">
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Preview</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          This benchmark uses the <code className="font-mono bg-muted px-1 rounded">{selectedBenchmark?.hf_repo || selectedBenchmark?.dataset_name}</code> dataset
+                          from HuggingFace with {selectedBenchmark?.tasks?.length || 0} predefined tasks.
+                        </p>
+                      </button>
+                    </div>
+
+                    {/* Separator */}
+                    <div className="border-t" />
+
                     <div>
                       <Label className="text-base font-semibold">Select Task</Label>
                       <p className="text-sm text-muted-foreground mb-3">
@@ -1004,9 +1561,20 @@ export default function Submit() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    {/* Separator */}
+                    <div className="border-t" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label>Number of Samples</Label>
+                        <Label className="text-base font-semibold">
+                          Number of Samples
+                          <FieldHelp
+                            title="Number of Samples"
+                            description="How many examples from the benchmark to evaluate"
+                            examples={["10 (quick test)", "100 (moderate)", "empty (all samples)"]}
+                            tip="Leave empty to evaluate all samples in the benchmark"
+                          />
+                        </Label>
                         <Input
                           type="number"
                           min="1"
@@ -1014,13 +1582,22 @@ export default function Submit() {
                           onChange={(e) => setNumSamples(e.target.value ? parseInt(e.target.value) : undefined)}
                           placeholder="All samples"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Number of samples to evaluate (leave empty for all)
-                        </p>
+                        <GuideExample
+                          diagram={FIELD_GUIDES.numSamples.diagram}
+                          tip={FIELD_GUIDES.numSamples.tip}
+                        />
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Number of Few-Shot Examples</Label>
+                        <Label className="text-base font-semibold">
+                          Number of Few-Shot Examples
+                          <FieldHelp
+                            title="Few-Shot Examples"
+                            description="Examples included in each prompt to help the model understand the task"
+                            examples={["0 (zero-shot)", "3 (few-shot)", "5 (recommended)"]}
+                            tip="More examples often improve accuracy but increase cost"
+                          />
+                        </Label>
                         <Input
                           type="number"
                           min="0"
@@ -1028,9 +1605,10 @@ export default function Submit() {
                           onChange={(e) => setNumFewShots(parseInt(e.target.value) || 0)}
                           placeholder="e.g., 0, 5, 10"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Examples to include in the prompt for few-shot learning
-                        </p>
+                        <GuideExample
+                          diagram={FIELD_GUIDES.numFewShots.diagram}
+                          tip={FIELD_GUIDES.numFewShots.tip}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1236,6 +1814,16 @@ export default function Submit() {
             <DialogTitle>Dataset Content</DialogTitle>
             <DialogDescription>
               Showing all samples from the selected dataset.
+              {previewData?.samples && previewData.samples.length > 0 && (
+                <span className="block mt-2">
+                  <span className="font-medium">Available fields: </span>
+                  <span className="font-mono text-xs">
+                    {Array.from(
+                      new Set(previewData.samples.flatMap((s: any) => Object.keys(s)))
+                    ).join(", ")}
+                  </span>
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -1285,6 +1873,80 @@ export default function Submit() {
             ) : (
                 <div className="text-center text-muted-foreground p-4">
                     No preview available
+                </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Benchmark Preview Dialog */}
+      <Dialog open={benchmarkPreviewOpen} onOpenChange={setBenchmarkPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Benchmark Data Preview</DialogTitle>
+            <DialogDescription>
+              Showing sample data from <code className="font-mono bg-muted px-1 rounded">{benchmarkPreviewData?.hf_repo || selectedBenchmark?.hf_repo}</code> on HuggingFace.
+              {benchmarkPreviewData?.samples && benchmarkPreviewData.samples.length > 0 && (
+                <span className="block mt-2">
+                  <span className="font-medium">Available fields: </span>
+                  <span className="font-mono text-xs">
+                    {Array.from(
+                      new Set(benchmarkPreviewData.samples.flatMap((s: any) => Object.keys(s)))
+                    ).join(", ")}
+                  </span>
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto min-h-0 py-4">
+            {isBenchmarkPreviewLoading ? (
+               <div className="flex flex-col items-center justify-center p-8 gap-3">
+                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                 <p className="text-sm text-muted-foreground">Loading from HuggingFace...</p>
+               </div>
+            ) : benchmarkPreviewData?.samples && benchmarkPreviewData.samples.length > 0 ? (
+              <div className="overflow-x-auto">
+                {(() => {
+                  // Get all unique keys from all samples
+                  const allKeys = Array.from(
+                    new Set(
+                      benchmarkPreviewData.samples.flatMap((sample: any) => Object.keys(sample))
+                    )
+                  );
+
+                  return (
+                    <div className="border rounded-md">
+                      <Table>
+                        <TableHeader className="sticky top-0 bg-background z-10">
+                          <TableRow>
+                            <TableHead className="w-12">#</TableHead>
+                            {allKeys.map((key) => (
+                              <TableHead key={key}>{key}</TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {benchmarkPreviewData.samples.map((sample: any, idx: number) => (
+                            <TableRow key={idx}>
+                              <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                              {allKeys.map((key) => (
+                                <TableCell key={key} className="max-w-md align-top">
+                                  <ExpandableCell value={sample[key]} />
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+                <div className="text-center text-muted-foreground p-4">
+                    <p>No preview available</p>
+                    <p className="text-xs mt-2">The benchmark data could not be loaded from HuggingFace.</p>
                 </div>
             )}
           </div>

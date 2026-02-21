@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.benchmarks.schemas import (
     BenchmarkListResponse,
+    BenchmarkPreviewResponse,
     BenchmarkResponse,
     BenchmarkTasksListResponse,
     TaskDetailsResponse,
@@ -81,3 +82,18 @@ async def get_benchmark_tasks(
     """Get all tasks for a benchmark with size and token information."""
     logger.debug(f"Getting tasks for benchmark: {benchmark_id}")
     return await BenchmarkService(session).get_benchmark_tasks(benchmark_id)
+
+
+@router.get("/{benchmark_id}/preview", response_model=BenchmarkPreviewResponse)
+async def get_benchmark_preview(
+    benchmark_id: int,
+    num_samples: int = Query(10, ge=1, le=50, description="Number of samples to return"),
+    session: AsyncSession = Depends(get_session),
+) -> BenchmarkPreviewResponse:
+    """Get a preview of benchmark data from HuggingFace.
+
+    Streams data from HuggingFace to avoid downloading the entire dataset.
+    Returns the first `num_samples` rows from the dataset.
+    """
+    logger.debug(f"Getting preview for benchmark: {benchmark_id}")
+    return await BenchmarkService(session).get_benchmark_preview(benchmark_id, num_samples)

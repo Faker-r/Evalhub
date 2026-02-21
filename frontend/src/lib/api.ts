@@ -471,6 +471,14 @@ class ApiClient {
     return response.task_details_nested_dict || {};
   }
 
+  async getBenchmarkPreview(benchmarkId: number, numSamples: number = 10) {
+    return this.request<{
+      samples: any[];
+      hf_repo: string;
+      dataset_name: string;
+    }>(`/benchmarks/${benchmarkId}/preview?num_samples=${numSamples}`);
+  }
+
   // Models and Providers endpoints
   async getProviders(params?: { page?: number; page_size?: number }) {
     const queryParams = new URLSearchParams();

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.benchmarks.repository import BenchmarkRepository
 from api.benchmarks.schemas import (
     BenchmarkListResponse,
+    BenchmarkPreviewResponse,
     BenchmarkResponse,
     BenchmarkTaskResponse,
     BenchmarkTasksListResponse,
@@ -142,3 +143,98 @@ class BenchmarkService:
         return BenchmarkTasksListResponse(
             tasks=[BenchmarkTaskResponse.model_validate(t) for t in tasks]
         )
+
+    async def get_benchmark_preview(
+        self, benchmark_id: int, num_samples: int = 10
+    ) -> BenchmarkPreviewResponse:
+        """Get a preview of benchmark data from HuggingFace.
+
+        Args:
+            benchmark_id: Benchmark ID
+            num_samples: Number of samples to return (default 10)
+
+        Returns:
+            BenchmarkPreviewResponse: Preview samples from the benchmark
+        """
+        from datasets import load_dataset
+
+        benchmark = await self.repository.get_by_id(benchmark_id)
+
+        try:
+            # Try to load the dataset from HuggingFace
+            # Use streaming to avoid downloading entire dataset
+            dataset = load_dataset(
+                benchmark.hf_repo,
+                split="test",
+                streaming=True,
+                trust_remote_code=True,
+            )
+
+            # Take first num_samples
+            samples = []
+            for i, sample in enumerate(dataset):
+                if i >= num_samples:
+                    break
+                # Convert to dict and handle non-serializable types
+                sample_dict = {}
+                for key, value in sample.items():
+                    try:
+                        # Try to convert to JSON-serializable type
+                        if hasattr(value, "tolist"):
+                            sample_dict[key] = value.tolist()
+                        elif hasattr(value, "__dict__"):
+                            sample_dict[key] = str(value)
+                        else:
+                            sample_dict[key] = value
+                    except Exception:
+                        sample_dict[key] = str(value)
+                samples.append(sample_dict)
+
+            return BenchmarkPreviewResponse(
+                samples=samples,
+                hf_repo=benchmark.hf_repo,
+                dataset_name=benchmark.dataset_name,
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to load benchmark preview: {e}")
+            # Try with different splits
+            for split in ["train", "validation", "dev"]:
+                try:
+                    dataset = load_dataset(
+                        benchmark.hf_repo,
+                        split=split,
+                        streaming=True,
+                        trust_remote_code=True,
+                    )
+                    samples = []
+                    for i, sample in enumerate(dataset):
+                        if i >= num_samples:
+                            break
+                        sample_dict = {}
+                        for key, value in sample.items():
+                            try:
+                                if hasattr(value, "tolist"):
+                                    sample_dict[key] = value.tolist()
+                                elif hasattr(value, "__dict__"):
+                                    sample_dict[key] = str(value)
+                                else:
+                                    sample_dict[key] = value
+                            except Exception:
+                                sample_dict[key] = str(value)
+                        samples.append(sample_dict)
+
+                    return BenchmarkPreviewResponse(
+                        samples=samples,
+                        hf_repo=benchmark.hf_repo,
+                        dataset_name=benchmark.dataset_name,
+                    )
+                except Exception:
+                    continue
+
+            # If all splits fail, return empty
+            return BenchmarkPreviewResponse(
+                samples=[],
+                hf_repo=benchmark.hf_repo,
+                dataset_name=benchmark.dataset_name,
+            )
