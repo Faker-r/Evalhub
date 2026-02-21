@@ -22,6 +22,18 @@ from api.evaluations.schemas import (
 )
 
 
+class DatasetFieldError(Exception):
+    """Raised when a required field is missing from the dataset."""
+
+    pass
+
+
+class DatasetValueError(Exception):
+    """Raised when a field value is invalid."""
+
+    pass
+
+
 class FlexibleDatasetTask:
     MULTIPLE_CHOICE_PROMPT = """
     Answer the following multiple choice question:
@@ -79,6 +91,29 @@ class FlexibleDatasetTask:
             return [Metrics.exact_match]
         return []
 
+    @staticmethod
+    def _get_field_value(line: dict, field_name: str, field_type: str):
+        """Safely get a field value from a dataset line with clear error messages.
+
+        Args:
+            line: The dataset row/line dictionary
+            field_name: The field name to access
+            field_type: Human-readable description of the field (e.g., "input", "choices")
+
+        Returns:
+            The field value
+
+        Raises:
+            DatasetFieldError: If the field is not found in the line
+        """
+        if field_name not in line:
+            available_fields = ", ".join(sorted(line.keys()))
+            raise DatasetFieldError(
+                f"{field_type.capitalize()} field '{field_name}' not found in dataset. "
+                f"Available fields: {available_fields}"
+            )
+        return line[field_name]
+
     def _create_prompt_function(self):
         input_field = self.input_field
         output_type = self.output_type
@@ -87,10 +122,25 @@ class FlexibleDatasetTask:
         dataset_name = self.dataset_name
 
         def line_to_prompt(line, _doc):
-            query = line[input_field]
+            # Get input/query field with clear error message
+            query = self._get_field_value(line, input_field, "input")
 
             if output_type == OutputType.MULTIPLE_CHOICE:
-                choices = line[mc_config.choices_field]
+                # Get choices field with clear error message
+                choices = self._get_field_value(line, mc_config.choices_field, "choices")
+
+                # Validate choices is a list
+                if not isinstance(choices, list):
+                    raise DatasetValueError(
+                        f"Choices field '{mc_config.choices_field}' must be a list, "
+                        f"got {type(choices).__name__}: {choices}"
+                    )
+
+                if len(choices) == 0:
+                    raise DatasetValueError(
+                        f"Choices field '{mc_config.choices_field}' is empty. "
+                        "Expected a list of answer options."
+                    )
 
                 query_with_choices = self.MULTIPLE_CHOICE_PROMPT.format(
                     query=query,
@@ -99,9 +149,35 @@ class FlexibleDatasetTask:
                     ),
                 )
 
-                gold_index = line[mc_config.gold_answer_field]
+                # Get gold answer field with clear error message
+                gold_index = self._get_field_value(
+                    line, mc_config.gold_answer_field, "gold answer"
+                )
+
+                # Handle gold answer - convert string to index if needed
                 if isinstance(gold_index, str):
-                    gold_index = choices.index(gold_index)
+                    try:
+                        gold_index = choices.index(gold_index)
+                    except ValueError:
+                        choices_str = ", ".join([f"'{c}'" for c in choices])
+                        raise DatasetValueError(
+                            f"Gold answer '{gold_index}' not found in choices list. "
+                            f"Available choices: [{choices_str}]"
+                        )
+
+                # Validate gold_index is a valid index
+                if not isinstance(gold_index, int):
+                    raise DatasetValueError(
+                        f"Gold answer must be a string (matching a choice) or an integer index, "
+                        f"got {type(gold_index).__name__}: {gold_index}"
+                    )
+
+                if gold_index < 0 or gold_index >= len(choices):
+                    raise DatasetValueError(
+                        f"Gold answer index {gold_index} is out of range. "
+                        f"Valid indices: 0 to {len(choices) - 1}"
+                    )
+
                 return Doc(
                     task_name=dataset_name,
                     query=query_with_choices,
@@ -109,11 +185,12 @@ class FlexibleDatasetTask:
                     gold_index=gold_index,
                 )
             else:
+                # Text output type
                 choices = []
                 gold_index = 0
                 if text_config and text_config.gold_answer_field:
                     gold_answer = line.get(text_config.gold_answer_field)
-                    if gold_answer:
+                    if gold_answer is not None:
                         # Convert gold answer to list of strings
                         choices = (
                             [str(answer) for answer in gold_answer]
