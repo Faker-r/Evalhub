@@ -38,6 +38,20 @@ class GuidelineService:
 
         return await self.repository.create(guideline_data, user_id)
 
+    def _check_access(self, guideline: Guideline, user_id: str | None) -> bool:
+        """Check if user has access to the guideline.
+
+        Args:
+            guideline: Guideline to check access for
+            user_id: ID of the user requesting access (None for unauthenticated)
+
+        Returns:
+            bool: True if user has access, False otherwise
+        """
+        if guideline.visibility == "public":
+            return True
+        return user_id is not None and guideline.user_id == user_id
+
     async def get_all_guidelines(self, user_id: str | None = None) -> list[Guideline]:
         """Get all guidelines visible to the user.
 

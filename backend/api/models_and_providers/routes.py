@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.database import get_session
 from api.core.logging import get_logger
-from api.core.security import CurrentUser, get_current_user
+from api.core.security import CurrentUser, get_current_user, get_optional_current_user
 from api.models_and_providers.schemas import (
     ModelCreate,
     ModelListResponse,
@@ -50,12 +50,9 @@ async def list_providers(
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(50, ge=1, le=100, description="Number of items per page"),
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
 ) -> ProviderListResponse:
-    """List all providers with pagination.
-
-    Requires authentication.
-    """
+    """List all providers with pagination."""
     logger.debug(f"Listing providers: page={page}, page_size={page_size}")
     return await ModelsAndProvidersService(session).list_providers(page, page_size)
 
@@ -64,12 +61,9 @@ async def list_providers(
 async def get_provider(
     provider_id: str,
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
 ) -> ProviderResponse:
-    """Get a provider by ID.
-
-    Requires authentication.
-    """
+    """Get a provider by ID."""
     logger.debug(f"Getting provider: {provider_id}")
     return await ModelsAndProvidersService(session).get_provider(provider_id)
 
@@ -78,12 +72,9 @@ async def get_provider(
 async def get_provider_by_name(
     name: str,
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
 ) -> ProviderResponse:
-    """Get a provider by name.
-
-    Requires authentication.
-    """
+    """Get a provider by name."""
     logger.debug(f"Getting provider by name: {name}")
     return await ModelsAndProvidersService(session).get_provider_by_name(name)
 
@@ -144,12 +135,11 @@ async def list_models(
     page_size: int = Query(50, ge=1, le=100, description="Number of items per page"),
     provider_id: str | None = Query(None, description="Filter by provider ID"),
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
 ) -> ModelListResponse:
     """List all models with pagination.
 
     Optionally filter by provider ID.
-    Requires authentication.
     """
     logger.debug(
         f"Listing models: page={page}, page_size={page_size}, provider_id={provider_id}"
@@ -163,12 +153,9 @@ async def list_models(
 async def get_model(
     model_id: str,
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
 ) -> ModelResponse:
-    """Get a model by ID.
-
-    Requires authentication.
-    """
+    """Get a model by ID."""
     logger.debug(f"Getting model: {model_id}")
     return await ModelsAndProvidersService(session).get_model(model_id)
 
@@ -208,7 +195,7 @@ async def delete_model(
 @router.get("/openrouter/models", response_model=OpenRouterModelListResponse)
 async def get_openrouter_models(
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     provider_slug: str | None = Query(None),
@@ -228,7 +215,7 @@ async def get_openrouter_models(
 @router.get("/openrouter/providers", response_model=OpenRouterProviderListResponse)
 async def get_openrouter_providers(
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     search: str | None = Query(None),
@@ -250,12 +237,9 @@ async def get_openrouter_providers(
 async def get_openrouter_models_by_provider(
     provider_slug: str,
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
 ) -> OpenRouterModelListResponse:
-    """Get OpenRouter models hosted by provider slug.
-
-    Requires authentication.
-    """
+    """Get OpenRouter models hosted by provider slug."""
     return await ModelsAndProvidersService(session).get_openrouter_models_by_provider(
         provider_slug
     )
@@ -268,12 +252,9 @@ async def get_openrouter_models_by_provider(
 async def get_openrouter_providers_by_model(
     model_id: str,
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
 ) -> OpenRouterProvidersByModelResponse:
-    """Get provider names for a given OpenRouter model ID.
-
-    Requires authentication.
-    """
+    """Get provider names for a given OpenRouter model ID."""
     return await ModelsAndProvidersService(session).get_openrouter_providers_by_model(
         model_id
     )

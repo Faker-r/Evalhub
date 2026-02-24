@@ -51,8 +51,9 @@ async def get_datasets(
 async def get_dataset_preview(
     dataset_id: int,
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
 ) -> DatasetPreviewResponse:
     """Get a preview of a dataset."""
-    samples = await DatasetService(session).get_dataset_preview(dataset_id)
+    user_id = current_user.id if current_user else None
+    samples = await DatasetService(session).get_dataset_preview(dataset_id, user_id)
     return DatasetPreviewResponse(samples=samples)

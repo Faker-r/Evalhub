@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.database import get_session
 from api.core.logging import get_logger
-from api.core.security import CurrentUser, get_current_user
+from api.core.security import CurrentUser, get_current_user, get_optional_current_user
 from api.guidelines.schemas import (
     GuidelineCreate,
     GuidelineListResponse,
@@ -34,9 +34,10 @@ async def add_guideline(
 @router.get("", response_model=GuidelineListResponse)
 async def get_guidelines(
     session: AsyncSession = Depends(get_session),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser | None = Depends(get_optional_current_user),
 ) -> GuidelineListResponse:
     """Get all guidelines."""
-    logger.debug(f"Getting all guidelines for user {current_user.email}")
-    guidelines = await GuidelineService(session).get_all_guidelines(current_user.id)
+    logger.debug(f"Getting all guidelines for user {current_user.email if current_user else 'anonymous'}")
+    user_id = current_user.id if current_user else None
+    guidelines = await GuidelineService(session).get_all_guidelines(user_id)
     return GuidelineListResponse(guidelines=guidelines)

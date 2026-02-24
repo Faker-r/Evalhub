@@ -70,7 +70,6 @@ export default function Datasets() {
   const { data: datasetsData, isLoading } = useQuery({
     queryKey: ['datasets'],
     queryFn: () => apiClient.getDatasets(),
-    enabled: isAuthenticated,
   });
 
   const datasets = datasetsData?.datasets || [];
@@ -140,18 +139,6 @@ export default function Datasets() {
     setPreviewModalOpen(true);
   };
   
-  if (!isAuthenticated) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <Database className="w-16 h-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Please login to view datasets</h2>
-          <p className="text-muted-foreground">You need to be authenticated to access this page.</p>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -164,98 +151,100 @@ export default function Datasets() {
                 Browse and upload evaluation datasets in JSONL format
               </p>
             </div>
-            <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Upload className="w-4 h-4" />
-                  Upload Dataset
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Upload New Dataset</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Dataset Name</Label>
-                    <Input
-                      id="name"
-                      placeholder="My Dataset"
-                      value={uploadData.name}
-                      onChange={(e) =>
-                        setUploadData({ ...uploadData, name: e.target.value })
-                      }
-                    />
+            {isAuthenticated && (
+              <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Upload className="w-4 h-4" />
+                    Upload Dataset
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Upload New Dataset</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Dataset Name</Label>
+                      <Input
+                        id="name"
+                        placeholder="My Dataset"
+                        value={uploadData.name}
+                        onChange={(e) =>
+                          setUploadData({ ...uploadData, name: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Category</Label>
+                      <TagInput 
+                        value={uploadData.categories}
+                        onChange={(tags) => setUploadData({ ...uploadData, categories: tags })}
+                        placeholder="e.g. coding, humor (press Enter to add)"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="visibility">Visibility</Label>
+                      <Select 
+                        value={uploadData.visibility} 
+                        onValueChange={(value: "public" | "private") => 
+                          setUploadData({ ...uploadData, visibility: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="public">
+                            <div className="flex items-center gap-2">
+                              <Globe className="w-4 h-4" />
+                              <span>Public - Visible to everyone</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="private">
+                            <div className="flex items-center gap-2">
+                              <Lock className="w-4 h-4" />
+                              <span>Private - Only visible to you</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="file">JSONL File</Label>
+                      <Input
+                        id="file"
+                        type="file"
+                        accept=".jsonl,.json"
+                        onChange={(e) =>
+                          setUploadData({
+                            ...uploadData,
+                            file: e.target.files?.[0] || null,
+                          })
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Each line should be a JSON object with an "input" field
+                      </p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <TagInput 
-                      value={uploadData.categories}
-                      onChange={(tags) => setUploadData({ ...uploadData, categories: tags })}
-                      placeholder="e.g. coding, humor (press Enter to add)"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="visibility">Visibility</Label>
-                    <Select 
-                      value={uploadData.visibility} 
-                      onValueChange={(value: "public" | "private") => 
-                        setUploadData({ ...uploadData, visibility: value })
-                      }
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setUploadModalOpen(false)}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="public">
-                          <div className="flex items-center gap-2">
-                            <Globe className="w-4 h-4" />
-                            <span>Public - Visible to everyone</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="private">
-                          <div className="flex items-center gap-2">
-                            <Lock className="w-4 h-4" />
-                            <span>Private - Only visible to you</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleUpload}
+                      disabled={uploadMutation.isPending}
+                    >
+                      {uploadMutation.isPending ? "Uploading..." : "Upload"}
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="file">JSONL File</Label>
-                    <Input
-                      id="file"
-                      type="file"
-                      accept=".jsonl,.json"
-                      onChange={(e) =>
-                        setUploadData({
-                          ...uploadData,
-                          file: e.target.files?.[0] || null,
-                        })
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Each line should be a JSON object with an "input" field
-                    </p>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setUploadModalOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleUpload}
-                    disabled={uploadMutation.isPending}
-                  >
-                    {uploadMutation.isPending ? "Uploading..." : "Upload"}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
 

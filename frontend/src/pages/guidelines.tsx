@@ -39,7 +39,6 @@ export default function Guidelines() {
   const { data: guidelinesData, isLoading } = useQuery({
     queryKey: ['guidelines'],
     queryFn: () => apiClient.getGuidelines(),
-    enabled: isAuthenticated,
   });
 
   const guidelines = guidelinesData?.guidelines || [];
@@ -139,18 +138,6 @@ export default function Guidelines() {
   // Get unique categories
   const categories = Array.from(new Set(guidelines.map((g) => g.category)));
 
-  if (!isAuthenticated) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <Scale className="w-16 h-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Please login to view guidelines</h2>
-          <p className="text-muted-foreground">You need to be authenticated to access this page.</p>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -163,13 +150,14 @@ export default function Guidelines() {
                 Create and manage evaluation criteria for LLM outputs
               </p>
             </div>
-            <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Create Guideline
-                </Button>
-              </DialogTrigger>
+            {isAuthenticated && (
+              <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Create Guideline
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Create New Guideline</DialogTitle>
@@ -431,6 +419,7 @@ export default function Guidelines() {
                 </div>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </div>
 
