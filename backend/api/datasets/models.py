@@ -14,4 +14,6 @@ class Dataset(Base):
     name = Column(String, unique=True, nullable=False)
     category = Column(String, nullable=False)
     sample_count = Column(Integer, nullable=False)
+    visibility = Column(String, nullable=False, default="public")
+    user_id = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

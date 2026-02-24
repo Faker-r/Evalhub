@@ -25,7 +25,7 @@ class DatasetService:
         self.s3 = S3Storage()
 
     async def create_dataset(
-        self, name: str, category: str, file: UploadFile
+        self, name: str, category: str, file: UploadFile, visibility: str, user_id: str
     ) -> Dataset:
         """Create a new dataset from an uploaded JSONL file.
 
@@ -33,6 +33,8 @@ class DatasetService:
             name: Dataset name
             category: Dataset category
             file: Uploaded JSONL file
+            visibility: Dataset visibility (public/private)
+            user_id: ID of the user creating the dataset
 
         Returns:
             Dataset: Created dataset
@@ -52,7 +54,9 @@ class DatasetService:
         sample_count = self._validate_and_count(content)
 
         # Create dataset in database
-        dataset = await self.repository.create_from_file(name, category, sample_count)
+        dataset = await self.repository.create_from_file(
+            name, category, sample_count, visibility, user_id
+        )
 
         # Upload to S3
         self.s3.upload_dataset_file(dataset.name, BytesIO(content))
@@ -123,13 +127,16 @@ class DatasetService:
 
         return sample_count
 
-    async def get_all_datasets(self) -> list[Dataset]:
-        """Get all datasets.
+    async def get_all_datasets(self, user_id: str | None = None) -> list[Dataset]:
+        """Get all datasets visible to the user.
+
+        Args:
+            user_id: ID of the user requesting datasets (None for unauthenticated)
 
         Returns:
-            list[Dataset]: List of all datasets
+            list[Dataset]: List of visible datasets
         """
-        return await self.repository.get_all()
+        return await self.repository.get_all(user_id)
 
     async def get_dataset(self, dataset_id: int) -> Dataset:
         """Get dataset by ID.

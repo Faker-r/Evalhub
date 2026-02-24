@@ -26,7 +26,9 @@ async def add_guideline(
     logger.debug(
         f"Adding guideline: {guideline_data.name} by user {current_user.email}"
     )
-    return await GuidelineService(session).create_guideline(guideline_data)
+    return await GuidelineService(session).create_guideline(
+        guideline_data, current_user.id
+    )
 
 
 @router.get("", response_model=GuidelineListResponse)
@@ -36,5 +38,5 @@ async def get_guidelines(
 ) -> GuidelineListResponse:
     """Get all guidelines."""
     logger.debug(f"Getting all guidelines for user {current_user.email}")
-    guidelines = await GuidelineService(session).get_all_guidelines()
+    guidelines = await GuidelineService(session).get_all_guidelines(current_user.id)
     return GuidelineListResponse(guidelines=guidelines)

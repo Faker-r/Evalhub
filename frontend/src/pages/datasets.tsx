@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Database, Upload, FileText, Calendar, Layers, Eye } from "lucide-react";
+import { Database, Upload, FileText, Calendar, Layers, Eye, Lock, Globe } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -61,6 +61,7 @@ export default function Datasets() {
     category: "",
     categories: [] as string[],
     file: null as File | null,
+    visibility: "public" as "public" | "private",
   });
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [selectedDatasetId, setSelectedDatasetId] = useState<number | null>(null);
@@ -76,12 +77,12 @@ export default function Datasets() {
 
   // Upload mutation
   const uploadMutation = useMutation({
-    mutationFn: (data: { name: string; category: string; file: File }) =>
-      apiClient.createDataset(data.name, data.category, data.file),
+    mutationFn: (data: { name: string; category: string; file: File; visibility: string }) =>
+      apiClient.createDataset(data.name, data.category, data.file, data.visibility),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['datasets'] });
       setUploadModalOpen(false);
-      setUploadData({ name: "", category: "", categories: [], file: null });
+      setUploadData({ name: "", category: "", categories: [], file: null, visibility: "public" });
       toast({
         title: "Success",
         description: "Dataset uploaded successfully",
@@ -112,7 +113,8 @@ export default function Datasets() {
     uploadMutation.mutate({
       name: uploadData.name,
       category: categoryString,
-      file: uploadData.file
+      file: uploadData.file,
+      visibility: uploadData.visibility
     });
   };
 
@@ -192,6 +194,33 @@ export default function Datasets() {
                       onChange={(tags) => setUploadData({ ...uploadData, categories: tags })}
                       placeholder="e.g. coding, humor (press Enter to add)"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="visibility">Visibility</Label>
+                    <Select 
+                      value={uploadData.visibility} 
+                      onValueChange={(value: "public" | "private") => 
+                        setUploadData({ ...uploadData, visibility: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public">
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4" />
+                            <span>Public - Visible to everyone</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="private">
+                          <div className="flex items-center gap-2">
+                            <Lock className="w-4 h-4" />
+                            <span>Private - Only visible to you</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="file">JSONL File</Label>
@@ -318,6 +347,7 @@ export default function Datasets() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Visibility</TableHead>
                     <TableHead>Samples</TableHead>
                     <TableHead>ID</TableHead>
                     <TableHead>Actions</TableHead>
@@ -329,6 +359,15 @@ export default function Datasets() {
                       <TableCell className="font-medium">{dataset.name}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{dataset.category}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={dataset.visibility === "public" ? "default" : "outline"}>
+                          {dataset.visibility === "public" ? (
+                            <><Globe className="w-3 h-3 mr-1" /> Public</>
+                          ) : (
+                            <><Lock className="w-3 h-3 mr-1" /> Private</>
+                          )}
+                        </Badge>
                       </TableCell>
                       <TableCell>{dataset.sample_count}</TableCell>
                       <TableCell className="text-muted-foreground">

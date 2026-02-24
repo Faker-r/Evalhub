@@ -19,6 +19,13 @@ class GuidelineScoringScale(str, Enum):
         return self.value
 
 
+class GuidelineVisibility(str, Enum):
+    """Enum for guideline visibility."""
+
+    PUBLIC = "public"
+    PRIVATE = "private"
+
+
 class BooleanScaleConfig(BaseModel):
     """Config for boolean scoring scale."""
 
@@ -57,6 +64,7 @@ class GuidelineBase(BaseModel):
         NumericScaleConfig,
         PercentageScaleConfig,
     ]
+    visibility: GuidelineVisibility = GuidelineVisibility.PUBLIC
 
     @field_validator("scoring_scale_config")
     @classmethod
@@ -103,6 +111,8 @@ class GuidelineResponse(BaseModel):
         NumericScaleConfig,
         PercentageScaleConfig,
     ]
+    visibility: GuidelineVisibility
+    user_id: str | None
 
 
 class GuidelineListResponse(BaseModel):

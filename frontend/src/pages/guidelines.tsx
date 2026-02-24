@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Scale, Plus, BookOpen, X, Eye } from "lucide-react";
+import { Scale, Plus, BookOpen, X, Eye, Lock, Globe } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -32,6 +32,7 @@ export default function Guidelines() {
     categories: [] as string[],
     scoring_scale: "numeric" as "boolean" | "custom_category" | "numeric" | "percentage",
     scoring_scale_config: { min_value: 0, max_value: 10 } as any,
+    visibility: "public" as "public" | "private",
   });
 
   // Fetch guidelines
@@ -55,7 +56,8 @@ export default function Guidelines() {
         category: "",
         categories: [], 
         scoring_scale: "numeric", 
-        scoring_scale_config: { min_value: 0, max_value: 10 } 
+        scoring_scale_config: { min_value: 0, max_value: 10 },
+        visibility: "public"
       });
       setNewCategoryInput("");
       toast({
@@ -203,6 +205,33 @@ export default function Guidelines() {
                       }
                       rows={6}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="visibility">Visibility</Label>
+                    <Select 
+                      value={createData.visibility} 
+                      onValueChange={(value: "public" | "private") => 
+                        setCreateData({ ...createData, visibility: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public">
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4" />
+                            <span>Public - Visible to everyone</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="private">
+                          <div className="flex items-center gap-2">
+                            <Lock className="w-4 h-4" />
+                            <span>Private - Only visible to you</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="scoring_scale">Scoring Scale</Label>
@@ -493,6 +522,7 @@ export default function Guidelines() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Visibility</TableHead>
                     <TableHead>Scoring Scale</TableHead>
                     <TableHead>Scale Config</TableHead>
                     <TableHead>Prompt Preview</TableHead>
@@ -505,6 +535,15 @@ export default function Guidelines() {
                       <TableCell className="font-medium">{guideline.name}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{guideline.category}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={guideline.visibility === "public" ? "default" : "outline"}>
+                          {guideline.visibility === "public" ? (
+                            <><Globe className="w-3 h-3 mr-1" /> Public</>
+                          ) : (
+                            <><Lock className="w-3 h-3 mr-1" /> Private</>
+                          )}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">

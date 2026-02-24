@@ -181,10 +181,11 @@ class ApiClient {
   }
 
   // Dataset endpoints
-  async createDataset(name: string, category: string, file: File) {
+  async createDataset(name: string, category: string, file: File, visibility: string = 'public') {
     const formData = new FormData();
     formData.append('name', name);
     formData.append('category', category);
+    formData.append('visibility', visibility);
     formData.append('file', file);
 
     const headers: HeadersInit = {};
@@ -213,6 +214,8 @@ class ApiClient {
         name: string;
         category: string;
         sample_count: number;
+        visibility: string;
+        user_id: string | null;
       }[];
     }>('/datasets');
   }
@@ -228,6 +231,7 @@ class ApiClient {
     category: string;
     scoring_scale: string;
     scoring_scale_config: any;
+    visibility?: string;
   }) {
     return this.request<{
       id: number;
@@ -236,9 +240,14 @@ class ApiClient {
       category: string;
       scoring_scale: string;
       scoring_scale_config: any;
+      visibility: string;
+      user_id: string | null;
     }>('/guidelines', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        visibility: data.visibility || 'public',
+      }),
     });
   }
 
@@ -251,6 +260,8 @@ class ApiClient {
         category: string;
         scoring_scale: string;
         scoring_scale_config: any;
+        visibility: string;
+        user_id: string | null;
       }[];
     }>('/guidelines');
   }

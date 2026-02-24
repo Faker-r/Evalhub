@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from functools import lru_cache
 
-import httpx
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -97,3 +96,46 @@ async def get_current_user(
     except Exception as e:
         logger.error(f"Unexpected error during JWT validation: {e}")
         raise credentials_exception
+
+
+async def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False)),
+) -> CurrentUser | None:
+    """Dependency to optionally get current authenticated user.
+
+    Returns None if no credentials provided, otherwise validates like get_current_user.
+
+    Args:
+        credentials: Optional bearer token from Authorization header
+
+    Returns:
+        CurrentUser | None: The authenticated user's info or None
+    """
+    if credentials is None:
+        return None
+
+    try:
+        # Get the signing key from Supabase JWKS
+        jwks_client = get_jwks_client()
+        signing_key = jwks_client.get_signing_key_from_jwt(credentials.credentials)
+
+        # Decode and verify the JWT using the public key
+        payload = jwt.decode(
+            credentials.credentials,
+            signing_key.key,
+            algorithms=["RS256", "ES256"],
+            options={"verify_aud": False},
+        )
+
+        user_id: str = payload.get("sub")
+        email: str = payload.get("email")
+
+        if user_id is None:
+            return None
+
+        logger.debug(f"Authenticated user: {email} ({user_id})")
+        return CurrentUser(id=user_id, email=email or "")
+
+    except Exception as e:
+        logger.debug(f"Optional auth failed: {e}")
+        return None
