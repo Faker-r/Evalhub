@@ -20,17 +20,23 @@ TASKS = [
 ]
 
 # (api_name, display_name from log, providers from fetch_openrouter_models_and_providers.log)
+# MODELS_AND_PROVIDERS = [
+#     ("qwen/qwen3-coder-next", "Qwen: Qwen3 Coder Next", ["Together"]),
+#     ("openai/gpt-oss-120b", "OpenAI: gpt-oss-120b", ["Cerebras", "BaseTen"]),
+#     ("z-ai/glm-4.7-flash", "Z.AI: GLM 4.7 Flash", ["DeepInfra", "Novita"]),
+#     (
+#         "mistralai/ministral-14b-2512",
+#         "Mistral: Ministral 3 14B 2512",
+#         ["Mistral", "Together"],
+#     ),
+#     ("deepseek/deepseek-v3.2", "DeepSeek: DeepSeek V3.2", ["Google", "DeepInfra"]),
+#     ("moonshotai/kimi-k2.5", "MoonshotAI: Kimi K2.5", ["BaseTen", "Together"]),
+# ]
 MODELS_AND_PROVIDERS = [
-    ("qwen/qwen3-coder-next", "Qwen: Qwen3 Coder Next", ["Together"]),
-    ("openai/gpt-oss-120b", "OpenAI: gpt-oss-120b", ["Cerebras", "BaseTen"]),
-    ("z-ai/glm-4.7-flash", "Z.AI: GLM 4.7 Flash", ["DeepInfra", "Novita"]),
-    (
-        "mistralai/ministral-14b-2512",
-        "Mistral: Ministral 3 14B 2512",
-        ["Mistral", "Together"],
-    ),
-    ("deepseek/deepseek-v3.2", "DeepSeek: DeepSeek V3.2", ["Google", "DeepInfra"]),
-    ("moonshotai/kimi-k2.5", "MoonshotAI: Kimi K2.5", ["BaseTen", "Together"]),
+    ('moonshotai/kimi-k2.5', 'MoonshotAI: Kimi K2.5', ['BaseTen']),
+    ('z-ai/glm-4.6', 'Z.AI: GLM 4.6', ['BaseTen']),
+    ('openai/gpt-oss-120b', 'OpenAI: gpt-oss-120b', ['BaseTen']),
+    ('deepseek/deepseek-chat-v3-0324', 'DeepSeek: DeepSeek Chat V3 0324', ['BaseTen']),
 ]
 
 # Provider names and slugs from OpenRouter log (provider_name as key, slug for API)
@@ -80,7 +86,7 @@ def main() -> None:
                         "dataset_config": {
                             "dataset_name": task["dataset_name"],
                             "n_fewshots": 5,
-                            "n_samples": 50,
+                            "n_samples": 0,
                         },
                         "model_completion_config": model_config_openrouter(
                             api_name, model_name, provider
@@ -105,8 +111,8 @@ def main() -> None:
             print(r.status_code, r.text[:200] if r.text else "")
             r.raise_for_status()
 
-        break
         time.sleep(20)
+        break
 
 
 if __name__ == "__main__":
