@@ -35,18 +35,21 @@ COPY . .
 # Install all dependencies (--no-root skips installing the project itself)
 RUN poetry install --no-interaction --no-root
 
-# Setup lighteval (clones repo and installs it)
-RUN python scripts/setup_lighteval.py
+# Install lighteval into system Python (cloned outside /app to avoid volume mount conflict)
+RUN git clone https://github.com/pjavanrood/lighteval.git /opt/lighteval && \
+    pip install --no-build-isolation -e "/opt/lighteval[extended_tasks]" && \
+    pip install "setuptools<82"
 
 # Create a non-root user for security and set git safe directory for all users
 RUN useradd --create-home --shell /bin/bash appuser && \
     chown -R appuser:appuser /app && \
-    git config --system --add safe.directory /app/lighteval
+    chown -R appuser:appuser /opt/lighteval && \
+    git config --system --add safe.directory /opt/lighteval
 
 USER appuser
 
 # Also set for appuser's global config
-RUN git config --global --add safe.directory /app/lighteval
+RUN git config --global --add safe.directory /opt/lighteval
 
 # Default command (can be overridden in docker-compose)
 CMD ["python", "-m", "api"]

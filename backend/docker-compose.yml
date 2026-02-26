@@ -45,8 +45,6 @@ services:
       - .:/app
     command: celery -A api.core.celery_app:celery_app worker --loglevel=info --pool=solo
     restart: unless-stopped # use always for prod
-    deploy:
-      replicas: ${CELERY_WORKERS:-4}
 
 volumes:
   redis_data:

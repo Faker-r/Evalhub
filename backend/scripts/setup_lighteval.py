@@ -1,4 +1,3 @@
-import os
 import shutil
 import subprocess
 import sys
@@ -8,13 +7,7 @@ from pathlib import Path
 def main() -> None:
     project_root = Path(__file__).resolve().parents[1]
     repo_dir = project_root / "lighteval"
-    venv_dir = project_root / "venv"
     target_url = "https://github.com/pjavanrood/lighteval.git"
-
-    if not venv_dir.exists():
-        subprocess.check_call([sys.executable, "-m", "venv", str(venv_dir)])
-
-    venv_python = venv_dir / "bin" / "python"
 
     if not repo_dir.exists():
         subprocess.check_call(
@@ -61,14 +54,13 @@ def main() -> None:
 
     subprocess.check_call(
         [
-            str(venv_python),
+            sys.executable,
             "-m",
             "pip",
             "install",
             "-e",
             f"{repo_dir}[extended_tasks]",
-        ],
-        env=os.environ.copy(),
+        ]
     )
 
 

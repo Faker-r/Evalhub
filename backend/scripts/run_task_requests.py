@@ -13,9 +13,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:8000")
 
 TASKS = [
-    # {"task_name": "gsm8k", "dataset_name": "gsm8k"},
+    {"task_name": "gsm8k", "dataset_name": "gsm8k"},
     # {"task_name": "math_500", "dataset_name": "math_500"},
-    {"task_name": "mmlu_pro", "dataset_name": "mmlu_pro"},
+    # {"task_name": "mmlu_pro", "dataset_name": "mmlu_pro"},
     # {"task_name": "gpqa", "dataset_name": "gpqa:main"},
 ]
 
@@ -61,12 +61,8 @@ def model_config_openrouter(api_name: str, model_name: str, provider: str) -> di
     slug = PROVIDER_SLUG[provider]
     return {
         "api_source": "openrouter",
-        "model_name": model_name,
-        "model_id": "",
-        "api_name": api_name,
-        "model_provider": provider,
-        "model_provider_slug": slug,
-        "model_provider_id": "0",
+        "model": {"id": api_name, "name": model_name},
+        "provider": {"name": provider, "slug": slug},
     }
 
 
@@ -93,10 +89,11 @@ def main() -> None:
                 )
 
     for i, payload in enumerate(requests_to_send):
+        
         with httpx.Client(timeout=120.0) as client:
             task_name = payload["task_name"]
-            model = payload["model_completion_config"]["api_name"]
-            provider_slug = payload["model_completion_config"]["model_provider_slug"]
+            model = payload["model_completion_config"]["model"]["id"]
+            provider_slug = payload["model_completion_config"]["provider"]["slug"]
             print(
                 f"[{i + 1}/{len(requests_to_send)}] {task_name} | {model} | {provider_slug}"
             )
@@ -108,6 +105,7 @@ def main() -> None:
             print(r.status_code, r.text[:200] if r.text else "")
             r.raise_for_status()
 
+        break
         time.sleep(20)
 
 
