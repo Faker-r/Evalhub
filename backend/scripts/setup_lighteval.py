@@ -4,9 +4,19 @@ import sys
 from pathlib import Path
 
 
+def _get_python() -> str:
+    if sys.prefix != sys.base_prefix:
+        return sys.executable
+    venv_dir = Path(__file__).resolve().parents[1] / ".venv"
+    if not (venv_dir / "bin" / "python").exists():
+        subprocess.check_call([sys.executable, "-m", "venv", str(venv_dir)])
+    return str(venv_dir / "bin" / "python")
+
+
 def main() -> None:
     project_root = Path(__file__).resolve().parents[1]
     repo_dir = project_root / "lighteval"
+    python = _get_python()
     target_url = "https://github.com/pjavanrood/lighteval.git"
 
     if not repo_dir.exists():
@@ -54,7 +64,7 @@ def main() -> None:
 
     subprocess.check_call(
         [
-            sys.executable,
+            python,
             "-m",
             "pip",
             "install",

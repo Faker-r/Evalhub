@@ -20,7 +20,6 @@ from lighteval.tasks.registry import Registry
 from api.core.celery_app import celery_app
 from api.core.logging import get_logger
 from api.core.redis_client import clear_eval_progress, set_eval_progress
-from api.evaluations.eval_pipeline.dataset_task import DatasetTask
 from api.evaluations.eval_pipeline.eval_pipeline import (
     CustomTaskEvaluationPipeline,
     CustomTaskEvaluationPipelineParameters,
@@ -81,7 +80,7 @@ def _run_task_pipeline(
     )
 
     pipeline_params = PipelineParameters(
-        launcher_type=ParallelismManager.ACCELERATE,
+        launcher_type=ParallelismManager.OPENAI,
         max_samples=n_samples,
     )
 
