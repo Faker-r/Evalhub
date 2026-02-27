@@ -51,13 +51,15 @@ def _create_model_config(
             generation_parameters=GenerationParameters(
                 extra_body=model_config_data["extra_body"]
             ),
-            cache_dir=API_CACHE_DIR
+            cache_dir=API_CACHE_DIR,
+            is_reasoning_model=model_config_data.get("is_reasoning_model", False)
         )
     return OpenAICompatibleModelConfig(
         model_name=model_config_data["model_name"],
         base_url=model_config_data["base_url"],
         api_key=model_config_data["api_key"],
-        cache_dir=API_CACHE_DIR
+        cache_dir=API_CACHE_DIR,
+        is_reasoning_model=model_config_data.get("is_reasoning_model", False)
     )
 
 

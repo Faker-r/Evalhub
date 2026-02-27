@@ -313,6 +313,7 @@ class EvaluationService:
                 "model_name": model_name,
                 "base_url": model_url,
                 "api_key": model_api_key,
+                "is_reasoning_model": False # Default to False for standard models
             }
         else:
             model_api_key = self.s3.download_api_key(
@@ -328,6 +329,9 @@ class EvaluationService:
                         "allow_fallbacks": False,
                     }
                 },
+                "is_reasoning_model": any(
+                    "reasoning" in p.lower() for p in model_completion_config.model.supported_parameters or []
+                ),
             }
 
     async def _get_serializable_judge_config(
