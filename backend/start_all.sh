@@ -23,9 +23,10 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-# 1. Start Redis
+# 1. Start Redis (no persistence — fresh queue each run, no loading old dump.rdb)
 echo "Starting Redis..."
-redis-server --daemonize yes --port 6379
+rm -f "$SCRIPT_DIR/dump.rdb"
+redis-server --daemonize yes --port 6379 --save ""
 sleep 1
 echo "Redis running on :6379"
 

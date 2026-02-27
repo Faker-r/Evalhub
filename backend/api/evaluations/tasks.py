@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from pathlib import Path
 import statistics
 import tempfile
 import traceback
@@ -32,6 +33,7 @@ from api.evaluations.schemas import JudgeType
 logger = get_logger(__name__)
 
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
+API_CACHE_DIR = str(Path(__file__).parent / ".api_cache")
 
 
 # ==================== A. Model Config Helper ====================
@@ -49,11 +51,13 @@ def _create_model_config(
             generation_parameters=GenerationParameters(
                 extra_body=model_config_data["extra_body"]
             ),
+            cache_dir=API_CACHE_DIR
         )
     return OpenAICompatibleModelConfig(
         model_name=model_config_data["model_name"],
         base_url=model_config_data["base_url"],
         api_key=model_config_data["api_key"],
+        cache_dir=API_CACHE_DIR
     )
 
 
@@ -104,6 +108,11 @@ def _run_task_pipeline(
 
     pipeline.evaluate()
 
+    errors = pipeline.get_errors()
+    if errors:
+        total_errors = sum(len(v) for v in errors.values())
+        logger.warning(f"Pipeline completed with {total_errors} error(s): {errors}")
+
     if progress_callback:
         progress_callback("post_processing", 85, "Processing results...")
 
@@ -139,6 +148,7 @@ def _run_task_pipeline(
         "sample_count": actual_sample_count,
         "temp_dir": temp_dir,
         "metric_docs": metric_docs_serialized,
+        "errors": errors,
     }
 
 
@@ -220,6 +230,12 @@ def _run_flexible_pipeline(
     )
 
     results = pipeline.evaluate()
+
+    errors = pipeline.get_errors()
+    if errors:
+        total_errors = sum(len(v) for v in errors.values())
+        logger.warning(f"Pipeline completed with {total_errors} error(s): {errors}")
+
     pipeline.save_and_push_results()
 
     dataset_task.cleanup()
@@ -229,6 +245,7 @@ def _run_flexible_pipeline(
         "scores": results["scores"],
         "sample_count": results["sample_count"],
         "temp_dir": temp_dir,
+        "errors": errors,
     }
 
 
@@ -410,6 +427,8 @@ def _extract_task_summary(pipeline_output: dict) -> dict:
     """Extract summary statistics from task pipeline output."""
     summary = {}
     task_results = pipeline_output["summary"]
+    errors = pipeline_output.get("errors", {})
+    failed_count = sum(len(v) for v in errors.values())
 
     for metric_name, value in task_results.items():
         if metric_name.endswith("_stderr"):
@@ -418,7 +437,7 @@ def _extract_task_summary(pipeline_output: dict) -> dict:
         summary[metric_name] = {
             "mean": round(value, 2),
             "std": round(task_results.get(metric_name + "_stderr", 0), 2),
-            "failed": 0,
+            "failed": failed_count,
         }
 
     return summary
@@ -486,13 +505,15 @@ def _extract_flexible_summary(
         return _extract_llm_judge_summary(pipeline_output, guidelines_data)
 
     summary = {}
+    errors = pipeline_output.get("errors", {})
+    failed_count = sum(len(v) for v in errors.values())
     for metric_name, scores in pipeline_output["scores"].items():
         if isinstance(scores, (int, float)):
             summary[metric_name] = {
                 "type": "numeric",
                 "mean": round(scores, 4),
                 "std": 0.0,
-                "failed": 0,
+                "failed": failed_count,
             }
         elif isinstance(scores, list):
             if scores:
@@ -606,7 +627,7 @@ def run_task_evaluation_task(
             results_s3_path=results_s3_path,
             report_scores=pipeline_output["summary"],
             summary=summary,
-            summary_extra={"metric_docs": metric_docs},
+            summary_extra={"metric_docs": metric_docs, "errors": pipeline_output.get("errors", {})},
         )
 
         # Upload JSONL
@@ -703,6 +724,7 @@ def run_flexible_evaluation_task(
             results_s3_path=results_s3_path,
             report_scores=pipeline_output["summary"],
             summary=summary,
+            summary_extra={"errors": pipeline_output.get("errors", {})},
         )
 
         # Upload JSONL

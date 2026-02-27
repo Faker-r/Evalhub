@@ -224,3 +224,5 @@ samples_from_evals/
 traces_rows.csv
 
 landing/*
+
+*_cache/

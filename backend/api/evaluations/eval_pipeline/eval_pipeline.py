@@ -195,3 +195,15 @@ class CustomTaskEvaluationPipeline:
     def show_results(self):
         """Show final results."""
         return self.evaluation_tracker.generate_final_dict()
+
+    def get_errors(self) -> dict[str, list[dict]]:
+        errors: dict[str, list[dict]] = {}
+        for task_name, details in self.evaluation_tracker.details_logger.details.items():
+            task_errors = [
+                {"doc_id": detail.doc.doc_id, "input": detail.model_response.input, "error": detail.model_response.error}
+                for detail in details
+                if detail.model_response.error is not None
+            ]
+            if task_errors:
+                errors[task_name] = task_errors
+        return errors
