@@ -76,6 +76,7 @@ class TraceListResponse(BaseModel):
     """Response schema for listing traces."""
 
     traces: list[TraceResponse]
+    total: int
 
 
 class TraceDetailsResponse(BaseModel):

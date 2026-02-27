@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.exceptions import NotFoundException
@@ -97,11 +97,14 @@ class EvaluationRepository:
         if stale_traces:
             await self.session.commit()
 
-    async def get_traces_by_user(self, user_id: str) -> list[Trace]:
-        """Get all traces for a user."""
-        query = select(Trace).where(Trace.user_id == user_id).order_by(Trace.id.desc())
+    async def get_traces_by_user(self, user_id: str, limit: int = 20, offset: int = 0) -> tuple[list[Trace], int]:
+        """Get paginated traces for a user."""
+        base = select(Trace).where(Trace.user_id == user_id)
+        count_result = await self.session.execute(select(func.count()).select_from(base.subquery()))
+        total = count_result.scalar_one()
+        query = base.order_by(Trace.id.desc()).limit(limit).offset(offset)
         result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return list(result.scalars().all()), total
 
     # ==================== TraceEvent Methods ====================
 

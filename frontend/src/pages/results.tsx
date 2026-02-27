@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye, Info, AlertTriangle } from "lucide-react";
+import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye, Info, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
@@ -48,18 +48,25 @@ function EvalProgressCell({ traceId }: { traceId: number }) {
   );
 }
 
+const PAGE_SIZE = 20;
+
 export default function Results() {
   const { isAuthenticated } = useAuth();
+  const [page, setPage] = useState(1);
+
+  const offset = (page - 1) * PAGE_SIZE;
 
   // Fetch traces/evaluations
   const { data: tracesData, isLoading, refetch } = useQuery({
-    queryKey: ["traces"],
-    queryFn: () => apiClient.getTraces(),
+    queryKey: ["traces", page],
+    queryFn: () => apiClient.getTraces({ limit: PAGE_SIZE, offset }),
     enabled: isAuthenticated,
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
   const traces = tracesData?.traces || [];
+  const total = tracesData?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const [selectedTrace, setSelectedTrace] = useState<any>(null);
 
@@ -298,7 +305,7 @@ export default function Results() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Evaluations</p>
-                  <p className="text-3xl font-bold">{traces.length}</p>
+                  <p className="text-3xl font-bold">{total}</p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-muted-foreground" />
               </div>
@@ -667,6 +674,33 @@ export default function Results() {
                   ))}
                 </TableBody>
               </Table>
+            )}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4 border-t">
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

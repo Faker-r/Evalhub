@@ -71,13 +71,15 @@ async def run_flexible_evaluation(
 
 @router.get("/traces", response_model=TraceListResponse)
 async def get_traces(
+    limit: int = 20,
+    offset: int = 0,
     session: AsyncSession = Depends(get_session),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> TraceListResponse:
-    """Get all evaluation traces for the current user."""
+    """Get evaluation traces for the current user."""
     logger.debug(f"Getting traces for user {current_user.email}")
-    traces = await EvaluationService(session, current_user.id).get_traces()
-    return TraceListResponse(traces=traces)
+    traces, total = await EvaluationService(session, current_user.id).get_traces(limit=limit, offset=offset)
+    return TraceListResponse(traces=traces, total=total)
 
 
 @router.get("/traces/{trace_id}", response_model=TraceResponse)

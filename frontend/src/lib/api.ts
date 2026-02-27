@@ -312,7 +312,11 @@ class ApiClient {
     });
   }
 
-  async getTraces() {
+  async getTraces(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit != null) searchParams.set('limit', String(params.limit));
+    if (params?.offset != null) searchParams.set('offset', String(params.offset));
+    const q = searchParams.toString();
     return this.request<{
       traces: {
         id: number;
@@ -327,7 +331,8 @@ class ApiClient {
         summary: any;
         created_at: string;
       }[];
-    }>('/evaluations/traces');
+      total: number;
+    }>(`/evaluations/traces${q ? '?' + q : ''}`);
   }
 
   async getTrace(traceId: number) {
