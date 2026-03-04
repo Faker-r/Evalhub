@@ -20,6 +20,7 @@ export default function ModelsPage() {
           <OpenRouterModelCatalog
             initialProviderSlug={defaultProvider}
             showExploreProvidersLink
+            showRunButton
           />
         </div>
       </section>

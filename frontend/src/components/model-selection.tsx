@@ -13,12 +13,13 @@ interface ModelSelectionProps {
   value: ModelConfig;
   onChange: (value: ModelConfig) => void;
   label?: string;
+  initialOpenRouterTab?: "by-provider" | "by-model";
 }
 
 type OpenRouterTab = "by-provider" | "by-model";
 
-export function ModelSelection({ value, onChange, label = "Model Selection" }: ModelSelectionProps) {
-  const [openRouterTab, setOpenRouterTab] = useState<OpenRouterTab>("by-provider");
+export function ModelSelection({ value, onChange, label = "Model Selection", initialOpenRouterTab }: ModelSelectionProps) {
+  const [openRouterTab, setOpenRouterTab] = useState<OpenRouterTab>(initialOpenRouterTab ?? "by-provider");
   const byProviderStep2Ref = useRef<HTMLDivElement | null>(null);
   const byModelStep2Ref = useRef<HTMLDivElement | null>(null);
 

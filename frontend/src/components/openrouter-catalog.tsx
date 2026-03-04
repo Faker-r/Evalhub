@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink } from "lucide-react";
-import { Link } from "wouter";
+import { ExternalLink, Play } from "lucide-react";
+import { Link, useLocation } from "wouter";
 
 import { apiClient, type OpenRouterModelSummary, type OpenRouterProviderSummary } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +57,7 @@ interface OpenRouterModelCatalogProps {
   selectedModelId?: string;
   onSelectModel?: (model: OpenRouterModelSummary | null) => void;
   showExploreProvidersLink?: boolean;
+  showRunButton?: boolean;
   className?: string;
 }
 
@@ -68,9 +69,10 @@ export function OpenRouterModelCatalog({
   selectedModelId,
   onSelectModel,
   showExploreProvidersLink = false,
+  showRunButton = false,
   className,
 }: OpenRouterModelCatalogProps) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(selectedModelId ?? "");
   const [providerFilter, setProviderFilter] = useState(initialProviderSlug);
   const [sortBy, setSortBy] = useState<OpenRouterModelSort>("name");
   const [page, setPage] = useState(0);
@@ -104,6 +106,7 @@ export function OpenRouterModelCatalog({
   };
 
   const canSelect = selectable && typeof onSelectModel === "function";
+  const [, setLocation] = useLocation();
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -260,6 +263,21 @@ export function OpenRouterModelCatalog({
                         {isSelected ? "Selected" : "Click card to select"}
                       </span>
                     )}
+                    {showRunButton && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          const params = new URLSearchParams({ modelId: model.id });
+                          const activeProvider = fixedProviderSlug || (providerFilter !== "all" ? providerFilter : null);
+                          if (activeProvider) params.set("providerSlug", activeProvider);
+                          setLocation(`/submit?${params.toString()}`);
+                        }}
+                      >
+                        <Play className="h-3 w-3" /> Run
+                      </button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -292,6 +310,7 @@ interface OpenRouterProviderCatalogProps {
   onSelectProvider?: (provider: OpenRouterProviderSummary | null) => void;
   onlyProviderSlugs?: string[];
   showHostedModelsLink?: boolean;
+  showRunButton?: boolean;
   className?: string;
 }
 
@@ -302,9 +321,10 @@ export function OpenRouterProviderCatalog({
   onSelectProvider,
   onlyProviderSlugs,
   showHostedModelsLink = true,
+  showRunButton = false,
   className,
 }: OpenRouterProviderCatalogProps) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(selectedProviderSlug ?? "");
   const [sortBy, setSortBy] = useState<OpenRouterProviderSort>("models");
   const [page, setPage] = useState(0);
   const hasRestrictedProviders = Boolean(onlyProviderSlugs?.length);
@@ -353,6 +373,7 @@ export function OpenRouterProviderCatalog({
   }, [page, totalPages]);
 
   const canSelect = selectable && typeof onSelectProvider === "function";
+  const [, setLocation] = useLocation();
 
   const goToPage = (target: number) => {
     setPage(Math.max(0, Math.min(target, totalPages - 1)));
@@ -493,18 +514,32 @@ export function OpenRouterProviderCatalog({
                       {isSelected ? "Selected" : "Click card to select provider"}
                     </p>
                   ) : (
-                    showHostedModelsLink && (
-                      <Link href={`/models?provider=${encodeURIComponent(provider.slug)}`}>
+                    <div className="flex items-center gap-2">
+                      {showHostedModelsLink && (
+                        <Link href={`/models?provider=${encodeURIComponent(provider.slug)}`} className="flex-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            View hosted models
+                          </Button>
+                        </Link>
+                      )}
+                      {showRunButton && (
                         <Button
-                          variant="outline"
                           size="sm"
-                          className="w-full"
-                          onClick={(event) => event.stopPropagation()}
+                          className={showHostedModelsLink ? "" : "w-full"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setLocation(`/submit?providerSlug=${encodeURIComponent(provider.slug)}`);
+                          }}
                         >
-                          View hosted models
+                          <Play className="h-3 w-3 mr-1" /> Run
                         </Button>
-                      </Link>
-                    )
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>

@@ -527,6 +527,8 @@ export default function Submit() {
   const [judgeModelConfig, setJudgeModelConfig] = useState<ModelConfig>({});
   const judgeSectionRef = useRef<HTMLDivElement | null>(null);
   const wasCompletionConfiguredRef = useRef(false);
+  const [initialModelTab, setInitialModelTab] = useState<"by-provider" | "by-model">("by-provider");
+  const preselectionApplied = useRef(false);
 
   // Fetch datasets
   const { data: datasetsData } = useQuery({
@@ -612,6 +614,64 @@ export default function Submit() {
       }
     }
   }, [benchmarks, searchString]);
+
+  // Handle model/provider pre-selection from URL params (from Models/Providers pages)
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const modelId = params.get('modelId');
+    const providerSlug = params.get('providerSlug');
+    if (preselectionApplied.current) return;
+    if (!modelId && !providerSlug) return;
+
+    if (modelId) {
+      setInitialModelTab("by-model");
+      const fetchModel = providerSlug
+        ? apiClient.getOpenRouterModelsByProvider(providerSlug)
+        : apiClient.getOpenRouterModels({ search: modelId, limit: 500 });
+      const fetchProvider = providerSlug
+        ? apiClient.getOpenRouterProviders({ search: providerSlug, limit: 10 })
+        : Promise.resolve(null);
+      Promise.all([fetchModel, fetchProvider]).then(([modelData, providerData]) => {
+        const model = modelData.models.find((m) => m.id === modelId);
+        if (!model) return;
+        const config: ModelConfig = {
+          is_openrouter: true,
+          openrouter_model_id: model.id,
+          openrouter_model_name: model.name || model.id,
+          openrouter_model_description: model.description,
+          openrouter_model_pricing: model.pricing,
+          openrouter_model_context_length: model.context_length,
+          openrouter_model_canonical_slug: model.canonical_slug,
+          openrouter_model_architecture: model.architecture,
+          openrouter_model_top_provider: model.top_provider,
+          openrouter_model_supported_parameters: model.supported_parameters,
+          openrouter_model_per_request_limits: model.per_request_limits,
+          openrouter_model_provider_slugs: model.provider_slugs,
+        };
+        if (providerSlug) {
+          config.openrouter_provider_slug = providerSlug;
+          const provider = providerData?.providers.find((p) => p.slug === providerSlug);
+          config.openrouter_provider_name = provider?.name ?? providerSlug;
+        }
+        setCompletionModelConfig(config);
+        preselectionApplied.current = true;
+        setLocation('/submit', { replace: true });
+      });
+    } else if (providerSlug) {
+      setInitialModelTab("by-provider");
+      apiClient.getOpenRouterProviders({ search: providerSlug, limit: 50 }).then((data) => {
+        const provider = data.providers.find((p) => p.slug === providerSlug);
+        if (!provider) return;
+        setCompletionModelConfig({
+          is_openrouter: true,
+          openrouter_provider_slug: provider.slug,
+          openrouter_provider_name: provider.name,
+        });
+        preselectionApplied.current = true;
+        setLocation('/submit', { replace: true });
+      });
+    }
+  }, [searchString]);
 
   useEffect(() => {
     if (judgeType !== "llm_as_judge") {
@@ -779,7 +839,7 @@ export default function Submit() {
   };
 
   const resetModelStepState = () => {
-    setCompletionModelConfig({});
+    if (!preselectionApplied.current) setCompletionModelConfig({});
     setJudgeModelConfig({});
   };
 
@@ -1624,6 +1684,7 @@ export default function Submit() {
                         value={completionModelConfig}
                         onChange={setCompletionModelConfig}
                         label="Completion Model"
+                        initialOpenRouterTab={initialModelTab}
                       />
                     </div>
 
