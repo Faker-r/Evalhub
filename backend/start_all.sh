@@ -11,6 +11,9 @@ fi
 
 set -e
 
+LOG_FILE="$SCRIPT_DIR/start_all.log"
+exec > >(tee "$LOG_FILE") 2>&1
+
 cleanup() {
     echo "Shutting down..."
     kill -TERM "${CELERY_PIDS[@]}" $API_PID 2>/dev/null || true
@@ -18,6 +21,7 @@ cleanup() {
     kill -9 "${CELERY_PIDS[@]}" $API_PID 2>/dev/null || true
     redis-cli shutdown nosave 2>/dev/null || true
     wait 2>/dev/null || true
+    rm -rf "$SCRIPT_DIR/.api_cache"
     echo "All processes stopped."
 }
 

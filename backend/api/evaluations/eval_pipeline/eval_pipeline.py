@@ -200,7 +200,7 @@ class CustomTaskEvaluationPipeline:
         errors: dict[str, list[dict]] = {}
         for task_name, details in self.evaluation_tracker.details_logger.details.items():
             task_errors = [
-                {"doc_id": detail.doc.doc_id, "input": detail.model_response.input, "error": detail.model_response.error}
+                {"doc_id": detail.doc.id, "input": detail.model_response.input, "error": detail.model_response.error}
                 for detail in details
                 if detail.model_response.error is not None
             ]

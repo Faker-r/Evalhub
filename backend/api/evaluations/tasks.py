@@ -32,7 +32,7 @@ from api.evaluations.schemas import JudgeType
 logger = get_logger(__name__)
 
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
-API_CACHE_DIR = str(Path(__file__).parent / ".api_cache")
+API_CACHE_DIR = str(Path(__file__).parent.parent.parent / ".api_cache")
 
 
 # ==================== A. Model Config Helper ====================
