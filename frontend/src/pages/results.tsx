@@ -658,7 +658,7 @@ export default function Results() {
                                 </Card>
                                 <div>
                                   <h4 className="text-sm font-semibold text-red-700 mb-2">Error Message</h4>
-                                  <pre className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-md text-sm whitespace-pre-wrap font-mono overflow-x-auto">
+                                  <pre className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-md text-sm whitespace-pre-wrap font-mono overflow-x-auto max-h-60 overflow-y-auto">
                                     {trace.summary.error}
                                   </pre>
                                 </div>

@@ -637,7 +637,7 @@ def run_task_evaluation_task(
         logger.info(f"Task evaluation completed for trace {trace_id}")
 
     except Exception as e:
-        logger.error(f"Task evaluation failed for trace {trace_id}: {e}")
+        logger.error(f"Task evaluation failed for trace {trace_id}: {e}\n{traceback.format_exc()}")
         _mark_trace_failed(trace_id, str(e), traceback.format_exc())
     finally:
         clear_eval_progress(trace_id)
