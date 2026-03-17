@@ -564,6 +564,14 @@ async def populate_benchmarks(
             # Create a new session for each repo to avoid rollback cascade
             async with async_session() as session:
                 repository = BenchmarkRepository(session)
+
+                # Check if benchmark exists and is hidden — skip if so
+                existing = await repository.get_by_dataset_name(dataset_name)
+                if existing and existing.hide:
+                    logger.info(f"Skipping hidden benchmark: {dataset_name}")
+                    success_count += 1
+                    continue
+
                 # Use dataset name for upsert
                 benchmark = await repository.upsert(dataset_name, benchmark_data)
 
