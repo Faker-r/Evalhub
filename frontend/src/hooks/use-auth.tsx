@@ -18,7 +18,7 @@ interface AuthContextType {
   authOperation: AuthOperation;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
 }
 
@@ -144,8 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     apiClient.logout();
+    await supabase.auth.signOut();
     setUser(null);
     toast({
       title: 'Logged out',
