@@ -8,6 +8,26 @@ echo ""
 
 WARNINGS=0
 
+# --- Resolve Python venv ---
+# Try common venv locations for the backend
+VENV_BIN=""
+for candidate in backend/.venv/bin backend/venv/bin; do
+  if [ -d "$candidate" ]; then
+    VENV_BIN="$candidate"
+    break
+  fi
+done
+
+# Helper: find a python tool (check venv first, then PATH)
+find_tool() {
+  local tool="$1"
+  if [ -n "$VENV_BIN" ] && [ -x "$VENV_BIN/$tool" ]; then
+    echo "$VENV_BIN/$tool"
+  elif command -v "$tool" &>/dev/null; then
+    command -v "$tool"
+  fi
+}
+
 # --- Python: black, isort, autoflake ---
 PYTHON_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
 
@@ -15,8 +35,9 @@ if [ -n "$PYTHON_FILES" ]; then
   echo "[Python] Checking staged .py files..."
 
   # Black
-  if command -v black &>/dev/null; then
-    if ! black --check --quiet $PYTHON_FILES 2>/dev/null; then
+  BLACK=$(find_tool black)
+  if [ -n "$BLACK" ]; then
+    if ! "$BLACK" --check --quiet $PYTHON_FILES 2>/dev/null; then
       echo "  ⚠ black: some files need formatting (run 'black .')"
       WARNINGS=1
     else
@@ -27,8 +48,9 @@ if [ -n "$PYTHON_FILES" ]; then
   fi
 
   # isort
-  if command -v isort &>/dev/null; then
-    if ! isort --check-only --quiet $PYTHON_FILES 2>/dev/null; then
+  ISORT=$(find_tool isort)
+  if [ -n "$ISORT" ]; then
+    if ! "$ISORT" --check-only --quiet $PYTHON_FILES 2>/dev/null; then
       echo "  ⚠ isort: import order issues (run 'isort .')"
       WARNINGS=1
     else
@@ -39,8 +61,9 @@ if [ -n "$PYTHON_FILES" ]; then
   fi
 
   # autoflake
-  if command -v autoflake &>/dev/null; then
-    if ! autoflake --check --remove-all-unused-imports $PYTHON_FILES 2>/dev/null; then
+  AUTOFLAKE=$(find_tool autoflake)
+  if [ -n "$AUTOFLAKE" ]; then
+    if ! "$AUTOFLAKE" --check --remove-all-unused-imports $PYTHON_FILES 2>/dev/null; then
       echo "  ⚠ autoflake: unused imports detected (run 'autoflake --in-place --remove-all-unused-imports .')"
       WARNINGS=1
     else
