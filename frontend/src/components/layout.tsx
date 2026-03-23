@@ -12,13 +12,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Hexagon, Menu, X, Settings, LogOut } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { LoginModal } from "@/components/login-modal";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
 
   const navItems = [
@@ -114,19 +112,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </>
             ) : (
               <>
-                <Button
-                  variant="ghost"
-                  className="font-medium"
-                  onClick={() => setIsLoginOpen(true)}
-                >
-                  Log In
-                </Button>
-                <Button
-                  className="bg-black hover:bg-zinc-800 text-white font-medium rounded-md px-6"
-                  onClick={() => setIsLoginOpen(true)}
-                >
-                  Get Started
-                </Button>
+                <Link href="/auth">
+                  <Button variant="ghost" className="font-medium">
+                    Log In
+                  </Button>
+                </Link>
+                <Link href="/auth">
+                  <Button className="bg-black hover:bg-zinc-800 text-white font-medium rounded-md px-6">
+                    Get Started
+                  </Button>
+                </Link>
               </>
             )}
           </div>
@@ -193,22 +188,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </>
               ) : (
                 <>
-                  <Button
-                    variant="ghost"
-                    className="justify-start"
-                    onClick={() => setIsLoginOpen(true)}
-                  >
-                    Log In
-                  </Button>
-                  <Button
-                    className="bg-black text-white justify-start w-full"
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      setIsLoginOpen(true);
-                    }}
-                  >
-                    Get Started
-                  </Button>
+                  <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="justify-start w-full">
+                      Log In
+                    </Button>
+                  </Link>
+                  <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button className="bg-black text-white justify-start w-full">
+                      Get Started
+                    </Button>
+                  </Link>
                 </>
               )}
             </div>
@@ -264,8 +253,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </footer>
-
-      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
     </div>
   );
 }
