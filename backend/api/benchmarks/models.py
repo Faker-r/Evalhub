@@ -25,6 +25,7 @@ class Benchmark(Base):
     private = Column(Boolean, nullable=True)
     gated = Column(Boolean, nullable=True)
     files = Column(JSONB, nullable=True)
+    hide = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow

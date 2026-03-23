@@ -57,7 +57,7 @@ export default function Results() {
   const offset = (page - 1) * PAGE_SIZE;
 
   // Fetch traces/evaluations
-  const { data: tracesData, isLoading, refetch } = useQuery({
+  const { data: tracesData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["traces", page],
     queryFn: () => apiClient.getTraces({ limit: PAGE_SIZE, offset }),
     enabled: isAuthenticated,
@@ -291,9 +291,9 @@ export default function Results() {
             variant="outline"
             className="gap-2"
             onClick={() => refetch()}
-            disabled={isLoading}
+            disabled={isFetching}
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
