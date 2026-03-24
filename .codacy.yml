@@ -1,0 +1,19 @@
+---
+engines:
+  pylint:
+    enabled: true
+  bandit:
+    enabled: true
+  ruff:
+    enabled: true
+
+exclude_paths:
+  - "frontend/**"
+  - "backend/.venv/**"
+  - "backend/venv/**"
+  - "backend/lighteval/**"
+  - "backend/**/__pycache__/**"
+  - "backend/alembic/versions/**"
+  - "backend/alembic/env.py"
+  - "**/*.pyc"
+  - "**/node_modules/**"
