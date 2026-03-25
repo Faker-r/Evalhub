@@ -1,0 +1,23 @@
+{
+  "name": "evalhub-demo-v2",
+  "version": "1.0.0",
+  "description": "EvalHub 90-120 second dynamic demo video",
+  "scripts": {
+    "start": "remotion studio",
+    "build": "remotion render DemoVideo out/evalhub-demo-v2.mp4",
+    "build:preview": "remotion render DemoVideo out/evalhub-demo-v2.mp4 --frames=0-300"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.0",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/player": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.4.0"
+  }
+}
