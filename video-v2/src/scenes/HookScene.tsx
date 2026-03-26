@@ -1,40 +1,28 @@
 import {
   AbsoluteFill,
   interpolate,
-  spring,
   useCurrentFrame,
   useVideoConfig,
-  Easing,
 } from "remotion";
-
-// Playful color palette
-const COLORS = {
-  coral: "#FF6B6B",
-  mint: "#10B981",
-  purple: "#8B5CF6",
-  yellow: "#FBBF24",
-  blue: "#3B82F6",
-  pink: "#EC4899",
-  dark: "#1F2937",
-  light: "#F9FAFB",
-};
+import { C, FONT, popIn } from "../theme";
+import { IsometricDiagram } from "./IsometricDiagram";
 
 export const HookScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  // Phase 1: "You use AI every day" with icons (0-5s)
-  const phase1Opacity = interpolate(frame, [0, 20], [0, 1], {
+  // Phase 1: "You use AI every day" (0-5s)
+  const phase1Opacity = interpolate(frame, [0, 10], [0, 1], {
     extrapolateRight: "clamp",
   });
-  const phase1Exit = interpolate(frame, [140, 160], [1, 0], {
+  const phase1Exit = interpolate(frame, [140, 150], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   // Phase 2: "Same model, different results" (5-12s)
-  const phase2Start = 160;
-  const phase2Opacity = interpolate(frame, [phase2Start, phase2Start + 20], [0, 1], {
+  const phase2Start = 150;
+  const phase2Opacity = interpolate(frame, [phase2Start, phase2Start + 15], [0, 1], {
     extrapolateRight: "clamp",
   });
   const phase2Exit = interpolate(frame, [380, 400], [1, 0], {
@@ -44,75 +32,62 @@ export const HookScene: React.FC = () => {
 
   // Phase 3: "How do you know which one to trust?" (12-18s)
   const phase3Start = 400;
-  const phase3Opacity = interpolate(frame, [phase3Start, phase3Start + 20], [0, 1], {
+  const phase3Opacity = interpolate(frame, [phase3Start, phase3Start + 15], [0, 1], {
     extrapolateRight: "clamp",
   });
 
   // Fade out
   const fadeOut = interpolate(
     frame,
-    [durationInFrames - 30, durationInFrames],
+    [durationInFrames - 20, durationInFrames],
     [1, 0],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
   );
 
-  // Floating animation for icons
-  const float = (offset: number) => Math.sin((frame + offset) * 0.05) * 8;
-
-  // Bounce animation
-  const bounce = spring({
-    frame: frame - 30,
-    fps,
-    config: { damping: 8, stiffness: 150 },
-  });
-
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(135deg, ${COLORS.light} 0%, #EEF2FF 100%)`,
+        backgroundColor: C.white,
         opacity: fadeOut,
       }}
     >
-      {/* Decorative background shapes */}
+      {/* Subtle radial noise texture */}
+      <svg
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.05, pointerEvents: "none" }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <filter id="hook-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#hook-noise)" />
+      </svg>
+      {/* Distorted background grid elements */}
       <div
         style={{
           position: "absolute",
-          top: 100,
-          right: 150,
-          width: 200,
-          height: 200,
-          borderRadius: "50%",
-          background: `${COLORS.purple}15`,
-          transform: `translateY(${float(0)}px)`,
+          top: -200,
+          right: -200,
+          width: 800,
+          height: 800,
+          background: `radial-gradient(circle, ${C.green}10 0%, transparent 60%)`,
+          pointerEvents: "none",
         }}
       />
       <div
         style={{
           position: "absolute",
-          bottom: 150,
-          left: 100,
-          width: 150,
-          height: 150,
-          borderRadius: "30%",
-          background: `${COLORS.coral}15`,
-          transform: `translateY(${float(50)}px) rotate(${frame * 0.2}deg)`,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: "40%",
-          left: 80,
-          width: 80,
-          height: 80,
-          borderRadius: "20%",
-          background: `${COLORS.mint}20`,
-          transform: `translateY(${float(100)}px)`,
+          bottom: -300,
+          left: -100,
+          width: 600,
+          height: 600,
+          background: `radial-gradient(circle, ${C.pink}10 0%, transparent 60%)`,
+          pointerEvents: "none",
         }}
       />
 
       {/* Phase 1: "You use AI every day" */}
-      {frame < 180 && (
+      {frame < 160 && (
         <div
           style={{
             position: "absolute",
@@ -126,48 +101,61 @@ export const HookScene: React.FC = () => {
         >
           <h1
             style={{
-              fontSize: 72,
-              fontWeight: 800,
-              color: COLORS.dark,
-              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontSize: 84,
+              color: C.black,
+              fontFamily: FONT.display,
               textAlign: "center",
               margin: 0,
-              transform: `scale(${bounce})`,
+              letterSpacing: 2,
+              transform: `scale(${popIn(frame, fps, 0)})`,
             }}
           >
-            You use{" "}
-            <span
-              style={{
-                background: `linear-gradient(135deg, ${COLORS.purple} 0%, ${COLORS.blue} 100%)`,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              AI
-            </span>{" "}
-            every day
+            YOU USE <span style={{ color: C.green }}>AI</span> EVERY DAY
           </h1>
 
           {/* AI use case icons */}
           <div
             style={{
               display: "flex",
-              gap: 60,
-              marginTop: 60,
-              opacity: interpolate(frame, [40, 70], [0, 1], { extrapolateRight: "clamp" }),
+              gap: 80,
+              marginTop: 80,
             }}
           >
             {[
-              { icon: "💬", label: "Chatbots", color: COLORS.blue, delay: 0 },
-              { icon: "🔍", label: "Search", color: COLORS.purple, delay: 10 },
-              { icon: "✍️", label: "Writing", color: COLORS.coral, delay: 20 },
-              { icon: "🎨", label: "Images", color: COLORS.pink, delay: 30 },
+              {
+                icon: (
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.white} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                ),
+                label: "Chatbots", delay: 20
+              },
+              {
+                icon: (
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.white} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                ),
+                label: "Search", delay: 35
+              },
+              {
+                icon: (
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.white} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/>
+                  </svg>
+                ),
+                label: "Writing", delay: 50
+              },
+              {
+                icon: (
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={C.white} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                ),
+                label: "Images", delay: 65
+              },
             ].map((item, i) => {
-              const itemBounce = spring({
-                frame: frame - 50 - item.delay,
-                fps,
-                config: { damping: 10, stiffness: 200 },
-              });
+              const itemScale = popIn(frame, fps, item.delay, { damping: 12, stiffness: 150 });
               return (
                 <div
                   key={item.label}
@@ -175,31 +163,33 @@ export const HookScene: React.FC = () => {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    gap: 16,
-                    transform: `scale(${itemBounce}) translateY(${float(i * 30)}px)`,
+                    gap: 20,
+                    opacity: frame >= item.delay ? 1 : 0,
+                    transform: `scale(${frame >= item.delay ? itemScale : 0})`,
                   }}
                 >
                   <div
                     style={{
-                      width: 100,
-                      height: 100,
-                      borderRadius: 24,
-                      background: `${item.color}15`,
-                      border: `3px solid ${item.color}30`,
+                      width: 120,
+                      height: 120,
+                      background: C.black,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 48,
+                      boxShadow: `8px 8px 0px ${C.green}`,
+                      border: `2px solid ${C.black}`,
                     }}
                   >
                     {item.icon}
                   </div>
                   <span
                     style={{
-                      fontSize: 20,
-                      fontWeight: 600,
-                      color: COLORS.dark,
-                      fontFamily: "system-ui, sans-serif",
+                      fontSize: 24,
+                      fontWeight: 800,
+                      color: C.black,
+                      fontFamily: FONT.body,
+                      textTransform: "uppercase",
+                      letterSpacing: 2,
                     }}
                   >
                     {item.label}
@@ -211,180 +201,21 @@ export const HookScene: React.FC = () => {
         </div>
       )}
 
-      {/* Phase 2: "Same model, different results" */}
-      {frame >= 160 && frame < 420 && (
+      {/* Phase 2: Isometric 3D Diagram */}
+      {frame >= phase2Start && frame < 410 && (
         <div
           style={{
             position: "absolute",
             inset: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
             opacity: phase2Opacity * phase2Exit,
-            padding: 80,
           }}
         >
-          <h2
-            style={{
-              fontSize: 56,
-              fontWeight: 700,
-              color: COLORS.dark,
-              fontFamily: "system-ui, sans-serif",
-              textAlign: "center",
-              marginBottom: 60,
-            }}
-          >
-            But did you know...
-          </h2>
-
-          {/* Visual: Same model → Different providers → Different outputs */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 40,
-            }}
-          >
-            {/* Input */}
-            <div
-              style={{
-                opacity: interpolate(frame, [phase2Start + 20, phase2Start + 40], [0, 1], {
-                  extrapolateRight: "clamp",
-                }),
-                transform: `translateX(${interpolate(frame, [phase2Start + 20, phase2Start + 40], [-30, 0], { extrapolateRight: "clamp" })}px)`,
-              }}
-            >
-              <div
-                style={{
-                  padding: "24px 32px",
-                  background: "#fff",
-                  borderRadius: 16,
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
-                  border: `2px solid ${COLORS.blue}30`,
-                }}
-              >
-                <div style={{ fontSize: 16, color: "#6B7280", marginBottom: 8, fontFamily: "system-ui, sans-serif" }}>
-                  Same AI Model
-                </div>
-                <div style={{ fontSize: 28, fontWeight: 700, color: COLORS.blue, fontFamily: "system-ui, sans-serif" }}>
-                  🤖 GPT-4
-                </div>
-              </div>
-            </div>
-
-            {/* Arrow */}
-            <div
-              style={{
-                opacity: interpolate(frame, [phase2Start + 40, phase2Start + 60], [0, 1], {
-                  extrapolateRight: "clamp",
-                }),
-              }}
-            >
-              <svg width="60" height="40" viewBox="0 0 60 40">
-                <path
-                  d="M5 20 L45 20 M35 10 L45 20 L35 30"
-                  stroke={COLORS.dark}
-                  strokeWidth="4"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-
-            {/* Different providers with different outputs */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {[
-                { provider: "Provider A", quality: "Great answer! ✓", color: COLORS.mint },
-                { provider: "Provider B", quality: "Okay answer ~", color: COLORS.yellow },
-                { provider: "Provider C", quality: "Wrong answer ✗", color: COLORS.coral },
-              ].map((item, i) => {
-                const itemOpacity = interpolate(
-                  frame,
-                  [phase2Start + 60 + i * 25, phase2Start + 80 + i * 25],
-                  [0, 1],
-                  { extrapolateRight: "clamp" }
-                );
-                const itemX = interpolate(
-                  frame,
-                  [phase2Start + 60 + i * 25, phase2Start + 80 + i * 25],
-                  [30, 0],
-                  { extrapolateRight: "clamp" }
-                );
-                return (
-                  <div
-                    key={item.provider}
-                    style={{
-                      opacity: itemOpacity,
-                      transform: `translateX(${itemX}px)`,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 16,
-                      padding: "16px 24px",
-                      background: "#fff",
-                      borderRadius: 12,
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.06)",
-                      border: `2px solid ${item.color}40`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: "50%",
-                        background: item.color,
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: 18,
-                        fontWeight: 600,
-                        color: COLORS.dark,
-                        fontFamily: "system-ui, sans-serif",
-                        minWidth: 100,
-                      }}
-                    >
-                      {item.provider}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 16,
-                        color: item.color,
-                        fontFamily: "system-ui, sans-serif",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {item.quality}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Explanation text */}
-          <p
-            style={{
-              marginTop: 50,
-              fontSize: 24,
-              color: "#6B7280",
-              fontFamily: "system-ui, sans-serif",
-              textAlign: "center",
-              opacity: interpolate(frame, [phase2Start + 140, phase2Start + 160], [0, 1], {
-                extrapolateRight: "clamp",
-              }),
-            }}
-          >
-            The same AI model can give{" "}
-            <span style={{ color: COLORS.coral, fontWeight: 700 }}>different results</span>
-            {" "}depending on who runs it
-          </p>
+          <IsometricDiagram localFrame={frame - phase2Start} />
         </div>
       )}
 
       {/* Phase 3: "How do you know which one to trust?" */}
-      {frame >= 400 && (
+      {frame >= phase3Start && (
         <div
           style={{
             position: "absolute",
@@ -396,51 +227,49 @@ export const HookScene: React.FC = () => {
             opacity: phase3Opacity,
           }}
         >
-          <h2
+          <div
             style={{
-              fontSize: 64,
-              fontWeight: 800,
-              color: COLORS.dark,
-              fontFamily: "system-ui, sans-serif",
-              textAlign: "center",
-              lineHeight: 1.3,
+              padding: "40px 80px",
+              background: C.black,
+              transform: `scale(${popIn(frame, fps, phase3Start)}) rotate(-2deg)`,
+              boxShadow: `16px 16px 0px ${C.green}`,
             }}
           >
-            How do you know{" "}
-            <span
+            <h2
               style={{
-                background: `linear-gradient(135deg, ${COLORS.coral} 0%, ${COLORS.purple} 100%)`,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+                fontSize: 80,
+                color: C.white,
+                fontFamily: FONT.display,
+                textAlign: "center",
+                lineHeight: 1.2,
+                margin: 0,
+                letterSpacing: 2,
               }}
             >
-              which one
-            </span>
-            <br />
-            to trust?
-          </h2>
+              HOW DO YOU KNOW<br/>
+              <span style={{ color: C.pink }}>WHICH ONE</span> TO TRUST?
+            </h2>
+          </div>
 
-          {/* Animated question marks */}
           <div
             style={{
               display: "flex",
-              gap: 30,
-              marginTop: 40,
-              opacity: interpolate(frame, [phase3Start + 30, phase3Start + 50], [0, 1], {
-                extrapolateRight: "clamp",
-              }),
+              gap: 40,
+              marginTop: 80,
             }}
           >
-            {["🤔", "❓", "🤷"].map((emoji, i) => (
-              <span
+            {[1, 2, 3].map((_, i) => (
+              <div
                 key={i}
                 style={{
-                  fontSize: 60,
-                  transform: `translateY(${float(i * 40)}px)`,
+                  opacity: frame >= phase3Start + 20 + i * 15 ? 1 : 0,
+                  transform: `scale(${popIn(frame, fps, phase3Start + 20 + i * 15)})`,
                 }}
               >
-                {emoji}
-              </span>
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke={i === 1 ? C.pink : C.black} strokeWidth="3" strokeLinecap="square" strokeLinejoin="miter">
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
             ))}
           </div>
         </div>
@@ -448,3 +277,4 @@ export const HookScene: React.FC = () => {
     </AbsoluteFill>
   );
 };
+

@@ -9,6 +9,7 @@ import {
   useVideoConfig,
   Easing,
 } from "remotion";
+import { C, popIn } from "../theme";
 
 // All billboard images from public/capstone-assets/ai-billboards
 const BILLBOARD_FILES = [
@@ -43,9 +44,6 @@ const GRID_ROWS = 3;
 const CELL_W = CANVAS_W / GRID_COLS;       // 640
 const CELL_H = (CANVAS_H * 1.15) / GRID_ROWS; // ~414 — stretches grid below frame
 
-// Snap duration: how many frames the smash-in animation takes
-const SNAP_FRAMES = 7;
-
 interface BillboardConfig {
   file: string;
   startFrame: number;
@@ -54,10 +52,12 @@ interface BillboardConfig {
   rotation: number;
   scale: number;
   zIndex: number;
+  color: string;   // shadow color
 }
 
 const buildConfigs = (fps: number): BillboardConfig[] => {
   const n = BILLBOARD_FILES.length;
+  const colors = [C.green, C.pink, C.black];
 
   return BILLBOARD_FILES.map((file, i) => {
     const col = i % GRID_COLS;
@@ -92,8 +92,11 @@ const buildConfigs = (fps: number): BillboardConfig[] => {
 
     // z-index: somewhat random so images interleave rather than strictly stack
     const zIndex = Math.round(seededFloat(i * 19 + 8, 1, 50));
+    
+    // Assign a theme color for the shadow drops
+    const color = colors[i % colors.length];
 
-    return { file, startFrame, x, y, rotation, scale, zIndex };
+    return { file, startFrame, x, y, rotation, scale, zIndex, color };
   });
 };
 
@@ -114,21 +117,21 @@ export const BillboardCascadeScene: React.FC = () => {
   return (
     <AbsoluteFill
       style={{
-        backgroundColor: "#080808",
+        backgroundColor: C.white,
         overflow: "hidden",
         opacity: fadeOut,
       }}
     >
-      {/* Subtle grain overlay */}
+      {/* Subtle radial noise texture */}
       <svg
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.045, pointerEvents: "none" }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.05, pointerEvents: "none" }}
         xmlns="http://www.w3.org/2000/svg"
       >
-        <filter id="noise">
-          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch" />
+        <filter id="cascade-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
           <feColorMatrix type="saturate" values="0" />
         </filter>
-        <rect width="100%" height="100%" filter="url(#noise)" />
+        <rect width="100%" height="100%" filter="url(#cascade-noise)" />
       </svg>
 
       {/* Billboard images — snap into existence */}
@@ -138,18 +141,8 @@ export const BillboardCascadeScene: React.FC = () => {
         // Hidden before its time
         if (localFrame < 0) return null;
 
-        // Snap scale: slams in from 1.18 → 1.0 over SNAP_FRAMES, ease-out
-        const snapProgress = interpolate(
-          localFrame,
-          [0, SNAP_FRAMES],
-          [0, 1],
-          {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-            easing: Easing.out(Easing.quad),
-          }
-        );
-        const snapScale = interpolate(snapProgress, [0, 1], [1.18, 1.0]);
+        // Snap scale: slams in from 3.0 → 1.0 (popIn helper)
+        const snapScale = popIn(frame, fps, cfg.startFrame, { damping: 14, stiffness: 180 });
 
         // Very brief opacity flash: appears at full opacity immediately, no fade
         const opacity = interpolate(localFrame, [0, 2], [0, 1], {
@@ -170,12 +163,12 @@ export const BillboardCascadeScene: React.FC = () => {
               width: imgW,
               height: imgH,
               objectFit: "cover",
-              borderRadius: 5,
+              border: `4px solid ${C.black}`,
               transform: `rotate(${cfg.rotation}deg) scale(${snapScale})`,
               transformOrigin: "center center",
               zIndex: cfg.zIndex,
               opacity,
-              boxShadow: "0 20px 70px rgba(0,0,0,0.9), 0 4px 16px rgba(0,0,0,0.6)",
+              boxShadow: `16px 16px 0px ${cfg.color}`,
             }}
           />
         );
@@ -188,12 +181,12 @@ export const BillboardCascadeScene: React.FC = () => {
         </Sequence>
       ))}
 
-      {/* Vignette */}
+      {/* Vignette - Inverted for white theme (white center to light gray edge) */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          background: "radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.65) 100%)",
+          background: `radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.15) 100%)`,
           pointerEvents: "none",
           zIndex: 200,
         }}

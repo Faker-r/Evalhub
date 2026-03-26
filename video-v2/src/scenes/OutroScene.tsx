@@ -1,137 +1,75 @@
 import {
   AbsoluteFill,
   interpolate,
-  spring,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-
-const COLORS = {
-  mint: "#10B981",
-  mintLight: "#D1FAE5",
-  purple: "#8B5CF6",
-  blue: "#3B82F6",
-  coral: "#FF6B6B",
-  yellow: "#FBBF24",
-  pink: "#EC4899",
-  dark: "#1F2937",
-  light: "#F9FAFB",
-  gray: "#6B7280",
-};
+import { C, FONT, popIn } from "../theme";
 
 export const OutroScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  // Logo animation
-  const logoScale = spring({
+  // Animations
+  const ctaScale = popIn(frame, fps, 0);
+  const elementsOpacity = interpolate(frame, [15, 30], [0, 1], {
+    extrapolateRight: "clamp",
+  });
+  
+  // Button pulse animation
+  const buttonPulse = 1 + Math.sin(frame * 0.1) * 0.05;
+
+  // Fade out
+  const fadeOut = interpolate(
     frame,
-    fps,
-    config: { damping: 12, stiffness: 120 },
-  });
-
-  const logoOpacity = interpolate(frame, [0, 20], [0, 1], {
-    extrapolateRight: "clamp",
-  });
-
-  // Tagline animation
-  const taglineOpacity = interpolate(frame, [30, 50], [0, 1], {
-    extrapolateRight: "clamp",
-  });
-  const taglineY = interpolate(frame, [30, 50], [20, 0], {
-    extrapolateRight: "clamp",
-  });
-
-  // CTA button animation
-  const ctaScale = spring({
-    frame: frame - 70,
-    fps,
-    config: { damping: 10, stiffness: 150 },
-  });
-
-  // Sub-text animation
-  const subTextOpacity = interpolate(frame, [120, 140], [0, 1], {
-    extrapolateRight: "clamp",
-  });
-
-  // Floating animation
-  const float = (offset: number) => Math.sin((frame + offset) * 0.06) * 8;
-
-  // Pulse for CTA
-  const pulse = 1 + Math.sin(frame * 0.1) * 0.03;
-
-  // Background gradient animation
-  const gradientRotation = frame * 0.3;
+    [durationInFrames - 20, durationInFrames],
+    [1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
 
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(${gradientRotation}deg, ${COLORS.light} 0%, ${COLORS.mintLight}60 50%, #FEF3C7 100%)`,
+        backgroundColor: C.black,
+        opacity: fadeOut,
       }}
     >
-      {/* Decorative floating shapes */}
+      {/* Noise background */}
+      <svg
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.1, pointerEvents: "none" }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <filter id="outro-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#outro-noise)" />
+      </svg>
+      
+      {/* Abstract Grid Background */}
       <div
         style={{
           position: "absolute",
-          top: "15%",
-          left: "10%",
-          width: 120,
-          height: 120,
-          borderRadius: "50%",
-          background: `linear-gradient(135deg, ${COLORS.mint}30 0%, ${COLORS.blue}30 100%)`,
-          transform: `translateY(${float(0)}px)`,
+          top: -200,
+          right: -200,
+          width: 800,
+          height: 800,
+          background: `radial-gradient(circle, ${C.green}30 0%, transparent 60%)`,
+          pointerEvents: "none",
         }}
       />
       <div
         style={{
           position: "absolute",
-          top: "60%",
-          right: "12%",
-          width: 80,
-          height: 80,
-          borderRadius: "30%",
-          background: `linear-gradient(135deg, ${COLORS.purple}25 0%, ${COLORS.pink}25 100%)`,
-          transform: `translateY(${float(50)}px) rotate(${frame * 0.5}deg)`,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: "20%",
-          left: "20%",
-          width: 60,
-          height: 60,
-          borderRadius: "40%",
-          background: `linear-gradient(135deg, ${COLORS.yellow}30 0%, ${COLORS.coral}30 100%)`,
-          transform: `translateY(${float(100)}px) rotate(${-frame * 0.3}deg)`,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: "25%",
-          right: "25%",
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          background: `${COLORS.mint}20`,
-          transform: `translateY(${float(30)}px)`,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: "35%",
-          right: "8%",
-          width: 100,
-          height: 100,
-          borderRadius: "50%",
-          background: `${COLORS.blue}15`,
-          transform: `translateY(${float(70)}px)`,
+          bottom: -300,
+          left: -100,
+          width: 600,
+          height: 600,
+          background: `radial-gradient(circle, ${C.pink}30 0%, transparent 60%)`,
+          pointerEvents: "none",
         }}
       />
 
-      {/* Main content */}
       <div
         style={{
           display: "flex",
@@ -139,220 +77,150 @@ export const OutroScene: React.FC = () => {
           alignItems: "center",
           justifyContent: "center",
           height: "100%",
-          gap: 24,
+          gap: 60,
         }}
       >
-        {/* Logo */}
+        {/* Main CTA */}
         <div
           style={{
-            opacity: logoOpacity,
-            transform: `scale(${logoScale})`,
-            display: "flex",
-            alignItems: "center",
-            gap: 20,
-          }}
-        >
-          {/* Logo icon */}
-          <div
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 20,
-              background: `linear-gradient(135deg, ${COLORS.mint} 0%, #059669 100%)`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: `0 16px 48px ${COLORS.mint}50`,
-            }}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="44"
-              height="44"
-              fill="none"
-              stroke="white"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </svg>
-          </div>
-
-          {/* Logo text */}
-          <div
-            style={{
-              fontSize: 72,
-              fontWeight: 800,
-              fontFamily: "system-ui, -apple-system, sans-serif",
-              letterSpacing: -2,
-            }}
-          >
-            <span style={{ color: COLORS.mint }}>Eval</span>
-            <span style={{ color: COLORS.dark }}>Hub</span>
-          </div>
-        </div>
-
-        {/* Tagline */}
-        <div
-          style={{
-            opacity: taglineOpacity,
-            transform: `translateY(${taglineY}px)`,
-          }}
-        >
-          <h2
-            style={{
-              fontSize: 42,
-              fontWeight: 700,
-              color: COLORS.dark,
-              fontFamily: "system-ui, sans-serif",
-              textAlign: "center",
-              margin: 0,
-            }}
-          >
-            Make better AI decisions.
-          </h2>
-          <p
-            style={{
-              fontSize: 24,
-              color: COLORS.gray,
-              fontFamily: "system-ui, sans-serif",
-              textAlign: "center",
-              marginTop: 12,
-            }}
-          >
-            <span
-              style={{
-                fontStyle: "italic",
-                background: `linear-gradient(90deg, ${COLORS.mint} 0%, ${COLORS.blue} 100%)`,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              Benchmarking is Clarity.
-            </span>
-          </p>
-        </div>
-
-        {/* CTA Button */}
-        <div
-          style={{
-            marginTop: 32,
-            transform: `scale(${ctaScale * pulse})`,
-          }}
-        >
-          <div
-            style={{
-              position: "relative",
-            }}
-          >
-            {/* Glow effect */}
-            <div
-              style={{
-                position: "absolute",
-                inset: -12,
-                borderRadius: 24,
-                background: `linear-gradient(135deg, ${COLORS.mint}60 0%, ${COLORS.blue}60 100%)`,
-                filter: "blur(20px)",
-                opacity: 0.6,
-              }}
-            />
-            <button
-              style={{
-                position: "relative",
-                padding: "22px 56px",
-                background: `linear-gradient(135deg, ${COLORS.mint} 0%, #059669 100%)`,
-                border: "none",
-                borderRadius: 18,
-                fontSize: 22,
-                fontWeight: 700,
-                color: "#fff",
-                fontFamily: "system-ui, sans-serif",
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                cursor: "pointer",
-                boxShadow: `0 12px 40px ${COLORS.mint}50`,
-              }}
-            >
-              Try EvalHub Free
-              <svg
-                viewBox="0 0 24 24"
-                width="24"
-                height="24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="5" y1="12" x2="19" y2="12" />
-                <polyline points="12 5 19 12 12 19" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Sub-text */}
-        <div
-          style={{
-            opacity: subTextOpacity,
-            marginTop: 20,
+            transform: `scale(${ctaScale})`,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 12,
+            gap: 24,
           }}
         >
           <div
             style={{
+              width: 140,
+              height: 140,
+              background: C.white,
               display: "flex",
               alignItems: "center",
-              gap: 24,
+              justifyContent: "center",
+              boxShadow: `12px 12px 0px ${C.green}`,
+              border: `4px solid ${C.black}`,
             }}
           >
-            {[
-              { icon: "🔓", text: "Open Source" },
-              { icon: "⚡", text: "Fast Results" },
-              { icon: "🎯", text: "Accurate" },
-            ].map((item, i) => (
+            <svg viewBox="0 0 24 24" width="80" height="80" fill="none" stroke={C.black} strokeWidth="3" strokeLinecap="square">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+          </div>
+          
+          <h1
+            style={{
+              fontSize: 100,
+              color: C.white,
+              fontFamily: FONT.display,
+              textAlign: "center",
+              lineHeight: 1.1,
+              margin: 0,
+              textShadow: `4px 4px 0px ${C.pink}`,
+            }}
+          >
+            READY TO FIND<br/>
+            YOUR <span style={{ color: C.green }}>BEST AI</span>?
+          </h1>
+        </div>
+
+        {/* Benefits list */}
+        <div
+          style={{
+            opacity: elementsOpacity,
+            display: "flex",
+            gap: 40,
+            justifyContent: "center",
+          }}
+        >
+          {[
+            { text: "100% Free", icon: (
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="3"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+            )},
+            { text: "No Lock-in", icon: (
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={C.white} strokeWidth="3"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            )},
+            { text: "Instant Setup", icon: (
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={C.pink} strokeWidth="3"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            )},
+          ].map((item, i) => (
+            <div
+              key={item.text}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                transform: `translateY(${interpolate(frame, [15 + i * 5, 30 + i * 5], [20, 0], { extrapolateRight: "clamp" }) }px)`,
+                opacity: interpolate(frame, [15 + i * 5, 30 + i * 5], [0, 1], { extrapolateRight: "clamp" }),
+              }}
+            >
               <div
-                key={item.text}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  opacity: interpolate(frame, [120 + i * 15, 135 + i * 15], [0, 1], {
-                    extrapolateRight: "clamp",
-                  }),
+                  padding: 12,
+                  background: `${C.white}10`,
+                  border: `2px solid ${item.icon.props.stroke}`,
                 }}
               >
-                <span style={{ fontSize: 18 }}>{item.icon}</span>
-                <span
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: COLORS.gray,
-                    fontFamily: "system-ui, sans-serif",
-                  }}
-                >
-                  {item.text}
-                </span>
+                {item.icon}
               </div>
-            ))}
-          </div>
+              <span
+                style={{
+                  fontSize: 24,
+                  fontWeight: 800,
+                  color: C.white,
+                  fontFamily: FONT.body,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
+                {item.text}
+              </span>
+            </div>
+          ))}
+        </div>
 
-          <p
+        {/* Call to action button */}
+        <div
+          style={{
+            opacity: elementsOpacity,
+            marginTop: 20,
+          }}
+        >
+          <div
             style={{
-              fontSize: 18,
-              color: COLORS.gray,
-              fontFamily: "system-ui, sans-serif",
-              marginTop: 24,
-              opacity: interpolate(frame, [180, 200], [0, 1], { extrapolateRight: "clamp" }),
+              padding: "24px 64px",
+              background: C.green,
+              color: C.black,
+              fontSize: 32,
+              fontWeight: 800,
+              fontFamily: FONT.display,
+              textTransform: "uppercase",
+              letterSpacing: 3,
+              boxShadow: `12px 12px 0px ${C.white}`,
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              transform: `scale(${buttonPulse})`,
+              border: `4px solid ${C.black}`,
             }}
           >
-            evalhub.io
-          </p>
+            START EVALUATING TODAY
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </div>
+          <div
+            style={{
+              fontSize: 20,
+              color: C.white,
+              fontFamily: FONT.body,
+              fontWeight: 700,
+              textAlign: "center",
+              marginTop: 32,
+              letterSpacing: 4,
+            }}
+          >
+            WWW.EVALHUB.IO
+          </div>
         </div>
       </div>
     </AbsoluteFill>

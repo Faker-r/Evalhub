@@ -9,17 +9,17 @@ import { OutroScene } from "./scenes/OutroScene";
 import { TeamInfoScene } from "./scenes/TeamInfoScene";
 import { BackgroundMusic, Voiceover, VideoSoundEffects } from "./Audio";
 
-// Scene timings (in seconds) - total ~111s (added 8s cascade opening)
+// Scene timings (in seconds) - total 89s
 const FPS = 30;
 const SCENES = {
-  cascade: { start: 0, duration: 8 },         // 0-8s:   Billboard cascade (NEW)
+  cascade: { start: 0, duration: 8 },         // 0-8s:   Billboard cascade
   hook: { start: 8, duration: 18 },           // 8-26s:  Problem hook
   solutionIntro: { start: 26, duration: 10 }, // 26-36s: Introduce EvalHub
-  leaderboard: { start: 36, duration: 22 },   // 36-58s: Leaderboard demo
-  submitEval: { start: 58, duration: 22 },    // 58-80s: Submit evaluation
-  results: { start: 80, duration: 16 },       // 80-96s: Results dashboard
-  outro: { start: 96, duration: 12 },         // 96-108s: CTA
-  teamInfo: { start: 108, duration: 3 },      // 108-111s: Team info
+  leaderboard: { start: 36, duration: 14 },   // 36-50s: Leaderboard demo
+  submitEval: { start: 50, duration: 14 },    // 50-64s: Submit evaluation
+  results: { start: 64, duration: 10 },       // 64-74s: Results dashboard
+  outro: { start: 74, duration: 12 },         // 74-86s: CTA
+  teamInfo: { start: 86, duration: 3 },       // 86-89s: Team info
 };
 
 export const DemoVideo: React.FC = () => {

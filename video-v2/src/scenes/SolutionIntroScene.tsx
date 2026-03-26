@@ -1,50 +1,22 @@
 import {
   AbsoluteFill,
   interpolate,
-  spring,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-
-const COLORS = {
-  mint: "#10B981",
-  mintLight: "#D1FAE5",
-  purple: "#8B5CF6",
-  blue: "#3B82F6",
-  dark: "#1F2937",
-  light: "#F9FAFB",
-};
+import { C, FONT, popIn } from "../theme";
 
 export const SolutionIntroScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  // Logo entrance
-  const logoScale = spring({
-    frame,
-    fps,
-    config: { damping: 12, stiffness: 150 },
-  });
-
-  const logoOpacity = interpolate(frame, [0, 15], [0, 1], {
+  // "Meet" text
+  const meetTextOpacity = interpolate(frame, [15, 25], [0, 1], {
     extrapolateRight: "clamp",
   });
-
-  // "Meet EvalHub" text
-  const meetTextOpacity = interpolate(frame, [20, 40], [0, 1], {
-    extrapolateRight: "clamp",
-  });
-  const meetTextY = interpolate(frame, [20, 40], [30, 0], {
-    extrapolateRight: "clamp",
-  });
-
+  
   // Tagline
-  const taglineOpacity = interpolate(frame, [70, 90], [0, 1], {
-    extrapolateRight: "clamp",
-  });
-
-  // Feature pills
-  const pillsOpacity = interpolate(frame, [120, 150], [0, 1], {
+  const taglineOpacity = interpolate(frame, [60, 75], [0, 1], {
     extrapolateRight: "clamp",
   });
 
@@ -56,56 +28,30 @@ export const SolutionIntroScene: React.FC = () => {
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
   );
 
-  // Floating animation
-  const float = (offset: number) => Math.sin((frame + offset) * 0.06) * 6;
-
-  // Pulse for the logo glow
-  const pulse = 0.8 + Math.sin(frame * 0.08) * 0.2;
-
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(135deg, ${COLORS.light} 0%, ${COLORS.mintLight}50 100%)`,
+        backgroundColor: C.white,
         opacity: fadeOut,
       }}
     >
-      {/* Decorative elements */}
-      <div
-        style={{
-          position: "absolute",
-          top: 80,
-          left: 120,
-          width: 120,
-          height: 120,
-          borderRadius: "50%",
-          background: `${COLORS.mint}15`,
-          transform: `translateY(${float(0)}px)`,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: 120,
-          right: 180,
-          width: 180,
-          height: 180,
-          borderRadius: "40%",
-          background: `${COLORS.purple}10`,
-          transform: `translateY(${float(80)}px) rotate(${frame * 0.1}deg)`,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: "50%",
-          right: 100,
-          width: 60,
-          height: 60,
-          borderRadius: "30%",
-          background: `${COLORS.blue}15`,
-          transform: `translateY(${float(40)}px)`,
-        }}
-      />
+      {/* Noise background */}
+      <svg
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.05, pointerEvents: "none" }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <filter id="intro-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#intro-noise)" />
+      </svg>
+      
+      {/* Decorative Grid Lines */}
+      <div style={{ position: "absolute", top: "20%", left: 0, right: 0, height: 1, background: C.black, opacity: 0.1 }} />
+      <div style={{ position: "absolute", top: "80%", left: 0, right: 0, height: 1, background: C.black, opacity: 0.1 }} />
+      <div style={{ position: "absolute", left: "20%", top: 0, bottom: 0, width: 1, background: C.black, opacity: 0.1 }} />
+      <div style={{ position: "absolute", right: "20%", top: 0, bottom: 0, width: 1, background: C.black, opacity: 0.1 }} />
 
       {/* Main content */}
       <div
@@ -115,72 +61,60 @@ export const SolutionIntroScene: React.FC = () => {
           alignItems: "center",
           justifyContent: "center",
           height: "100%",
-          gap: 24,
+          gap: 32,
         }}
       >
         {/* "Meet" text */}
         <div
           style={{
             opacity: meetTextOpacity,
-            transform: `translateY(${meetTextY}px)`,
-            fontSize: 32,
-            fontWeight: 600,
-            color: "#6B7280",
-            fontFamily: "system-ui, sans-serif",
-            letterSpacing: 4,
+            fontSize: 24,
+            fontWeight: 800,
+            color: C.black,
+            fontFamily: FONT.body,
+            letterSpacing: 8,
+            textTransform: "uppercase",
+            background: C.green,
+            padding: "8px 24px",
+            transform: `rotate(-2deg)`,
+            boxShadow: `4px 4px 0px ${C.black}`,
           }}
         >
-          MEET
+          Enter
         </div>
 
         {/* Logo */}
         <div
           style={{
-            opacity: logoOpacity,
-            transform: `scale(${logoScale})`,
+            transform: `scale(${popIn(frame, fps, 0)})`,
             display: "flex",
             alignItems: "center",
             gap: 24,
-            position: "relative",
+            opacity: frame >= 0 ? 1 : 0,
           }}
         >
-          {/* Logo glow */}
-          <div
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              width: 400,
-              height: 150,
-              background: `radial-gradient(ellipse, ${COLORS.mint}30 0%, transparent 70%)`,
-              transform: `translate(-50%, -50%) scale(${pulse})`,
-              borderRadius: "50%",
-              zIndex: -1,
-            }}
-          />
-
           {/* Logo icon */}
           <div
             style={{
-              width: 90,
-              height: 90,
-              borderRadius: 22,
-              background: `linear-gradient(135deg, ${COLORS.mint} 0%, #059669 100%)`,
+              width: 100,
+              height: 100,
+              background: C.black,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: `0 20px 50px ${COLORS.mint}50`,
+              boxShadow: `8px 8px 0px ${C.green}`,
+              border: `2px solid ${C.black}`,
             }}
           >
             <svg
               viewBox="0 0 24 24"
-              width="50"
-              height="50"
+              width="60"
+              height="60"
               fill="none"
-              stroke="white"
+              stroke={C.green}
               strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              strokeLinecap="square"
+              strokeLinejoin="miter"
             >
               <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
             </svg>
@@ -189,14 +123,13 @@ export const SolutionIntroScene: React.FC = () => {
           {/* Logo text */}
           <div
             style={{
-              fontSize: 88,
-              fontWeight: 800,
-              fontFamily: "system-ui, -apple-system, sans-serif",
-              letterSpacing: -2,
+              fontSize: 120,
+              color: C.black,
+              fontFamily: FONT.display,
+              letterSpacing: 2,
             }}
           >
-            <span style={{ color: COLORS.mint }}>Eval</span>
-            <span style={{ color: COLORS.dark }}>Hub</span>
+            EVAL<span style={{ color: C.green }}>HUB</span>
           </div>
         </div>
 
@@ -204,74 +137,79 @@ export const SolutionIntroScene: React.FC = () => {
         <div
           style={{
             opacity: taglineOpacity,
-            marginTop: 16,
+            marginTop: 24,
           }}
         >
           <h2
             style={{
-              fontSize: 42,
-              fontWeight: 600,
-              color: COLORS.dark,
-              fontFamily: "system-ui, sans-serif",
+              fontSize: 48,
+              fontWeight: 800,
+              color: C.black,
+              fontFamily: FONT.body,
               textAlign: "center",
               margin: 0,
+              textTransform: "uppercase",
             }}
           >
-            Finally see how AI{" "}
-            <span
-              style={{
-                background: `linear-gradient(90deg, ${COLORS.mint} 0%, ${COLORS.blue} 100%)`,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              really
-            </span>{" "}
-            compares
+            Finally see how AI <span style={{ color: C.white, background: C.black, padding: "0 12px" }}>really</span> compares
           </h2>
         </div>
 
         {/* Feature pills */}
         <div
           style={{
-            opacity: pillsOpacity,
             display: "flex",
-            gap: 20,
-            marginTop: 40,
+            gap: 32,
+            marginTop: 60,
           }}
         >
           {[
-            { text: "Open & Transparent", icon: "🔓" },
-            { text: "Rigorous Testing", icon: "🧪" },
-            { text: "Make Better Decisions", icon: "✨" },
-          ].map((pill, i) => {
-            const pillBounce = spring({
-              frame: frame - 120 - i * 10,
-              fps,
-              config: { damping: 12, stiffness: 200 },
-            });
+            {
+              text: "Open & Transparent", delay: 90, icon: (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                </svg>
+              )
+            },
+            {
+              text: "Rigorous Testing", delay: 100, icon: (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                  <path d="M9 2v2"/><path d="M15 2v2"/><path d="M12 4v16"/><path d="M5 22h14"/><path d="M12 9a2 2 0 1 0 0 4 2 2 0 1 0 0-4z"/>
+                </svg>
+              )
+            },
+            {
+              text: "Make Better Decisions", delay: 110, icon: (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                  <path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/>
+                </svg>
+              )
+            },
+          ].map((pill) => {
+            const pillScale = popIn(frame, fps, pill.delay);
             return (
               <div
                 key={pill.text}
                 style={{
-                  transform: `scale(${pillBounce})`,
-                  padding: "16px 28px",
-                  background: "#fff",
-                  borderRadius: 50,
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-                  border: `2px solid ${COLORS.mint}30`,
+                  opacity: frame >= pill.delay ? 1 : 0,
+                  transform: `scale(${pillScale})`,
+                  padding: "16px 32px",
+                  background: C.white,
+                  border: `3px solid ${C.black}`,
+                  boxShadow: `6px 6px 0px ${C.pink}`,
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
+                  gap: 16,
                 }}
               >
-                <span style={{ fontSize: 22 }}>{pill.icon}</span>
+                <div style={{ color: C.pink }}>{pill.icon}</div>
                 <span
                   style={{
-                    fontSize: 18,
-                    fontWeight: 600,
-                    color: COLORS.dark,
-                    fontFamily: "system-ui, sans-serif",
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color: C.black,
+                    fontFamily: FONT.body,
+                    textTransform: "uppercase",
                   }}
                 >
                   {pill.text}

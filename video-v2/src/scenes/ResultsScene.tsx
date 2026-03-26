@@ -1,571 +1,256 @@
 import {
   AbsoluteFill,
   interpolate,
-  spring,
   useCurrentFrame,
   useVideoConfig,
+  random,
 } from "remotion";
-
-const COLORS = {
-  mint: "#10B981",
-  mintLight: "#D1FAE5",
-  purple: "#8B5CF6",
-  blue: "#3B82F6",
-  coral: "#FF6B6B",
-  yellow: "#FBBF24",
-  dark: "#1F2937",
-  light: "#F9FAFB",
-  gray: "#6B7280",
-};
+import { C, FONT, popIn } from "../theme";
 
 export const ResultsScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  // Section title animation
-  const titleOpacity = interpolate(frame, [0, 20], [0, 1], {
+  // Section title
+  const titleOpacity = interpolate(frame, [0, 15], [0, 1], {
     extrapolateRight: "clamp",
   });
-
-  // Card entrance
-  const cardScale = spring({
-    frame: frame - 20,
-    fps,
-    config: { damping: 15, stiffness: 100 },
-  });
-
-  // Progress animation (0% to 100%)
-  const progressValue = interpolate(frame, [60, 240], [0, 100], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Results reveal (after progress completes)
-  const resultsOpacity = interpolate(frame, [260, 290], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Score counter animation
-  const scoreCounter = interpolate(frame, [290, 380], [0, 87.5], {
-    extrapolateLeft: "clamp",
+  const titleY = interpolate(frame, [0, 15], [-20, 0], {
     extrapolateRight: "clamp",
   });
 
   // Fade out
   const fadeOut = interpolate(
     frame,
-    [durationInFrames - 30, durationInFrames],
+    [durationInFrames - 20, durationInFrames],
     [1, 0],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
   );
 
-  // Floating animation
-  const float = (offset: number) => Math.sin((frame + offset) * 0.05) * 5;
+  // Data for the bar chart
+  const CHART_DATA = [
+    { model: "Llama 3 70B", score: 82, color: C.pink },
+    { model: "Gemini 1.5 Pro", score: 88, color: C.pink },
+    { model: "Claude 3.5 Sonnet", score: 94, color: C.green },
+  ];
 
-  // Celebration particles (after results)
-  const showCelebration = frame > 350;
+  // Particles config
+  const particles = Array.from({ length: 40 }).map((_, i) => ({
+    id: i,
+    x: random(i) * 100,
+    y: random(i + 100) * 100,
+    size: random(i + 200) * 15 + 10,
+    color: random(i + 300) > 0.5 ? C.green : C.pink,
+    delay: random(i + 400) * 30 + 120, // start after chart animates
+  }));
 
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(180deg, #F0FDF4 0%, ${COLORS.light} 100%)`,
+        backgroundColor: C.white,
         padding: 60,
         opacity: fadeOut,
       }}
     >
-      {/* Celebration particles */}
-      {showCelebration && (
-        <>
-          {[...Array(12)].map((_, i) => {
-            const angle = (i / 12) * Math.PI * 2;
-            const distance = 100 + Math.sin(frame * 0.1 + i) * 50;
-            const x = Math.cos(angle) * distance;
-            const y = Math.sin(angle) * distance;
-            const colors = [COLORS.mint, COLORS.purple, COLORS.yellow, COLORS.coral, COLORS.blue];
-            return (
-              <div
-                key={i}
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  width: 12,
-                  height: 12,
-                  borderRadius: i % 2 === 0 ? "50%" : "3px",
-                  background: colors[i % colors.length],
-                  transform: `translate(${x}px, ${y}px) rotate(${frame * 2 + i * 30}deg)`,
-                  opacity: interpolate(frame, [350, 380], [0, 0.8], { extrapolateRight: "clamp" }),
-                }}
-              />
-            );
-          })}
-        </>
-      )}
+      {/* Noise background */}
+      <svg
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.05, pointerEvents: "none" }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <filter id="results-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#results-noise)" />
+      </svg>
+      
+      {/* Grid Lines */}
+      <div style={{ position: "absolute", top: "20%", left: 0, right: 0, height: 1, background: C.black, opacity: 0.05 }} />
+      <div style={{ position: "absolute", top: "80%", left: 0, right: 0, height: 1, background: C.black, opacity: 0.05 }} />
+      <div style={{ position: "absolute", left: "20%", top: 0, bottom: 0, width: 1, background: C.black, opacity: 0.05 }} />
+      <div style={{ position: "absolute", right: "20%", top: 0, bottom: 0, width: 1, background: C.black, opacity: 0.05 }} />
 
       {/* Section Title */}
       <div
         style={{
           opacity: titleOpacity,
+          transform: `translateY(${titleY}px)`,
           marginBottom: 30,
           display: "flex",
           alignItems: "center",
           gap: 16,
+          zIndex: 10,
         }}
       >
         <div
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
-            background: `linear-gradient(135deg, ${COLORS.mint} 0%, ${COLORS.blue} 100%)`,
+            width: 56,
+            height: 56,
+            background: C.black,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            boxShadow: `4px 4px 0px ${C.green}`,
           }}
         >
-          <span style={{ fontSize: 24 }}>📊</span>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5" strokeLinecap="square">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
         </div>
         <div>
           <h2
             style={{
-              fontSize: 36,
-              fontWeight: 800,
-              color: COLORS.dark,
-              fontFamily: "system-ui, sans-serif",
+              fontSize: 48,
+              color: C.black,
+              fontFamily: FONT.display,
               margin: 0,
+              textTransform: "uppercase",
             }}
           >
-            Watch Results in Real-Time
+            Clear Results
           </h2>
           <p
             style={{
-              fontSize: 18,
-              color: COLORS.gray,
-              fontFamily: "system-ui, sans-serif",
+              fontSize: 20,
+              fontWeight: 700,
+              color: C.grayMid,
+              fontFamily: FONT.body,
               margin: 0,
+              textTransform: "uppercase",
+              letterSpacing: 2,
             }}
           >
-            See exactly how your AI performs
+            Insights you can act on
           </p>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Container */}
       <div
         style={{
+          transform: `scale(${popIn(frame, fps, 0, { damping: 16, stiffness: 100 })})`,
+          height: 700,
+          background: C.white,
+          border: `4px solid ${C.black}`,
+          boxShadow: `16px 16px 0px ${C.black}`,
           display: "flex",
-          gap: 40,
-          transform: `scale(${cardScale})`,
+          position: "relative",
+          zIndex: 5,
         }}
       >
-        {/* Left: Progress Card */}
-        <div
-          style={{
-            flex: 1,
-            background: "#fff",
-            borderRadius: 24,
-            padding: 40,
-            boxShadow: "0 15px 50px rgba(0,0,0,0.1)",
-          }}
-        >
-          {/* Header */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 32,
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: COLORS.gray,
-                  fontFamily: "system-ui, sans-serif",
-                  marginBottom: 4,
-                }}
-              >
-                EVALUATION #42
-              </div>
-              <div
-                style={{
-                  fontSize: 24,
-                  fontWeight: 700,
-                  color: COLORS.dark,
-                  fontFamily: "system-ui, sans-serif",
-                }}
-              >
-                My Custom QA Dataset
-              </div>
-            </div>
-            <div
-              style={{
-                padding: "8px 16px",
-                borderRadius: 20,
-                background: progressValue < 100 ? `${COLORS.blue}15` : `${COLORS.mint}15`,
-                border: `2px solid ${progressValue < 100 ? COLORS.blue : COLORS.mint}`,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              {progressValue < 100 ? (
-                <>
-                  <div
-                    style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      border: `2px solid ${COLORS.blue}`,
-                      borderTopColor: "transparent",
-                      animation: "spin 1s linear infinite",
-                      transform: `rotate(${frame * 6}deg)`,
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: COLORS.blue,
-                      fontFamily: "system-ui, sans-serif",
-                    }}
-                  >
-                    Running
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span style={{ fontSize: 14 }}>✅</span>
-                  <span
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: COLORS.mint,
-                      fontFamily: "system-ui, sans-serif",
-                    }}
-                  >
-                    Completed
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div style={{ marginBottom: 32 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 12,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: COLORS.gray,
-                  fontFamily: "system-ui, sans-serif",
-                }}
-              >
-                Processing samples...
-              </span>
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: COLORS.dark,
-                  fontFamily: "monospace",
-                }}
-              >
-                {Math.round(progressValue)}%
-              </span>
-            </div>
-            <div
-              style={{
-                height: 12,
-                background: "#E5E7EB",
-                borderRadius: 6,
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${progressValue}%`,
-                  background: `linear-gradient(90deg, ${COLORS.mint} 0%, ${COLORS.blue} 100%)`,
-                  borderRadius: 6,
-                  transition: "width 0.1s ease",
-                }}
-              />
-            </div>
-            <div
-              style={{
-                marginTop: 12,
-                fontSize: 13,
-                color: COLORS.gray,
-                fontFamily: "system-ui, sans-serif",
-              }}
-            >
-              {Math.round((progressValue / 100) * 250)} / 250 samples evaluated
-            </div>
-          </div>
-
-          {/* Results (revealed after completion) */}
-          <div
-            style={{
-              opacity: resultsOpacity,
-              transform: `translateY(${interpolate(frame, [260, 290], [20, 0], { extrapolateRight: "clamp" })}px)`,
-            }}
-          >
-            <h3
-              style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: COLORS.dark,
-                fontFamily: "system-ui, sans-serif",
-                marginBottom: 20,
-              }}
-            >
-              Results
-            </h3>
-
-            <div style={{ display: "flex", gap: 20 }}>
-              {[
-                { metric: "Helpfulness", score: scoreCounter, color: COLORS.mint },
-                { metric: "Factuality", score: scoreCounter * 1.02, color: COLORS.blue },
-                { metric: "Clarity", score: scoreCounter * 0.95, color: COLORS.purple },
-              ].map((item, i) => (
-                <div
-                  key={item.metric}
-                  style={{
-                    flex: 1,
-                    padding: 20,
-                    background: `${item.color}08`,
-                    borderRadius: 16,
-                    border: `2px solid ${item.color}30`,
-                    textAlign: "center",
-                    transform: `translateY(${float(i * 30)}px)`,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 36,
-                      fontWeight: 800,
-                      color: item.color,
-                      fontFamily: "system-ui, sans-serif",
-                    }}
-                  >
-                    {item.score.toFixed(1)}
+        {/* Left column: Chart */}
+        <div style={{ flex: 1.5, padding: 60, borderRight: `4px solid ${C.black}`, background: C.white }}>
+          <h3 style={{ fontSize: 32, color: C.black, fontFamily: FONT.display, marginTop: 0, marginBottom: 40 }}>
+            PERFORMANCE COMPARISON
+          </h3>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+            {CHART_DATA.map((item, i) => {
+              const animStart = 30 + i * 20;
+              const barWidth = interpolate(frame, [animStart, animStart + 30], [0, item.score], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
+              const textOpacity = interpolate(frame, [animStart + 15, animStart + 30], [0, 1], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
+              
+              return (
+                <div key={item.model}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                    <span style={{ fontSize: 20, fontWeight: 800, color: C.black, fontFamily: FONT.body, textTransform: "uppercase" }}>
+                      {item.model}
+                    </span>
+                    <span style={{ fontSize: 24, fontWeight: 800, color: item.color, fontFamily: FONT.display, opacity: textOpacity }}>
+                      {Math.round(barWidth)}%
+                    </span>
                   </div>
-                  <div
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: COLORS.gray,
-                      fontFamily: "system-ui, sans-serif",
-                      marginTop: 4,
-                    }}
-                  >
-                    {item.metric}
+                  <div style={{ height: 40, background: C.grayLight, border: `3px solid ${C.black}`, position: "relative" }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: `${barWidth}%`,
+                        background: item.color,
+                        borderRight: `3px solid ${C.black}`,
+                      }}
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Right: Sample Preview */}
-        <div
-          style={{
-            width: 400,
-            background: "#fff",
-            borderRadius: 24,
-            padding: 32,
-            boxShadow: "0 15px 50px rgba(0,0,0,0.1)",
-            opacity: resultsOpacity,
-          }}
-        >
-          <h3
-            style={{
-              fontSize: 18,
-              fontWeight: 700,
-              color: COLORS.dark,
-              fontFamily: "system-ui, sans-serif",
-              marginBottom: 20,
-            }}
-          >
-            Sample Preview
-          </h3>
-
+        {/* Right column: Winner */}
+        <div style={{ flex: 1, padding: 60, background: C.black, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          
           <div
             style={{
-              padding: 16,
-              background: "#F9FAFB",
-              borderRadius: 12,
-              marginBottom: 16,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.gray,
-                fontFamily: "system-ui, sans-serif",
-                marginBottom: 8,
-              }}
-            >
-              INPUT
-            </div>
-            <div
-              style={{
-                fontSize: 14,
-                color: COLORS.dark,
-                fontFamily: "system-ui, sans-serif",
-                lineHeight: 1.5,
-              }}
-            >
-              "What are the key benefits of renewable energy?"
-            </div>
-          </div>
-
-          <div
-            style={{
-              padding: 16,
-              background: `${COLORS.blue}08`,
-              borderRadius: 12,
-              border: `1px solid ${COLORS.blue}30`,
-              marginBottom: 16,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.blue,
-                fontFamily: "system-ui, sans-serif",
-                marginBottom: 8,
-              }}
-            >
-              MODEL OUTPUT
-            </div>
-            <div
-              style={{
-                fontSize: 14,
-                color: COLORS.dark,
-                fontFamily: "system-ui, sans-serif",
-                lineHeight: 1.5,
-              }}
-            >
-              "Renewable energy offers several key benefits: reduced carbon emissions, lower long-term costs..."
-            </div>
-          </div>
-
-          <div
-            style={{
+              opacity: interpolate(frame, [100, 120], [0, 1], { extrapolateRight: "clamp" }),
+              transform: `scale(${popIn(frame, fps, 100)})`,
               display: "flex",
-              gap: 12,
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 24,
             }}
           >
             <div
               style={{
-                flex: 1,
-                padding: "10px 14px",
-                background: `${COLORS.mint}15`,
-                borderRadius: 8,
-                textAlign: "center",
+                width: 140,
+                height: 140,
+                background: C.green,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: `4px solid ${C.black}`,
+                boxShadow: `8px 8px 0px ${C.white}`,
+                transform: "rotate(4deg)",
               }}
             >
-              <div
-                style={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: COLORS.mint,
-                  fontFamily: "system-ui, sans-serif",
-                }}
-              >
-                9.2
-              </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: COLORS.gray,
-                  fontFamily: "system-ui, sans-serif",
-                }}
-              >
-                Helpfulness
-              </div>
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke={C.black} strokeWidth="2.5" strokeLinecap="square">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
             </div>
-            <div
-              style={{
-                flex: 1,
-                padding: "10px 14px",
-                background: `${COLORS.blue}15`,
-                borderRadius: 8,
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: COLORS.blue,
-                  fontFamily: "system-ui, sans-serif",
-                }}
-              >
-                8.8
-              </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: COLORS.gray,
-                  fontFamily: "system-ui, sans-serif",
-                }}
-              >
-                Factuality
-              </div>
+            
+            <h3 style={{ fontSize: 32, color: C.white, fontFamily: FONT.body, fontWeight: 800, margin: 0, textTransform: "uppercase", letterSpacing: 2 }}>
+              CLEAR WINNER
+            </h3>
+            <div style={{ fontSize: 56, color: C.green, fontFamily: FONT.display, margin: 0, textAlign: "center", lineHeight: 1.1 }}>
+              CLAUDE 3.5<br/>SONNET
+            </div>
+            
+            <div style={{ display: "flex", gap: 16, marginTop: 16 }}>
+              <div style={{ padding: "8px 16px", border: `2px solid ${C.green}`, color: C.green, fontFamily: FONT.mono, fontWeight: 800 }}>FASTEST</div>
+              <div style={{ padding: "8px 16px", border: `2px solid ${C.pink}`, color: C.pink, fontFamily: FONT.mono, fontWeight: 800 }}>MOST HELPFUL</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Callout */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 60,
-          left: "50%",
-          transform: `translateX(-50%)`,
-          opacity: interpolate(frame, [400, 430], [0, 1], { extrapolateRight: "clamp" }),
-        }}
-      >
-        <div
-          style={{
-            padding: "16px 32px",
-            background: "#fff",
-            borderRadius: 50,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <span style={{ fontSize: 24 }}>🎯</span>
-          <span
+      {/* Celebration Particles */}
+      {particles.map((p) => {
+        if (frame < p.delay) return null;
+        
+        const yAnim = interpolate(frame, [p.delay, p.delay + 40], [p.y, p.y - 400], { extrapolateRight: "clamp" });
+        const opacity = interpolate(frame, [p.delay + 20, p.delay + 40], [1, 0], { extrapolateRight: "clamp" });
+        const rotation = interpolate(frame, [p.delay, p.delay + 40], [0, 360]);
+
+        return (
+          <div
+            key={p.id}
             style={{
-              fontSize: 18,
-              fontWeight: 600,
-              color: COLORS.dark,
-              fontFamily: "system-ui, sans-serif",
+              position: "absolute",
+              left: `${p.x}%`,
+              top: `${yAnim}%`,
+              width: p.size,
+              height: p.size,
+              backgroundColor: p.color,
+              opacity,
+              border: `2px solid ${C.black}`,
+              transform: `rotate(${rotation}deg)`,
+              zIndex: 20,
             }}
-          >
-            Now you know exactly how your AI performs
-          </span>
-        </div>
-      </div>
+          />
+        );
+      })}
     </AbsoluteFill>
   );
 };

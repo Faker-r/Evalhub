@@ -1,28 +1,33 @@
 import {
   AbsoluteFill,
   interpolate,
-  spring,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { C, FONT, popIn } from "../theme";
 
-const COLORS = {
-  mint: "#10B981",
-  mintLight: "#D1FAE5",
-  purple: "#8B5CF6",
-  blue: "#3B82F6",
-  coral: "#FF6B6B",
-  yellow: "#FBBF24",
-  dark: "#1F2937",
-  light: "#F9FAFB",
-  gray: "#6B7280",
-};
-
+// Wizard steps
 const STEPS = [
-  { num: 1, title: "Select Source", icon: "📊", desc: "Choose dataset or benchmark" },
-  { num: 2, title: "Configure", icon: "⚙️", desc: "Set up evaluation options" },
-  { num: 3, title: "Pick Models", icon: "🤖", desc: "Choose AI to evaluate" },
-  { num: 4, title: "Submit", icon: "🚀", desc: "Start evaluation" },
+  { id: 1, title: "Select Dataset", icon: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+    </svg>
+  ) },
+  { id: 2, title: "Choose Metrics", icon: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  ) },
+  { id: 3, title: "Select Models", icon: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+      <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/>
+    </svg>
+  ) },
+  { id: 4, title: "Run Eval", icon: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+      <polygon points="5 3 19 12 5 21 5 3"/>
+    </svg>
+  ) },
 ];
 
 export const SubmitEvalScene: React.FC = () => {
@@ -30,81 +35,63 @@ export const SubmitEvalScene: React.FC = () => {
   const { fps, durationInFrames } = useVideoConfig();
 
   // Section title animation
-  const titleOpacity = interpolate(frame, [0, 20], [0, 1], {
+  const titleOpacity = interpolate(frame, [0, 15], [0, 1], {
+    extrapolateRight: "clamp",
+  });
+  const titleY = interpolate(frame, [0, 15], [-20, 0], {
     extrapolateRight: "clamp",
   });
 
-  // Browser mockup entrance
-  const browserScale = spring({
-    frame: frame - 20,
-    fps,
-    config: { damping: 15, stiffness: 100 },
-  });
-
-  // Current step (animated through the wizard)
-  const currentStepRaw = interpolate(frame, [60, 180, 300, 420], [1, 2, 3, 4], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const currentStep = Math.floor(currentStepRaw);
-
-  // Card content based on step
-  const stepContentOpacity = (step: number) => {
-    const stepStart = 60 + (step - 1) * 120;
-    return interpolate(frame, [stepStart, stepStart + 30], [0, 1], {
-      extrapolateRight: "clamp",
-    });
-  };
+  // Determine active step based on frame
+  // Total duration: 420 frames (14s)
+  // Step 1: 30-100
+  // Step 2: 100-180
+  // Step 3: 180-260
+  // Step 4: 260-380
+  let activeStep = 1;
+  if (frame >= 100) activeStep = 2;
+  if (frame >= 180) activeStep = 3;
+  if (frame >= 260) activeStep = 4;
 
   // Fade out
   const fadeOut = interpolate(
     frame,
-    [durationInFrames - 30, durationInFrames],
+    [durationInFrames - 20, durationInFrames],
     [1, 0],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
   );
 
-  // Floating decorative elements
-  const float = (offset: number) => Math.sin((frame + offset) * 0.05) * 6;
-
   return (
     <AbsoluteFill
       style={{
-        background: `linear-gradient(135deg, ${COLORS.light} 0%, #FEF3C7 50%, ${COLORS.mintLight} 100%)`,
+        backgroundColor: C.white,
         padding: 60,
         opacity: fadeOut,
       }}
     >
-      {/* Decorative elements */}
-      <div
-        style={{
-          position: "absolute",
-          top: 80,
-          right: 100,
-          width: 100,
-          height: 100,
-          borderRadius: "50%",
-          background: `${COLORS.purple}15`,
-          transform: `translateY(${float(0)}px)`,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: 100,
-          left: 80,
-          width: 80,
-          height: 80,
-          borderRadius: "30%",
-          background: `${COLORS.yellow}20`,
-          transform: `translateY(${float(50)}px) rotate(${frame * 0.2}deg)`,
-        }}
-      />
+      {/* Noise background */}
+      <svg
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.05, pointerEvents: "none" }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <filter id="submit-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#submit-noise)" />
+      </svg>
+      
+      {/* Grid Lines */}
+      <div style={{ position: "absolute", top: "20%", left: 0, right: 0, height: 1, background: C.black, opacity: 0.05 }} />
+      <div style={{ position: "absolute", top: "80%", left: 0, right: 0, height: 1, background: C.black, opacity: 0.05 }} />
+      <div style={{ position: "absolute", left: "20%", top: 0, bottom: 0, width: 1, background: C.black, opacity: 0.05 }} />
+      <div style={{ position: "absolute", right: "20%", top: 0, bottom: 0, width: 1, background: C.black, opacity: 0.05 }} />
 
       {/* Section Title */}
       <div
         style={{
           opacity: titleOpacity,
+          transform: `translateY(${titleY}px)`,
           marginBottom: 30,
           display: "flex",
           alignItems: "center",
@@ -113,553 +100,358 @@ export const SubmitEvalScene: React.FC = () => {
       >
         <div
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
-            background: `linear-gradient(135deg, ${COLORS.yellow} 0%, ${COLORS.coral} 100%)`,
+            width: 56,
+            height: 56,
+            background: C.black,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            boxShadow: `4px 4px 0px ${C.pink}`,
           }}
         >
-          <span style={{ fontSize: 24 }}>📝</span>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={C.pink} strokeWidth="2.5" strokeLinecap="square">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
         </div>
         <div>
           <h2
             style={{
-              fontSize: 36,
-              fontWeight: 800,
-              color: COLORS.dark,
-              fontFamily: "system-ui, sans-serif",
+              fontSize: 48,
+              color: C.black,
+              fontFamily: FONT.display,
               margin: 0,
+              textTransform: "uppercase",
             }}
           >
-            Run Your Own Evaluation
+            Run Your Own Eval
           </h2>
           <p
             style={{
-              fontSize: 18,
-              color: COLORS.gray,
-              fontFamily: "system-ui, sans-serif",
+              fontSize: 20,
+              fontWeight: 700,
+              color: C.grayMid,
+              fontFamily: FONT.body,
               margin: 0,
+              textTransform: "uppercase",
+              letterSpacing: 2,
             }}
           >
-            4 simple steps to test any AI
+            In just a few clicks
           </p>
         </div>
       </div>
 
-      {/* Content Area */}
-      <div style={{ display: "flex", gap: 40 }}>
-        {/* Left: Steps Sidebar */}
+      {/* App Container */}
+      <div
+        style={{
+          transform: `scale(${popIn(frame, fps, 0, { damping: 16, stiffness: 100 })})`,
+          height: 700,
+          background: C.white,
+          border: `4px solid ${C.black}`,
+          boxShadow: `16px 16px 0px ${C.green}`,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Progress Stepper */}
         <div
           style={{
-            width: 280,
-            transform: `scale(${browserScale})`,
+            display: "flex",
+            borderBottom: `4px solid ${C.black}`,
+            background: C.grayLight,
           }}
         >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 20,
-              padding: 24,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
-            }}
-          >
-            <h3
-              style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: COLORS.gray,
-                fontFamily: "system-ui, sans-serif",
-                margin: "0 0 20px 0",
-                letterSpacing: 1,
-              }}
-            >
-              WIZARD STEPS
-            </h3>
-
-            {STEPS.map((step, i) => {
-              const isActive = step.num === currentStep;
-              const isCompleted = step.num < currentStep;
-
-              const stepBounce = spring({
-                frame: frame - 40 - i * 15,
-                fps,
-                config: { damping: 12, stiffness: 200 },
-              });
-
-              return (
+          {STEPS.map((step, i) => {
+            const isActive = step.id === activeStep;
+            const isCompleted = step.id < activeStep;
+            
+            return (
+              <div
+                key={step.id}
+                style={{
+                  flex: 1,
+                  padding: "20px",
+                  borderRight: i < STEPS.length - 1 ? `4px solid ${C.black}` : "none",
+                  background: isActive ? C.white : isCompleted ? C.green : C.grayLight,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 12,
+                  transition: "background 0.2s",
+                }}
+              >
                 <div
-                  key={step.num}
                   style={{
-                    transform: `scale(${stepBounce})`,
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: isActive ? C.black : isCompleted ? C.black : C.white,
+                    border: `2px solid ${C.black}`,
                     display: "flex",
                     alignItems: "center",
-                    gap: 16,
-                    padding: "14px 16px",
-                    marginBottom: 8,
-                    borderRadius: 12,
-                    background: isActive ? `${COLORS.mint}15` : "transparent",
-                    border: isActive ? `2px solid ${COLORS.mint}` : "2px solid transparent",
-                    transition: "all 0.3s",
+                    justifyContent: "center",
+                    color: isActive ? C.white : isCompleted ? C.white : C.black,
                   }}
                 >
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      background: isCompleted
-                        ? COLORS.mint
-                        : isActive
-                        ? COLORS.mint
-                        : "#E5E7EB",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: isCompleted ? 16 : 14,
-                      fontWeight: 700,
-                      color: isCompleted || isActive ? "#fff" : COLORS.gray,
-                      fontFamily: "system-ui, sans-serif",
-                      transition: "all 0.3s",
-                    }}
-                  >
-                    {isCompleted ? "✓" : step.num}
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: isActive ? COLORS.dark : COLORS.gray,
-                        fontFamily: "system-ui, sans-serif",
-                      }}
-                    >
-                      {step.title}
-                    </div>
-                  </div>
+                  {isCompleted ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  ) : (
+                    <span style={{ fontSize: 14, fontWeight: 800, fontFamily: FONT.mono }}>{step.id}</span>
+                  )}
                 </div>
-              );
-            })}
-          </div>
+                <span
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 800,
+                    color: isActive || isCompleted ? C.black : C.grayMid,
+                    fontFamily: FONT.body,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {step.title}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Right: Main Card */}
-        <div
-          style={{
-            flex: 1,
-            transform: `scale(${browserScale})`,
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 20,
-              padding: 40,
-              boxShadow: "0 15px 50px rgba(0,0,0,0.1)",
-              minHeight: 450,
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {/* Step 1: Select Source */}
-            {currentStep === 1 && (
-              <div style={{ opacity: stepContentOpacity(1) }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-                  <span style={{ fontSize: 32 }}>📊</span>
-                  <h3
-                    style={{
-                      fontSize: 28,
-                      fontWeight: 700,
-                      color: COLORS.dark,
-                      fontFamily: "system-ui, sans-serif",
-                      margin: 0,
-                    }}
-                  >
-                    Select a Dataset
-                  </h3>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  {[
-                    { name: "My Custom QA", samples: 250, selected: true },
-                    { name: "Product Reviews", samples: 1200, selected: false },
-                  ].map((ds, i) => {
-                    const cardBounce = spring({
-                      frame: frame - 80 - i * 20,
-                      fps,
-                      config: { damping: 12, stiffness: 200 },
-                    });
-                    return (
-                      <div
-                        key={ds.name}
-                        style={{
-                          transform: `scale(${cardBounce})`,
-                          padding: 24,
-                          borderRadius: 16,
-                          border: ds.selected ? `3px solid ${COLORS.mint}` : "2px solid #E5E7EB",
-                          background: ds.selected ? `${COLORS.mint}08` : "#fff",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                          <div>
-                            <div
-                              style={{
-                                fontSize: 18,
-                                fontWeight: 700,
-                                color: COLORS.dark,
-                                fontFamily: "system-ui, sans-serif",
-                              }}
-                            >
-                              {ds.name}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 14,
-                                color: COLORS.gray,
-                                fontFamily: "system-ui, sans-serif",
-                                marginTop: 4,
-                              }}
-                            >
-                              {ds.samples} samples
-                            </div>
-                          </div>
-                          {ds.selected && (
-                            <div
-                              style={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: "50%",
-                                background: COLORS.mint,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              }}
-                            >
-                              <span style={{ color: "#fff", fontSize: 14 }}>✓</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Configure */}
-            {currentStep === 2 && (
-              <div style={{ opacity: stepContentOpacity(2) }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-                  <span style={{ fontSize: 32 }}>⚙️</span>
-                  <h3
-                    style={{
-                      fontSize: 28,
-                      fontWeight: 700,
-                      color: COLORS.dark,
-                      fontFamily: "system-ui, sans-serif",
-                      margin: 0,
-                    }}
-                  >
-                    Configure Options
-                  </h3>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                  <div>
-                    <label
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: COLORS.dark,
-                        fontFamily: "system-ui, sans-serif",
-                        display: "block",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Input Field
-                    </label>
-                    <div
-                      style={{
-                        padding: "14px 18px",
-                        borderRadius: 10,
-                        border: "2px solid #E5E7EB",
-                        fontSize: 16,
-                        color: COLORS.dark,
-                        fontFamily: "monospace",
-                        background: "#F9FAFB",
-                      }}
-                    >
-                      question
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: COLORS.dark,
-                        fontFamily: "system-ui, sans-serif",
-                        display: "block",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Judge Type
-                    </label>
-                    <div style={{ display: "flex", gap: 12 }}>
-                      {["LLM as Judge", "Exact Match", "F1 Score"].map((type, i) => (
-                        <div
-                          key={type}
-                          style={{
-                            padding: "12px 20px",
-                            borderRadius: 10,
-                            border: i === 0 ? `2px solid ${COLORS.mint}` : "2px solid #E5E7EB",
-                            background: i === 0 ? `${COLORS.mint}10` : "#fff",
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: i === 0 ? COLORS.mint : COLORS.gray,
-                            fontFamily: "system-ui, sans-serif",
-                          }}
-                        >
-                          {type}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Pick Models */}
-            {currentStep === 3 && (
-              <div style={{ opacity: stepContentOpacity(3) }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-                  <span style={{ fontSize: 32 }}>🤖</span>
-                  <h3
-                    style={{
-                      fontSize: 28,
-                      fontWeight: 700,
-                      color: COLORS.dark,
-                      fontFamily: "system-ui, sans-serif",
-                      margin: 0,
-                    }}
-                  >
-                    Select Models
-                  </h3>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {[
-                    { label: "Completion Model", model: "GPT-4o", provider: "OpenAI" },
-                    { label: "Judge Model", model: "Claude 3.5 Sonnet", provider: "Anthropic" },
-                  ].map((item, i) => {
-                    const cardBounce = spring({
-                      frame: frame - 320 - i * 30,
-                      fps,
-                      config: { damping: 12, stiffness: 200 },
-                    });
-                    return (
-                      <div
-                        key={item.label}
-                        style={{
-                          transform: `scale(${cardBounce})`,
-                          padding: 24,
-                          borderRadius: 16,
-                          border: `2px solid ${COLORS.mint}`,
-                          background: `${COLORS.mint}08`,
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: COLORS.gray,
-                              fontFamily: "system-ui, sans-serif",
-                              marginBottom: 4,
-                              letterSpacing: 0.5,
-                            }}
-                          >
-                            {item.label.toUpperCase()}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 20,
-                              fontWeight: 700,
-                              color: COLORS.dark,
-                              fontFamily: "system-ui, sans-serif",
-                            }}
-                          >
-                            {item.model}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 14,
-                              color: COLORS.gray,
-                              fontFamily: "system-ui, sans-serif",
-                            }}
-                          >
-                            via {item.provider}
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: "50%",
-                            background: COLORS.mint,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <span style={{ color: "#fff", fontSize: 18 }}>✓</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Step 4: Submit */}
-            {currentStep === 4 && (
-              <div style={{ opacity: stepContentOpacity(4) }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-                  <span style={{ fontSize: 32 }}>🚀</span>
-                  <h3
-                    style={{
-                      fontSize: 28,
-                      fontWeight: 700,
-                      color: COLORS.dark,
-                      fontFamily: "system-ui, sans-serif",
-                      margin: 0,
-                    }}
-                  >
-                    Ready to Launch!
-                  </h3>
-                </div>
-
-                {/* Summary */}
-                <div
-                  style={{
-                    background: "#F9FAFB",
-                    borderRadius: 16,
-                    padding: 24,
-                    marginBottom: 24,
-                  }}
-                >
-                  {[
-                    { label: "Dataset", value: "My Custom QA" },
-                    { label: "Samples", value: "250" },
-                    { label: "Model", value: "GPT-4o" },
-                    { label: "Judge", value: "Claude 3.5 Sonnet" },
-                  ].map((item, i) => (
-                    <div
-                      key={item.label}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        padding: "10px 0",
-                        borderBottom: i < 3 ? "1px solid #E5E7EB" : "none",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 14,
-                          color: COLORS.gray,
-                          fontFamily: "system-ui, sans-serif",
-                        }}
-                      >
-                        {item.label}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: COLORS.dark,
-                          fontFamily: "system-ui, sans-serif",
-                        }}
-                      >
-                        {item.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Submit button with pulse */}
-                <div
-                  style={{
-                    position: "relative",
-                    display: "inline-block",
-                  }}
-                >
+        {/* Content Area */}
+        <div style={{ flex: 1, padding: 40, position: "relative" }}>
+          
+          {/* STEP 1: Select Dataset */}
+          {activeStep === 1 && (
+            <div
+              style={{
+                opacity: interpolate(frame, [30, 40], [0, 1]),
+                transform: `translateX(${interpolate(frame, [30, 40], [20, 0])}px)`,
+              }}
+            >
+              <h3 style={{ fontSize: 32, color: C.black, fontFamily: FONT.display, marginTop: 0 }}>Choose a Dataset</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginTop: 32 }}>
+                {["MMLU-Pro", "HumanEval", "GSM8K"].map((ds, i) => (
                   <div
+                    key={ds}
                     style={{
-                      position: "absolute",
-                      inset: -8,
-                      borderRadius: 20,
-                      background: COLORS.mint,
-                      opacity: 0.3,
-                      animation: "pulse 1.5s infinite",
-                      transform: `scale(${1 + Math.sin(frame * 0.1) * 0.05})`,
+                      padding: "24px",
+                      border: `4px solid ${C.black}`,
+                      background: i === 0 ? C.black : C.white,
+                      boxShadow: i === 0 ? `8px 8px 0px ${C.pink}` : "none",
+                      transform: i === 0 && frame >= 60 ? "scale(1.02)" : "scale(1)",
+                      transition: "all 0.1s",
                     }}
-                  />
-                  <button
+                  >
+                    <div style={{ fontSize: 24, fontWeight: 800, color: i === 0 ? C.white : C.black, fontFamily: FONT.body }}>{ds}</div>
+                    <div style={{ fontSize: 16, color: i === 0 ? C.grayLight : C.grayMid, fontFamily: FONT.body, marginTop: 8 }}>
+                      {i === 0 ? "Massive Multitask Language Understanding (Professional)" : "Standard evaluation dataset"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: Choose Metrics */}
+          {activeStep === 2 && (
+            <div
+              style={{
+                opacity: interpolate(frame, [100, 110], [0, 1]),
+                transform: `translateX(${interpolate(frame, [100, 110], [20, 0])}px)`,
+              }}
+            >
+              <h3 style={{ fontSize: 32, color: C.black, fontFamily: FONT.display, marginTop: 0 }}>Select Evaluation Metrics</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 32 }}>
+                {[
+                  { name: "Accuracy", selected: true },
+                  { name: "Helpfulness", selected: frame >= 130 },
+                  { name: "Toxicity", selected: false },
+                ].map((metric) => (
+                  <div
+                    key={metric.name}
                     style={{
-                      position: "relative",
-                      padding: "18px 48px",
-                      background: `linear-gradient(135deg, ${COLORS.mint} 0%, #059669 100%)`,
-                      border: "none",
-                      borderRadius: 14,
+                      padding: "20px 24px",
+                      border: `4px solid ${C.black}`,
+                      background: metric.selected ? C.green : C.white,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 16,
+                      transition: "background 0.1s",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 24,
+                        height: 24,
+                        border: `3px solid ${C.black}`,
+                        background: metric.selected ? C.black : C.white,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {metric.selected && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.white} strokeWidth="4">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 20, fontWeight: 800, color: C.black, fontFamily: FONT.mono, textTransform: "uppercase" }}>
+                      {metric.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: Select Models */}
+          {activeStep === 3 && (
+            <div
+              style={{
+                opacity: interpolate(frame, [180, 190], [0, 1]),
+                transform: `translateX(${interpolate(frame, [180, 190], [20, 0])}px)`,
+              }}
+            >
+              <h3 style={{ fontSize: 32, color: C.black, fontFamily: FONT.display, marginTop: 0 }}>Select Models to Compare</h3>
+              
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 32 }}>
+                {[
+                  { name: "GPT-4o", selected: true },
+                  { name: "Claude 3.5 Sonnet", selected: true },
+                  { name: "Gemini 1.5 Pro", selected: frame >= 210 },
+                  { name: "Llama 3 70B", selected: frame >= 230 },
+                ].map((model) => (
+                  <div
+                    key={model.name}
+                    style={{
+                      padding: "16px 24px",
+                      border: `3px solid ${C.black}`,
+                      background: model.selected ? C.black : C.white,
+                      color: model.selected ? C.white : C.black,
                       fontSize: 18,
-                      fontWeight: 700,
-                      color: "#fff",
-                      fontFamily: "system-ui, sans-serif",
+                      fontWeight: 800,
+                      fontFamily: FONT.body,
                       display: "flex",
                       alignItems: "center",
                       gap: 12,
-                      cursor: "pointer",
-                      boxShadow: `0 8px 24px ${COLORS.mint}50`,
+                      boxShadow: model.selected ? `4px 4px 0px ${C.pink}` : "none",
+                      transition: "all 0.1s",
                     }}
                   >
-                    Start Evaluation
-                    <span style={{ fontSize: 20 }}>→</span>
-                  </button>
-                </div>
+                    {model.name}
+                    {model.selected && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="3">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    )}
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Progress indicator */}
+          {/* STEP 4: Run Eval */}
+          {activeStep === 4 && (
             <div
               style={{
-                position: "absolute",
-                bottom: 24,
-                left: 40,
-                right: 40,
-                height: 4,
-                background: "#E5E7EB",
-                borderRadius: 2,
+                opacity: interpolate(frame, [260, 270], [0, 1]),
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
               }}
             >
               <div
                 style={{
-                  height: "100%",
-                  width: `${(currentStep / 4) * 100}%`,
-                  background: `linear-gradient(90deg, ${COLORS.mint} 0%, ${COLORS.blue} 100%)`,
-                  borderRadius: 2,
-                  transition: "width 0.5s ease",
+                  width: 120,
+                  height: 120,
+                  background: C.black,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: `8px 8px 0px ${C.green}`,
+                  marginBottom: 32,
+                  transform: `scale(1) rotate(${frame * 2}deg)`,
                 }}
-              />
+              >
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5" strokeLinecap="square">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+              </div>
+              <h3 style={{ fontSize: 40, color: C.black, fontFamily: FONT.display, margin: 0, textAlign: "center" }}>
+                Running Evaluation...
+              </h3>
+              
+              <div style={{ width: 400, height: 24, background: C.grayLight, border: `3px solid ${C.black}`, marginTop: 32, position: "relative", overflow: "hidden" }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: `${interpolate(frame, [280, 420], [0, 100], { extrapolateRight: "clamp" }) }%`,
+                    background: C.green,
+                    borderRight: `3px solid ${C.black}`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer (Next Button) */}
+        {activeStep < 4 && (
+          <div
+            style={{
+              padding: "24px 40px",
+              borderTop: `4px solid ${C.black}`,
+              background: C.grayLight,
+              display: "flex",
+              justifyContent: "flex-end",
+            }}
+          >
+            <div
+              style={{
+                padding: "16px 48px",
+                background: C.black,
+                color: C.white,
+                fontSize: 20,
+                fontWeight: 800,
+                fontFamily: FONT.display,
+                letterSpacing: 2,
+                boxShadow: `6px 6px 0px ${C.pink}`,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              NEXT
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
             </div>
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Animated cursor (black stroke, white fill) */}
+      {activeStep < 4 && (
+        <div
+          style={{
+            position: "absolute",
+            left: interpolate(frame, [60, 130, 210, 230], [800, 500, 700, 1100], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+            top: interpolate(frame, [60, 130, 210, 230], [500, 450, 480, 520], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+            zIndex: 100,
+            pointerEvents: "none",
+          }}
+        >
+          <svg width="40" height="40" viewBox="0 0 24 24" fill={C.white} stroke={C.black} strokeWidth="2">
+            <path d="M5 3l14 9-6.5 1.5L11 20z" />
+          </svg>
+        </div>
+      )}
     </AbsoluteFill>
   );
 };
