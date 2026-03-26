@@ -1,4 +1,5 @@
 import { AbsoluteFill, Sequence } from "remotion";
+import { BillboardCascadeScene } from "./scenes/BillboardCascadeScene";
 import { HookScene } from "./scenes/HookScene";
 import { SolutionIntroScene } from "./scenes/SolutionIntroScene";
 import { LeaderboardDemoScene } from "./scenes/LeaderboardDemoScene";
@@ -8,16 +9,17 @@ import { OutroScene } from "./scenes/OutroScene";
 import { TeamInfoScene } from "./scenes/TeamInfoScene";
 import { BackgroundMusic, Voiceover, VideoSoundEffects } from "./Audio";
 
-// Scene timings (in seconds) - total ~103s
+// Scene timings (in seconds) - total ~111s (added 8s cascade opening)
 const FPS = 30;
 const SCENES = {
-  hook: { start: 0, duration: 18 },           // 0-18s: Problem hook
-  solutionIntro: { start: 18, duration: 10 }, // 18-28s: Introduce EvalHub
-  leaderboard: { start: 28, duration: 22 },   // 28-50s: Leaderboard demo
-  submitEval: { start: 50, duration: 22 },    // 50-72s: Submit evaluation
-  results: { start: 72, duration: 16 },       // 72-88s: Results dashboard
-  outro: { start: 88, duration: 12 },         // 88-100s: CTA
-  teamInfo: { start: 100, duration: 3 },      // 100-103s: Team info
+  cascade: { start: 0, duration: 8 },         // 0-8s:   Billboard cascade (NEW)
+  hook: { start: 8, duration: 18 },           // 8-26s:  Problem hook
+  solutionIntro: { start: 26, duration: 10 }, // 26-36s: Introduce EvalHub
+  leaderboard: { start: 36, duration: 22 },   // 36-58s: Leaderboard demo
+  submitEval: { start: 58, duration: 22 },    // 58-80s: Submit evaluation
+  results: { start: 80, duration: 16 },       // 80-96s: Results dashboard
+  outro: { start: 96, duration: 12 },         // 96-108s: CTA
+  teamInfo: { start: 108, duration: 3 },      // 108-111s: Team info
 };
 
 export const DemoVideo: React.FC = () => {
@@ -28,6 +30,14 @@ export const DemoVideo: React.FC = () => {
       {/* <Voiceover volume={1} /> */}{/* Uncomment when you have a voiceover recording */}
       <VideoSoundEffects />
 
+      {/* Billboard Cascade Opening */}
+      <Sequence
+        from={SCENES.cascade.start * FPS}
+        durationInFrames={SCENES.cascade.duration * FPS}
+      >
+        <BillboardCascadeScene />
+      </Sequence>
+
       {/* Hook/Problem Scene */}
       <Sequence
         from={SCENES.hook.start * FPS}
@@ -35,6 +45,7 @@ export const DemoVideo: React.FC = () => {
       >
         <HookScene />
       </Sequence>
+
 
       {/* Solution Introduction */}
       <Sequence

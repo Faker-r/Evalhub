@@ -25,7 +25,8 @@ export const BackgroundMusic: React.FC<{ volume?: number }> = ({ volume = 0.3 })
 
   // Fade in over first 30 frames, fade out over last 30 frames
   const fadeIn = interpolate(frame, [0, 30], [0, 1], { extrapolateRight: "clamp" });
-  const fadeOut = interpolate(frame, [3060, 3090], [1, 0], { extrapolateLeft: "clamp" });
+  // Fade out over last 30 frames of 111s video (3330 frames total)
+  const fadeOut = interpolate(frame, [3300, 3330], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const dynamicVolume = volume * fadeIn * fadeOut;
 
   return (
