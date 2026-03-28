@@ -1,0 +1,1228 @@
+video-v2/package.json
+  71431992e0a44c73 13
+video-v2/src/DemoVideo.tsx
+  188a71375bceb570 29
+  b6de3addd0a51145 12,16-22,59,64,67,72,75,80,83,88
+video-v2/src/Root.tsx
+  b6de3addd0a51145 4,6
+video-v2/src/scenes/IsometricDiagram.tsx
+  188a71375bceb570 129-133,229,243,322
+video-v2/src/scenes/TeamInfoScene.tsx
+  b6de3addd0a51145 84
+video-v2/src/scenes/BillboardCascadeScene.tsx
+  b6de3addd0a51145 15,21,63,97,99-105
+video-v2/src/scenes/HookScene.tsx
+  b6de3addd0a51145 14,18,23-24,28,33-34,90,205
+video-v2/remotion.config.ts
+  71431992e0a44c73 5-14
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.1.21",
+  "base_commit_sha": "55129d8dde670c4d734f1a6507f06b4c9c054fb0",
+  "prompts": {
+    "093209d746a2ab26": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e755195e-003f-4ffe-8d48-42afb021b9c5",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "13780fb79935c48b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6407ef27-572c-482b-99b5-3777905e06bc",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "14a0078585b8aacb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5c6c80c3-4a8e-4b5c-886c-5c04f67a9140",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "15e248efae308774": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2bf02be1-0575-4db7-ac00-75aa3b77edc8",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "160143f7de3c46c0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "22a74179-5a1e-4244-bae9-f7827fa02d0a",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "188a71375bceb570": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f65a129f-1719-4544-8a92-4bc877d428de",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 28,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    },
+    "1bfe76eaa87934b2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d18f7d35-ac8a-4cb1-8d65-db53008ee838",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "1e2a02c819901fe3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f95e661b-e4f2-438c-8fee-63eb9d7ae370",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "24470a1a7c31fa8d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7b8aebb9-af58-4cc9-b151-695828d2c78f",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "3050d92206c9a815": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b7e70618-d090-4109-9b51-1acc71b54f68",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "491bdfce37bc60ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4dbaa6d6-52bf-42c0-ad00-21c11b34e685",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "4a1f066bcd8f828c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dff014dd-3693-47ee-acfa-8d8f28ec450a",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "5a8026a2cf72b0a6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "78dc623a-2bf9-4b90-9552-b1a34195d4fa",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "679ec2d9f94a9529": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1aa4f0e3-e6aa-466b-b134-192857353dae",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "69f632a6cf9011ce": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aebadb4a-765c-46ff-a638-1ff522daa5c5",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "6b9e6092aa7893b0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0058f47c-2f1e-4a47-aa9b-5c24be841b45",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "71431992e0a44c73": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "392bf03e-5dd9-4065-a548-f963aba427e8",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 11,
+      "total_deletions": 1,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    },
+    "7cbea87be006d1a9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "745cc8d2-fa55-4460-ab04-32896d82e381",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "80eaea636c89dfb8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2fd5190d-e0f9-436a-9650-45fb8a70787d",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "829448a8f01dc2f9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5d1dc426-b1f2-40e0-8e08-31019f437bb0",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "92c75a5ba625418f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c9e4caa7-b3a5-4230-a708-0fbe4e197c50",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "932b32ad5b8e5873": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "392501f5-c02a-4a2e-ab0b-fd8608c611b4",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "9744a6403fe97870": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8ea504fe-13d0-48d3-ae3e-da38267c1ab2",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "a0a3dd219abb0301": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f80af620-4057-4a60-aecf-6dd9f626f442",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "a1b0787858e46670": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "972cbd6b-b5b4-4e99-82c6-0d2e1d75d141",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "a31d3c70e1e24960": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "42f6e78b-4935-4545-b586-e7f2aaf7a96a",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "a7b18647b7028d28": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f31f5aca-cd4c-4916-8b39-41adf95c1f6c",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "b6de3addd0a51145": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d9c8e95b-60fa-49b9-b4a0-9bc757a83474",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 49,
+      "total_deletions": 44,
+      "accepted_lines": 39,
+      "overriden_lines": 0
+    },
+    "bb396e85c697c224": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8a6f4fcf-2b0a-4dfc-a471-22757a7d0164",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "bf7a2435aac51a24": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "461b3bb8-d414-4df9-b724-8115bc55f80c",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "c249147d1e1e1004": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8bce8a31-ff1c-40d6-8cc4-d37d992df36b",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "ce4e790a27149321": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "10409437-6937-4fba-ac14-c695f6febdf2",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "cf70aea94e17b9f5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "acb2e238-2fa1-4faf-85cf-8022783db389",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "d4c2355f4f0776ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1b10650f-b81e-48d4-b18a-bbd0dc00a15f",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "db4c0928026bf95a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4cdf46af-9369-4ea3-9a3b-52f9903239f9",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "dbf81ee65376ef48": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4349d146-6840-41d5-9bd7-7d539edf2f51",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "e3067fb7b20a52c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "efe8a797-9293-4da9-aa96-71ef0657e626",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "e622d67f102c1c40": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "23641f4d-7a78-4b5f-b3f6-4f6c72355a5e",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "fa8f78c72658ff7a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6398df69-686b-4bef-9866-c582350674c6",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "fdabf8aa7bf5946d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "39a32458-c506-4e63-bd7c-02055fc53245",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  },
+  "change_history": [
+    {
+      "timestamp": 1774670562,
+      "kind": "human",
+      "files": {
+        "sample_data.jsonl": {
+          "added_lines": [
+            "1-8"
+          ],
+          "deleted_lines": []
+        },
+        "usability_test.csv": {
+          "added_lines": [
+            "1-3"
+          ],
+          "deleted_lines": []
+        },
+        "usability_test_instructions.txt": {
+          "added_lines": [
+            "1-63"
+          ],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 74,
+        "deletions": 0,
+        "additions_sloc": 48,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1774671382,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "b0de91e5-2b99-4324-b45b-334ee699cd79",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "change the remotion video in the following ways:\n\n1. After the finally see how ai really compares. Starting from compare models, comment out everything, except for the very last bit with the team name and project name.\n\n2. Change that last bit team name to TEAM KB-207",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "12",
+            "18-22"
+          ],
+          "deleted_lines": [
+            "12",
+            "18-22"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 6,
+        "deletions": 6,
+        "additions_sloc": 6,
+        "deletions_sloc": 6
+      }
+    },
+    {
+      "timestamp": 1774671389,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "b0de91e5-2b99-4324-b45b-334ee699cd79",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "change the remotion video in the following ways:\n\n1. After the finally see how ai really compares. Starting from compare models, comment out everything, except for the very last bit with the team name and project name.\n\n2. Change that last bit team name to TEAM KB-207",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "59",
+            "64",
+            "67",
+            "72",
+            "75",
+            "80",
+            "83",
+            "88"
+          ],
+          "deleted_lines": [
+            "59",
+            "64",
+            "67",
+            "72",
+            "75",
+            "80",
+            "83",
+            "88"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 8,
+        "deletions": 8,
+        "additions_sloc": 8,
+        "deletions_sloc": 8
+      }
+    },
+    {
+      "timestamp": 1774671393,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "b0de91e5-2b99-4324-b45b-334ee699cd79",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "change the remotion video in the following ways:\n\n1. After the finally see how ai really compares. Starting from compare models, comment out everything, except for the very last bit with the team name and project name.\n\n2. Change that last bit team name to TEAM KB-207",
+      "files": {
+        "video-v2/src/Root.tsx": {
+          "added_lines": [
+            "4",
+            "6"
+          ],
+          "deleted_lines": [
+            "4",
+            "6"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 2,
+        "additions_sloc": 2,
+        "deletions_sloc": 2
+      }
+    },
+    {
+      "timestamp": 1774671396,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "b0de91e5-2b99-4324-b45b-334ee699cd79",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "change the remotion video in the following ways:\n\n1. After the finally see how ai really compares. Starting from compare models, comment out everything, except for the very last bit with the team name and project name.\n\n2. Change that last bit team name to TEAM KB-207",
+      "files": {
+        "video-v2/src/scenes/TeamInfoScene.tsx": {
+          "added_lines": [
+            "84"
+          ],
+          "deleted_lines": [
+            "84"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774671446,
+      "kind": "ai_agent",
+      "conversation_id": "71431992e0a44c73",
+      "agent_type": "cursor",
+      "prompt_id": "cdfe5533-f792-453f-932e-7b0a76ef57d3",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "@/Users/Andrew/.cursor/projects/Users-Andrew-School-CPEN-491-Baseten-evalhub/terminals/1.txt:347-387",
+      "files": {
+        "video-v2/package.json": {
+          "added_lines": [
+            "13"
+          ],
+          "deleted_lines": [
+            "13"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774671459,
+      "kind": "ai_agent",
+      "conversation_id": "71431992e0a44c73",
+      "agent_type": "cursor",
+      "prompt_id": "cdfe5533-f792-453f-932e-7b0a76ef57d3",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "@/Users/Andrew/.cursor/projects/Users-Andrew-School-CPEN-491-Baseten-evalhub/terminals/1.txt:347-387",
+      "files": {
+        "video-v2/remotion.config.ts": {
+          "added_lines": [
+            "5-14"
+          ],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 10,
+        "deletions": 0,
+        "additions_sloc": 9,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1774671560,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "e7d7d4eb-d0cd-4e39-a009-583c3203837b",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Baseten is the 6th one. Why dont you just ask me if you dont know",
+      "files": {
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "15",
+            "21"
+          ],
+          "deleted_lines": [
+            "21"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 1,
+        "additions_sloc": 2,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774671568,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "e7d7d4eb-d0cd-4e39-a009-583c3203837b",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Baseten is the 6th one. Why dont you just ask me if you dont know",
+      "files": {
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "94-95"
+          ],
+          "deleted_lines": [
+            "94-95"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 2,
+        "additions_sloc": 2,
+        "deletions_sloc": 2
+      }
+    },
+    {
+      "timestamp": 1774671574,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "e7d7d4eb-d0cd-4e39-a009-583c3203837b",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Baseten is the 6th one. Why dont you just ask me if you dont know",
+      "files": {
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "102-107"
+          ],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 6,
+        "deletions": 0,
+        "additions_sloc": 4,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1774671600,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "e7d7d4eb-d0cd-4e39-a009-583c3203837b",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Baseten is the 6th one. Why dont you just ask me if you dont know",
+      "files": {
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "63",
+            "97",
+            "100"
+          ],
+          "deleted_lines": [
+            "63",
+            "94-96",
+            "100",
+            "103"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 3,
+        "deletions": 6,
+        "additions_sloc": 3,
+        "deletions_sloc": 5
+      }
+    },
+    {
+      "timestamp": 1774671788,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "576492c5-5c19-41f3-9587-66c80e5bd250",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "its still appearing out of order. in fact opposite",
+      "files": {
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "100-103"
+          ],
+          "deleted_lines": [
+            "100-102"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 4,
+        "deletions": 3,
+        "additions_sloc": 4,
+        "deletions_sloc": 3
+      }
+    },
+    {
+      "timestamp": 1774672368,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "a66c654f-f632-4dc1-bf4a-e9fe198f2823",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "I want to make you use ai everyday 2 seconds shorter. \n\nApplication layer... scene 4 seconds shorter. \n\nWhich one to trust: 1 sec shorter.\nEvalhub, finally see how...: 4 sec shorter at the end.",
+      "files": {
+        "video-v2/src/scenes/HookScene.tsx": {
+          "added_lines": [
+            "14",
+            "18",
+            "23-24",
+            "28",
+            "33-34"
+          ],
+          "deleted_lines": [
+            "14",
+            "18",
+            "23-24",
+            "28",
+            "33-34"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 7,
+        "deletions": 7,
+        "additions_sloc": 7,
+        "deletions_sloc": 7
+      }
+    },
+    {
+      "timestamp": 1774672372,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "a66c654f-f632-4dc1-bf4a-e9fe198f2823",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "I want to make you use ai everyday 2 seconds shorter. \n\nApplication layer... scene 4 seconds shorter. \n\nWhich one to trust: 1 sec shorter.\nEvalhub, finally see how...: 4 sec shorter at the end.",
+      "files": {
+        "video-v2/src/scenes/HookScene.tsx": {
+          "added_lines": [
+            "90"
+          ],
+          "deleted_lines": [
+            "90"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774672376,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "a66c654f-f632-4dc1-bf4a-e9fe198f2823",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "I want to make you use ai everyday 2 seconds shorter. \n\nApplication layer... scene 4 seconds shorter. \n\nWhich one to trust: 1 sec shorter.\nEvalhub, finally see how...: 4 sec shorter at the end.",
+      "files": {
+        "video-v2/src/scenes/HookScene.tsx": {
+          "added_lines": [
+            "205"
+          ],
+          "deleted_lines": [
+            "205"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774672385,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "a66c654f-f632-4dc1-bf4a-e9fe198f2823",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "I want to make you use ai everyday 2 seconds shorter. \n\nApplication layer... scene 4 seconds shorter. \n\nWhich one to trust: 1 sec shorter.\nEvalhub, finally see how...: 4 sec shorter at the end.",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "12",
+            "16-17",
+            "22"
+          ],
+          "deleted_lines": [
+            "12",
+            "16-17",
+            "22"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 4,
+        "deletions": 4,
+        "additions_sloc": 4,
+        "deletions_sloc": 4
+      }
+    },
+    {
+      "timestamp": 1774672389,
+      "kind": "ai_agent",
+      "conversation_id": "b6de3addd0a51145",
+      "agent_type": "cursor",
+      "prompt_id": "a66c654f-f632-4dc1-bf4a-e9fe198f2823",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "I want to make you use ai everyday 2 seconds shorter. \n\nApplication layer... scene 4 seconds shorter. \n\nWhich one to trust: 1 sec shorter.\nEvalhub, finally see how...: 4 sec shorter at the end.",
+      "files": {
+        "video-v2/src/Root.tsx": {
+          "added_lines": [
+            "4",
+            "6"
+          ],
+          "deleted_lines": [
+            "4",
+            "6"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 2,
+        "additions_sloc": 2,
+        "deletions_sloc": 2
+      }
+    },
+    {
+      "timestamp": 1774672414,
+      "kind": "ai_agent",
+      "conversation_id": "188a71375bceb570",
+      "agent_type": "cursor",
+      "prompt_id": "57b2f5f3-e3c5-4186-9db9-e54e4a76fdea",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Change the remotion video to make the cloud gpu infra part not have moving gpu percents. In fact, just remove the bars below aws, gcp, azure. \n\nAt the top of that scene, have a title called AI applications",
+      "files": {
+        "video-v2/src/scenes/IsometricDiagram.tsx": {
+          "added_lines": [],
+          "deleted_lines": [
+            "214-226"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 13,
+        "additions_sloc": 0,
+        "deletions_sloc": 13
+      }
+    },
+    {
+      "timestamp": 1774672418,
+      "kind": "ai_agent",
+      "conversation_id": "188a71375bceb570",
+      "agent_type": "cursor",
+      "prompt_id": "57b2f5f3-e3c5-4186-9db9-e54e4a76fdea",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Change the remotion video to make the cloud gpu infra part not have moving gpu percents. In fact, just remove the bars below aws, gcp, azure. \n\nAt the top of that scene, have a title called AI applications",
+      "files": {
+        "video-v2/src/scenes/IsometricDiagram.tsx": {
+          "added_lines": [
+            "138-140"
+          ],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 3,
+        "deletions": 0,
+        "additions_sloc": 2,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1774672425,
+      "kind": "ai_agent",
+      "conversation_id": "188a71375bceb570",
+      "agent_type": "cursor",
+      "prompt_id": "57b2f5f3-e3c5-4186-9db9-e54e4a76fdea",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Change the remotion video to make the cloud gpu infra part not have moving gpu percents. In fact, just remove the bars below aws, gcp, azure. \n\nAt the top of that scene, have a title called AI applications",
+      "files": {
+        "video-v2/src/scenes/IsometricDiagram.tsx": {
+          "added_lines": [],
+          "deleted_lines": [
+            "107-115"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 9,
+        "additions_sloc": 0,
+        "deletions_sloc": 9
+      }
+    },
+    {
+      "timestamp": 1774672475,
+      "kind": "ai_agent",
+      "conversation_id": "188a71375bceb570",
+      "agent_type": "cursor",
+      "prompt_id": "81861936-7379-4e88-b496-e921767461ae",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "I want to remove the music that starts around Evalhub finally see how ai compares...",
+      "files": {
+        "usability_test.csv": {
+          "added_lines": [
+            "1-3"
+          ],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 3,
+        "deletions": 0,
+        "additions_sloc": 3,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1774672504,
+      "kind": "ai_agent",
+      "conversation_id": "188a71375bceb570",
+      "agent_type": "cursor",
+      "prompt_id": "81861936-7379-4e88-b496-e921767461ae",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "I want to remove the music that starts around Evalhub finally see how ai compares...",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "29"
+          ],
+          "deleted_lines": [
+            "29"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774673468,
+      "kind": "ai_agent",
+      "conversation_id": "188a71375bceb570",
+      "agent_type": "cursor",
+      "prompt_id": "0cf8a95f-cefa-41f7-a461-5ab807e77f54",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "cloud gpu infra background is black. change to white backgroun,d match others",
+      "files": {
+        "video-v2/src/scenes/IsometricDiagram.tsx": {
+          "added_lines": [
+            "132-133"
+          ],
+          "deleted_lines": [
+            "132-133"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 2,
+        "additions_sloc": 2,
+        "deletions_sloc": 2
+      }
+    },
+    {
+      "timestamp": 1774673475,
+      "kind": "ai_agent",
+      "conversation_id": "188a71375bceb570",
+      "agent_type": "cursor",
+      "prompt_id": "0cf8a95f-cefa-41f7-a461-5ab807e77f54",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "cloud gpu infra background is black. change to white backgroun,d match others",
+      "files": {
+        "video-v2/src/scenes/IsometricDiagram.tsx": {
+          "added_lines": [
+            "229"
+          ],
+          "deleted_lines": [
+            "229"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774673480,
+      "kind": "ai_agent",
+      "conversation_id": "188a71375bceb570",
+      "agent_type": "cursor",
+      "prompt_id": "0cf8a95f-cefa-41f7-a461-5ab807e77f54",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "cloud gpu infra background is black. change to white backgroun,d match others",
+      "files": {
+        "video-v2/src/scenes/IsometricDiagram.tsx": {
+          "added_lines": [
+            "243"
+          ],
+          "deleted_lines": [
+            "243"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774673485,
+      "kind": "ai_agent",
+      "conversation_id": "188a71375bceb570",
+      "agent_type": "cursor",
+      "prompt_id": "0cf8a95f-cefa-41f7-a461-5ab807e77f54",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "cloud gpu infra background is black. change to white backgroun,d match others",
+      "files": {
+        "video-v2/src/scenes/IsometricDiagram.tsx": {
+          "added_lines": [
+            "322"
+          ],
+          "deleted_lines": [
+            "322"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    }
+  ]
+}
