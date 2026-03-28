@@ -81,7 +81,7 @@ export const TeamInfoScene: React.FC = () => {
                 letterSpacing: 2,
               }}
             >
-              TEAM &quot;CAP THE STONE&quot;
+              TEAM KB-207
             </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {[

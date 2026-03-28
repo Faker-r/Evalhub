@@ -104,15 +104,6 @@ const CONNECTORS: { pts: [number, number, number, number]; color: string }[] = [
   { pts: [PROP_CX, PROP_BOX.y + PROP_BOX.h + 1, PROP_CX, INFRA_Y],           color: '#6366f1' }, // Proprietary → Infra
 ];
 
-// GPU bars per cloud zone — each positioned relative to zone center
-const GPU_BARS = [
-  { zoneCX: CLOUD_ZONE_CX[0], y: 912, baseW: 200, phase: 0,   label: 'GPU A100' },
-  { zoneCX: CLOUD_ZONE_CX[0], y: 938, baseW: 180, phase: 1.2, label: 'GPU H100' },
-  { zoneCX: CLOUD_ZONE_CX[1], y: 912, baseW: 220, phase: 0.6, label: 'GPU A100' },
-  { zoneCX: CLOUD_ZONE_CX[1], y: 938, baseW: 160, phase: 2.1, label: 'GPU H100' },
-  { zoneCX: CLOUD_ZONE_CX[2], y: 912, baseW: 190, phase: 1.8, label: 'GPU A100' },
-  { zoneCX: CLOUD_ZONE_CX[2], y: 938, baseW: 210, phase: 0.3, label: 'GPU H100' },
-];
 
 export const IsometricDiagram: React.FC<IsometricDiagramProps> = ({ localFrame }) => {
   const frame = localFrame;
@@ -135,8 +126,11 @@ export const IsometricDiagram: React.FC<IsometricDiagramProps> = ({ localFrame }
         viewBox="0 0 1920 1080"
         style={{ position: 'absolute', top: 0, left: 0 }}
       >
-        {/* Infra dark background */}
-        <rect x={80} y={INFRA_Y} width={1760} height={270} rx={16} fill="#0d1117" />
+        {/* ── Title ── */}
+        <text x={960} y={22} textAnchor="middle" fontSize={18} fill="#0d1117" fontWeight="800" letterSpacing="3" fontFamily={FONT.mono}>AI APPLICATIONS</text>
+
+        {/* Infra background */}
+        <rect x={80} y={INFRA_Y} width={1760} height={270} rx={16} fill="#ffffff" stroke="#18E76F" strokeWidth={2} />
 
         {/* ── Section boxes ── */}
         {/* Application Layer */}
@@ -211,19 +205,6 @@ export const IsometricDiagram: React.FC<IsometricDiagramProps> = ({ localFrame }
           );
         })}
 
-        {/* ── GPU utilization bars — centered within each cloud zone ── */}
-        {GPU_BARS.map((bar, i) => {
-          const usedW = bar.baseW * (0.55 + 0.45 * Math.sin(frame / 25 + bar.phase));
-          const pct = Math.round((usedW / bar.baseW) * 100);
-          const barX = bar.zoneCX - bar.baseW / 2;
-          return (
-            <g key={i}>
-              <text x={barX} y={bar.y - 4} fontSize={8} fill="#4ade80" fontFamily={FONT.mono} fontWeight="600">{bar.label} {pct}%</text>
-              <rect x={barX} y={bar.y} width={bar.baseW} height={10} rx={3} fill="#1e2a1e" />
-              <rect x={barX} y={bar.y} width={usedW} height={10} rx={3} fill="#18E76F" opacity={0.9} />
-            </g>
-          );
-        })}
 
         {/* ── Server rack — complete 5×5 symmetric grid ── */}
         {Array.from({ length: 25 }).map((_, i) => {
@@ -245,7 +226,7 @@ export const IsometricDiagram: React.FC<IsometricDiagramProps> = ({ localFrame }
 
         {/* ── Cloud zone vertical dividers ── */}
         {INFRA_DIVIDERS.map((dx, i) => (
-          <line key={i} x1={dx} y1={INFRA_Y + 10} x2={dx} y2={INFRA_Y + 258} stroke="#1e2a1e" strokeWidth={1} />
+          <line key={i} x1={dx} y1={INFRA_Y + 10} x2={dx} y2={INFRA_Y + 258} stroke="#d1d5db" strokeWidth={1} />
         ))}
 
         {/* ── Provider name labels ── */}
@@ -259,7 +240,7 @@ export const IsometricDiagram: React.FC<IsometricDiagramProps> = ({ localFrame }
           <text key={m.name} x={MODELS_LOGO_XS[i]} y={MODELS_LOGO_Y + logoHalf + 18} textAnchor="middle" fontSize={10} fill="#374151" fontWeight="600" fontFamily={FONT.mono}>{m.name}</text>
         ))}
         {CLOUD_PROVIDERS.map((c, i) => (
-          <text key={c.name} x={CLOUD_ZONE_CX[i]} y={CLOUD_LOGO_Y + logoHalf + 20} textAnchor="middle" fontSize={10} fill="#4ade80" fontWeight="600" fontFamily={FONT.mono}>{c.name}</text>
+          <text key={c.name} x={CLOUD_ZONE_CX[i]} y={CLOUD_LOGO_Y + logoHalf + 20} textAnchor="middle" fontSize={10} fill="#374151" fontWeight="600" fontFamily={FONT.mono}>{c.name}</text>
         ))}
       </svg>
 
@@ -338,7 +319,7 @@ export const IsometricDiagram: React.FC<IsometricDiagramProps> = ({ localFrame }
             borderRadius: '50%',
             overflow: 'hidden',
             border: '2px solid #18E76F',
-            background: '#111',
+            background: '#fff',
           }}
         >
           <Img src={logoUrl(c.domain)} style={{ width: logoSize, height: logoSize, objectFit: 'contain' }} />

@@ -9,24 +9,24 @@ import { OutroScene } from "./scenes/OutroScene";
 import { TeamInfoScene } from "./scenes/TeamInfoScene";
 import { BackgroundMusic, Voiceover, VideoSoundEffects } from "./Audio";
 
-// Scene timings (in seconds) - total 89s
+// Scene timings (in seconds) - total 28s
 const FPS = 30;
 const SCENES = {
   cascade: { start: 0, duration: 8 },         // 0-8s:   Billboard cascade
-  hook: { start: 8, duration: 18 },           // 8-26s:  Problem hook
-  solutionIntro: { start: 26, duration: 10 }, // 26-36s: Introduce EvalHub
-  leaderboard: { start: 36, duration: 14 },   // 36-50s: Leaderboard demo
-  submitEval: { start: 50, duration: 14 },    // 50-64s: Submit evaluation
-  results: { start: 64, duration: 10 },       // 64-74s: Results dashboard
-  outro: { start: 74, duration: 12 },         // 74-86s: CTA
-  teamInfo: { start: 86, duration: 3 },       // 86-89s: Team info
+  hook: { start: 8, duration: 11 },           // 8-19s:  Problem hook
+  solutionIntro: { start: 19, duration: 6 },  // 19-25s: Introduce EvalHub
+  // leaderboard: { start: 36, duration: 14 },   // 36-50s: Leaderboard demo
+  // submitEval: { start: 50, duration: 14 },    // 50-64s: Submit evaluation
+  // results: { start: 64, duration: 10 },       // 64-74s: Results dashboard
+  // outro: { start: 74, duration: 12 },         // 74-86s: CTA
+  teamInfo: { start: 25, duration: 3 },       // 25-28s: Team info
 };
 
 export const DemoVideo: React.FC = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: "#fefefe" }}>
       {/* Audio tracks */}
-      <BackgroundMusic volume={0.2} />
+      {/* <BackgroundMusic volume={0.2} /> */}
       {/* <Voiceover volume={1} /> */}{/* Uncomment when you have a voiceover recording */}
       <VideoSoundEffects />
 
@@ -56,36 +56,36 @@ export const DemoVideo: React.FC = () => {
       </Sequence>
 
       {/* Leaderboard Demo */}
-      <Sequence
+      {/* <Sequence
         from={SCENES.leaderboard.start * FPS}
         durationInFrames={SCENES.leaderboard.duration * FPS}
       >
         <LeaderboardDemoScene />
-      </Sequence>
+      </Sequence> */}
 
       {/* Submit Evaluation Demo */}
-      <Sequence
+      {/* <Sequence
         from={SCENES.submitEval.start * FPS}
         durationInFrames={SCENES.submitEval.duration * FPS}
       >
         <SubmitEvalScene />
-      </Sequence>
+      </Sequence> */}
 
       {/* Results Dashboard */}
-      <Sequence
+      {/* <Sequence
         from={SCENES.results.start * FPS}
         durationInFrames={SCENES.results.duration * FPS}
       >
         <ResultsScene />
-      </Sequence>
+      </Sequence> */}
 
       {/* Outro/CTA */}
-      <Sequence
+      {/* <Sequence
         from={SCENES.outro.start * FPS}
         durationInFrames={SCENES.outro.duration * FPS}
       >
         <OutroScene />
-      </Sequence>
+      </Sequence> */}
 
       {/* Team Info (required 3s end card) */}
       <Sequence

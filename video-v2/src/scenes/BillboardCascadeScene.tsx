@@ -12,13 +12,14 @@ import {
 import { C, popIn } from "../theme";
 
 // All billboard images from public/capstone-assets/ai-billboards
+// Index 4 = center cell of the 3x3 grid (row 1, col 1) — Baseten goes here
 const BILLBOARD_FILES = [
   "capstone-assets/ai-billboards/-FWEBP.webp",
   "capstone-assets/ai-billboards/00tech-billboard-top-cvmh-facebookJumbo.jpg",
   "capstone-assets/ai-billboards/5363038b-a98a-4dfd-b47b-5ef8e9c8e0ce_2110x1582.jpg",
   "capstone-assets/ai-billboards/5ab41160-61cb-4c57-99bb-c7ed98c4a72d_2102x1582.jpg",
+  "capstone-assets/ai-billboards/Screenshot 2026-03-26 at 1.58.28 PM.png", // Baseten — center
   "capstone-assets/ai-billboards/68f818cecc993f9955d0a27f.webp",
-  "capstone-assets/ai-billboards/Screenshot 2026-03-26 at 1.58.28 PM.png",
   "capstone-assets/ai-billboards/download.jpeg",
   "capstone-assets/ai-billboards/rawImage (1).jpg",
   "capstone-assets/ai-billboards/rawImage.jpg",
@@ -59,7 +60,7 @@ const buildConfigs = (fps: number): BillboardConfig[] => {
   const n = BILLBOARD_FILES.length;
   const colors = [C.green, C.pink, C.black];
 
-  return BILLBOARD_FILES.map((file, i) => {
+  const configs = BILLBOARD_FILES.map((file, i) => {
     const col = i % GRID_COLS;
     const row = Math.floor(i / GRID_COLS);
 
@@ -90,14 +91,18 @@ const buildConfigs = (fps: number): BillboardConfig[] => {
     const jitter = seededFloat(i * 23 + 6, -0.3, 0.3) * baseInterval;
     const startFrame = Math.round(Math.max(0, baseInterval * i + jitter));
 
-    // z-index: somewhat random so images interleave rather than strictly stack
-    const zIndex = Math.round(seededFloat(i * 19 + 8, 1, 50));
-    
     // Assign a theme color for the shadow drops
     const color = colors[i % colors.length];
 
-    return { file, startFrame, x, y, rotation, scale, zIndex, color };
+    return { file, startFrame, x, y, rotation, scale, zIndex: 0, color };
   });
+
+  // Sort ascending by startFrame — render order IS the stacking order.
+  // Later in the DOM = naturally on top, so the newest billboard always covers older ones.
+  configs.sort((a, b) => a.startFrame - b.startFrame);
+  configs.forEach((cfg, order) => { cfg.zIndex = order + 1; });
+
+  return configs;
 };
 
 export const BillboardCascadeScene: React.FC = () => {

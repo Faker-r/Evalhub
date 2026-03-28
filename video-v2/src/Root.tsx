@@ -1,9 +1,9 @@
 import { Composition } from "remotion";
 import { DemoVideo } from "./DemoVideo";
 
-// 89 seconds at 30 fps = 2670 frames
+// 28 seconds at 30 fps = 840 frames
 const FPS = 30;
-const DURATION_SECONDS = 89;
+const DURATION_SECONDS = 28;
 const TOTAL_FRAMES = FPS * DURATION_SECONDS;
 
 export const RemotionRoot: React.FC = () => {

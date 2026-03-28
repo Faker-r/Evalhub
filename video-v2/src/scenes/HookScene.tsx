@@ -11,27 +11,27 @@ export const HookScene: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  // Phase 1: "You use AI every day" (0-5s)
+  // Phase 1: "You use AI every day" (0-3s)
   const phase1Opacity = interpolate(frame, [0, 10], [0, 1], {
     extrapolateRight: "clamp",
   });
-  const phase1Exit = interpolate(frame, [140, 150], [1, 0], {
+  const phase1Exit = interpolate(frame, [80, 90], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Phase 2: "Same model, different results" (5-12s)
-  const phase2Start = 150;
+  // Phase 2: "Application layer / Isometric Diagram" (3-7.3s)
+  const phase2Start = 90;
   const phase2Opacity = interpolate(frame, [phase2Start, phase2Start + 15], [0, 1], {
     extrapolateRight: "clamp",
   });
-  const phase2Exit = interpolate(frame, [380, 400], [1, 0], {
+  const phase2Exit = interpolate(frame, [210, 220], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Phase 3: "How do you know which one to trust?" (12-18s)
-  const phase3Start = 400;
+  // Phase 3: "How do you know which one to trust?" (7.3-11s)
+  const phase3Start = 220;
   const phase3Opacity = interpolate(frame, [phase3Start, phase3Start + 15], [0, 1], {
     extrapolateRight: "clamp",
   });
@@ -87,7 +87,7 @@ export const HookScene: React.FC = () => {
       />
 
       {/* Phase 1: "You use AI every day" */}
-      {frame < 160 && (
+      {frame < 100 && (
         <div
           style={{
             position: "absolute",
@@ -202,7 +202,7 @@ export const HookScene: React.FC = () => {
       )}
 
       {/* Phase 2: Isometric 3D Diagram */}
-      {frame >= phase2Start && frame < 410 && (
+      {frame >= phase2Start && frame < 230 && (
         <div
           style={{
             position: "absolute",
