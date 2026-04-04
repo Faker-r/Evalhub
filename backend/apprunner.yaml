@@ -13,13 +13,9 @@ runtime: python311
 build:
   commands:
     pre-build:
-      # Copy dependency files into /app so they survive the build snapshot
-      - cp pyproject.toml /app/ || true
-      - cp poetry.lock /app/ || true
+      # Install git — not present in the App Runner Amazon Linux 2023 managed runtime
+      - dnf install -y git
     build:
-      # Only lightweight steps here — for python311, packages installed outside
-      # /app during the build phase are discarded at runtime. Heavy installs go
-      # in the run.pre-run section below so they run on each instance start.
       - echo "Build phase complete"
     post-build:
       - echo "Post-build phase complete"
