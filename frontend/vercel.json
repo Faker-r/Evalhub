@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://pry2znehe4.us-east-2.awsapprunner.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
