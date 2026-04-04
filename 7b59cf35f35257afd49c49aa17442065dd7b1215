@@ -1,0 +1,107 @@
+frontend/vite.config.ts
+  61046490a5bc5e18 24
+vercel.json
+  61046490a5bc5e18 2-3
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.1.21",
+  "base_commit_sha": "7b59cf35f35257afd49c49aa17442065dd7b1215",
+  "prompts": {
+    "61046490a5bc5e18": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "91784537-68db-43fc-b19b-c95065ecd708",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  },
+  "change_history": [
+    {
+      "timestamp": 1775268612,
+      "kind": "human",
+      "files": {
+        "usability_test.csv": {
+          "added_lines": [],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 0,
+        "additions_sloc": 0,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1775268614,
+      "kind": "ai_agent",
+      "conversation_id": "61046490a5bc5e18",
+      "agent_type": "cursor",
+      "prompt_id": "bece5d56-52dc-49d2-ae5a-82ccadbcbd56",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Running build in Washington, D.C., USA (East) – iad1\nBuild machine configuration: 2 cores, 8 GB\nCloning github.com/Faker-r/Evalhub (Branch: main, Commit: 223d9e6)\nPrevious build caches not available.\nCloning completed: 303.000ms\nRunning \"vercel build\"\nVercel CLI 50.38.2\nInstalling dependencies...\nadded 360 packages in 15s\n59 packages are looking for funding\n  run `npm fund` for details\nsh: line 1: cd: frontend: No such file or directory\nError: Command \"cd frontend && npm install && npm run build:client\" exited with 1",
+      "files": {
+        "frontend/vite.config.ts": {
+          "added_lines": [
+            "24"
+          ],
+          "deleted_lines": [
+            "24"
+          ],
+          "added_line_contents": [
+            "24:     outDir: path.resolve(__dirname, \"dist\"),"
+          ],
+          "deleted_line_contents": [
+            "24:     outDir: path.resolve(__dirname, \"..\", \"dist\", \"public\"),"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1775268617,
+      "kind": "ai_agent",
+      "conversation_id": "61046490a5bc5e18",
+      "agent_type": "cursor",
+      "prompt_id": "bece5d56-52dc-49d2-ae5a-82ccadbcbd56",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Running build in Washington, D.C., USA (East) – iad1\nBuild machine configuration: 2 cores, 8 GB\nCloning github.com/Faker-r/Evalhub (Branch: main, Commit: 223d9e6)\nPrevious build caches not available.\nCloning completed: 303.000ms\nRunning \"vercel build\"\nVercel CLI 50.38.2\nInstalling dependencies...\nadded 360 packages in 15s\n59 packages are looking for funding\n  run `npm fund` for details\nsh: line 1: cd: frontend: No such file or directory\nError: Command \"cd frontend && npm install && npm run build:client\" exited with 1",
+      "files": {
+        "vercel.json": {
+          "added_lines": [
+            "2-3"
+          ],
+          "deleted_lines": [
+            "2-3"
+          ],
+          "added_line_contents": [
+            "2:   \"buildCommand\": \"npm install && npm run build:client\",",
+            "3:   \"outputDirectory\": \"dist\","
+          ],
+          "deleted_line_contents": [
+            "2:   \"buildCommand\": \"cd frontend && npm install && npm run build:client\",",
+            "3:   \"outputDirectory\": \"dist/public\","
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 2,
+        "additions_sloc": 2,
+        "deletions_sloc": 2
+      }
+    }
+  ]
+}
