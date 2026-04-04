@@ -1,0 +1,69 @@
+backend/apprunner.yaml
+  13025c6b67aff993 40-42
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.1.21",
+  "base_commit_sha": "21829b85a48127052ab555ae1d49f6c4b8b45bf1",
+  "prompts": {
+    "13025c6b67aff993": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3afbca75-aebd-4c29-b27a-1cb9e8d7b395",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 0,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  },
+  "change_history": [
+    {
+      "timestamp": 1775275784,
+      "kind": "human",
+      "files": {
+        "usability_test.csv": {
+          "added_lines": [],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 0,
+        "additions_sloc": 0,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1775275934,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "fd8cfe38-fcec-4f99-8ade-8a226be2c5d9",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "6 PM [PreRun]   - Installing websockets (15.0.1)\n04-03-2026 09:09:36 PM [PreRun]   - Installing xxhash (3.6.0)\n04-03-2026 09:09:36 PM [PreRun]   - Installing yarl (1.22.0)\n04-03-2026 09:09:36 PM [PreRun] \u001b[91mWarning: The file chosen for install of numpy 2.4.0 (numpy-2.4.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl) is yanked. Reason for being yanked: Backward compatibility bug\n04-03-2026 09:09:36 PM [PreRun] \u001b[0mRemoving intermediate container 03544b35d0a4\n04-03-2026 09:09:36 PM [PreRun]  ---> 7dd72b297470\n04-03-2026 09:09:36 PM [PreRun] Step 22/26 : RUN git clone https://github.com/pjavanrood/lighteval.git /tmp/lighteval\n04-03-2026 09:09:36 PM [PreRun]  ---> Running in 2c946cc9ebea\n04-03-2026 09:09:36 PM [PreRun] \u001b[91m/bin/sh: line 1: git: command not found\n04-03-2026 09:09:36 PM [PreRun] \u001b[0mThe command '/bin/sh -c git clone https://github.com/pjavanrood/lighteval.git /tmp/lighteval' returned a non-zero code: 127\n04-03-2026 09:09:39 PM [AppRunner] Failed to build your application source code. Reason: Failed to execute 'build' command.\n04-03-2026 09:09:40 PM [AppRunner] Failed to deploy your application source code.\n\n\nWhy did it fail from git again? I had pushed new code first, to the branch that app runner is tracking. \n\n\nHow to add env variables?",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "40-42"
+          ],
+          "deleted_lines": [],
+          "added_line_contents": [
+            "40:     # pre-run runs in the runtime container (separate from the build container),",
+            "41:     # so system packages installed during pre-build are not available here.",
+            "42:     - dnf install -y git gcc python3-devel libpq-devel libffi-devel"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 3,
+        "deletions": 0,
+        "additions_sloc": 3,
+        "deletions_sloc": 0
+      }
+    }
+  ]
+}
