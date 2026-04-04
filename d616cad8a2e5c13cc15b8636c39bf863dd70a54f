@@ -1,0 +1,327 @@
+backend/apprunner.yaml
+  13025c6b67aff993 68-69,72-91,93
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.1.21",
+  "base_commit_sha": "d616cad8a2e5c13cc15b8636c39bf863dd70a54f",
+  "prompts": {
+    "13025c6b67aff993": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3afbca75-aebd-4c29-b27a-1cb9e8d7b395",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 41,
+      "total_deletions": 39,
+      "accepted_lines": 23,
+      "overriden_lines": 1
+    }
+  },
+  "change_history": [
+    {
+      "timestamp": 1775276176,
+      "kind": "human",
+      "files": {
+        "usability_test.csv": {
+          "added_lines": [],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 0,
+        "additions_sloc": 0,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1775276177,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "380fa763-b690-4fc2-a3ba-158b0d46a516",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "its not there. Find updated docs",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "68-95"
+          ],
+          "deleted_lines": [
+            "68-93"
+          ],
+          "added_line_contents": [
+            "68:   # OPTION A: Plaintext env vars — only safe if this branch is private.",
+            "69:   # Replace each value with your actual credentials from backend/.env",
+            "70:   # OPTION B (production): Move these to AWS Secrets Manager and use the",
+            "71:   # secrets: block below with real ARNs instead.",
+            "72:     - name: DATABASE_URL",
+            "73:       value: \"REPLACE_ME\"",
+            "74:     - name: JWT_SECRET",
+            "75:       value: \"REPLACE_ME\"",
+            "76:     - name: AWS_ACCESS_KEY_ID",
+            "77:       value: \"REPLACE_ME\"",
+            "78:     - name: AWS_SECRET_ACCESS_KEY",
+            "79:       value: \"REPLACE_ME\"",
+            "80:     - name: SUPABASE_URL",
+            "81:       value: \"REPLACE_ME\"",
+            "82:     - name: SUPABASE_PUBLISHABLE_KEY",
+            "83:       value: \"REPLACE_ME\"",
+            "84:     - name: SUPABASE_SECRET_KEY",
+            "85:       value: \"REPLACE_ME\"",
+            "86:     - name: SUPABASE_JWT_SECRET",
+            "87:       value: \"REPLACE_ME\"",
+            "88:     - name: REDIS_URL",
+            "89:       value: \"REPLACE_ME\"",
+            "90:     - name: HF_TOKEN",
+            "91:       value: \"REPLACE_ME\"",
+            "92:     - name: OPENAI_API",
+            "93:       value: \"\"",
+            "94:     - name: OPENROUTER_API_KEY",
+            "95:       value: \"REPLACE_ME\""
+          ],
+          "deleted_line_contents": [
+            "68:   # Sensitive secrets — store these in AWS Secrets Manager and reference their ARNs.",
+            "69:   # secrets:",
+            "70:   #   - name: DATABASE_URL",
+            "71:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/DATABASE_URL\"",
+            "72:   #   - name: JWT_SECRET",
+            "73:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/JWT_SECRET\"",
+            "74:   #   - name: AWS_ACCESS_KEY_ID",
+            "75:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/AWS_ACCESS_KEY_ID\"",
+            "76:   #   - name: AWS_SECRET_ACCESS_KEY",
+            "77:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/AWS_SECRET_ACCESS_KEY\"",
+            "78:   #   - name: SUPABASE_URL",
+            "79:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_URL\"",
+            "80:   #   - name: SUPABASE_PUBLISHABLE_KEY",
+            "81:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_PUBLISHABLE_KEY\"",
+            "82:   #   - name: SUPABASE_SECRET_KEY",
+            "83:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_SECRET_KEY\"",
+            "84:   #   - name: SUPABASE_JWT_SECRET",
+            "85:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_JWT_SECRET\"",
+            "86:   #   - name: OPENAI_API",
+            "87:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/OPENAI_API\"",
+            "88:   #   - name: OPENROUTER_API_KEY",
+            "89:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/OPENROUTER_API_KEY\"",
+            "90:   #   - name: HF_TOKEN",
+            "91:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/HF_TOKEN\"",
+            "92:   #   - name: REDIS_URL",
+            "93:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/REDIS_URL\""
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 28,
+        "deletions": 26,
+        "additions_sloc": 28,
+        "deletions_sloc": 26
+      }
+    },
+    {
+      "timestamp": 1775276642,
+      "kind": "human",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "68-69",
+            "71",
+            "73",
+            "75",
+            "77",
+            "79",
+            "81",
+            "83",
+            "85",
+            "87",
+            "89-93"
+          ],
+          "deleted_lines": [
+            "68-71",
+            "73",
+            "75",
+            "77",
+            "79",
+            "81",
+            "83",
+            "85",
+            "87-91",
+            "93",
+            "95"
+          ],
+          "added_line_contents": [
+            "68:   # Sensitive secrets — store these in AWS Secrets Manager and reference their ARNs.",
+            "69:   secrets:",
+            "71:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/DATABASE_URL\"",
+            "73:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/JWT_SECRET\"",
+            "75:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/AWS_ACCESS_KEY_ID\"",
+            "77:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/AWS_SECRET_ACCESS_KEY\"",
+            "79:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_URL\"",
+            "81:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_PUBLISHABLE_KEY\"",
+            "83:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_SECRET_KEY\"",
+            "85:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_JWT_SECRET\"",
+            "87:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/OPENAI_API\"",
+            "89:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/OPENROUTER_API_KEY\"",
+            "90:     - name: HF_TOKEN",
+            "91:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/HF_TOKEN\"",
+            "92:     - name: REDIS_URL",
+            "93:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/REDIS_URL\""
+          ],
+          "deleted_line_contents": [
+            "68:   # OPTION A: Plaintext env vars — only safe if this branch is private.",
+            "69:   # Replace each value with your actual credentials from backend/.env",
+            "70:   # OPTION B (production): Move these to AWS Secrets Manager and use the",
+            "71:   # secrets: block below with real ARNs instead.",
+            "73:       value: \"REPLACE_ME\"",
+            "75:       value: \"REPLACE_ME\"",
+            "77:       value: \"REPLACE_ME\"",
+            "79:       value: \"REPLACE_ME\"",
+            "81:       value: \"REPLACE_ME\"",
+            "83:       value: \"REPLACE_ME\"",
+            "85:       value: \"REPLACE_ME\"",
+            "87:       value: \"REPLACE_ME\"",
+            "88:     - name: REDIS_URL",
+            "89:       value: \"REPLACE_ME\"",
+            "90:     - name: HF_TOKEN",
+            "91:       value: \"REPLACE_ME\"",
+            "93:       value: \"\"",
+            "95:       value: \"REPLACE_ME\""
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 16,
+        "deletions": 18,
+        "additions_sloc": 16,
+        "deletions_sloc": 18
+      }
+    },
+    {
+      "timestamp": 1775276643,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "62bf9751-b822-4b99-853d-65769c0e5c31",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "redis is on this ip. \n18.188.153.212",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "68-69"
+          ],
+          "deleted_lines": [],
+          "added_line_contents": [
+            "68:     - name: REDIS_URL",
+            "69:       value: \"redis://18.188.153.212:6379/0\""
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 0,
+        "additions_sloc": 2,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1775276647,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "62bf9751-b822-4b99-853d-65769c0e5c31",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "redis is on this ip. \n18.188.153.212",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [],
+          "deleted_lines": [
+            "94-95"
+          ],
+          "deleted_line_contents": [
+            "94:     - name: REDIS_URL",
+            "95:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/REDIS_URL\""
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 2,
+        "additions_sloc": 0,
+        "deletions_sloc": 2
+      }
+    },
+    {
+      "timestamp": 1775276845,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "11e9b1d8-3f67-47da-aa2e-680fb14b98e6",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "214863335048 replace",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "73",
+            "75",
+            "77",
+            "79",
+            "81",
+            "83",
+            "85",
+            "87",
+            "89",
+            "91",
+            "93"
+          ],
+          "deleted_lines": [
+            "73",
+            "75",
+            "77",
+            "79",
+            "81",
+            "83",
+            "85",
+            "87",
+            "89",
+            "91",
+            "93"
+          ],
+          "added_line_contents": [
+            "73:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/DATABASE_URL\"",
+            "75:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/JWT_SECRET\"",
+            "77:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/AWS_ACCESS_KEY_ID\"",
+            "79:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/AWS_SECRET_ACCESS_KEY\"",
+            "81:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_URL\"",
+            "83:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_PUBLISHABLE_KEY\"",
+            "85:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_SECRET_KEY\"",
+            "87:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_JWT_SECRET\"",
+            "89:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/OPENAI_API\"",
+            "91:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/OPENROUTER_API_KEY\"",
+            "93:       value-from: \"arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/HF_TOKEN\""
+          ],
+          "deleted_line_contents": [
+            "73:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/DATABASE_URL\"",
+            "75:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/JWT_SECRET\"",
+            "77:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/AWS_ACCESS_KEY_ID\"",
+            "79:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/AWS_SECRET_ACCESS_KEY\"",
+            "81:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_URL\"",
+            "83:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_PUBLISHABLE_KEY\"",
+            "85:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_SECRET_KEY\"",
+            "87:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_JWT_SECRET\"",
+            "89:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/OPENAI_API\"",
+            "91:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/OPENROUTER_API_KEY\"",
+            "93:       value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/HF_TOKEN\""
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 11,
+        "deletions": 11,
+        "additions_sloc": 11,
+        "deletions_sloc": 11
+      }
+    }
+  ]
+}
