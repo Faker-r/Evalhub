@@ -13,8 +13,10 @@ runtime: python311
 build:
   commands:
     pre-build:
-      # Install git — not present in the App Runner Amazon Linux 2023 managed runtime
-      - dnf install -y git
+      # git is needed to clone lighteval; gcc + python3-devel are needed to compile
+      # C extensions inside lighteval[extended_tasks] and some Poetry dependencies.
+      # libpq-devel is required by psycopg2 / asyncpg at build time.
+      - dnf install -y git gcc python3-devel libpq-devel libffi-devel
     build:
       - echo "Build phase complete"
     post-build:
@@ -38,13 +40,15 @@ run:
     - pip3 install poetry
     - poetry config virtualenvs.create false
     - poetry install --no-interaction --no-root
-    # Install the forked lighteval library required for benchmark evaluations
+    - pip3 install "setuptools<82"
+    # Wipe any leftover clone from a previous warm-instance pre-run before cloning again
+    - rm -rf /tmp/lighteval
     - git clone https://github.com/pjavanrood/lighteval.git /tmp/lighteval
     - pip3 install --no-build-isolation -e "/tmp/lighteval[extended_tasks]"
-    - pip3 install "setuptools<82"
-    # Run Alembic migrations on every startup to keep the DB schema in sync
+    # Alembic uses a DB-level lock on the alembic_version table, so concurrent runs
+    # across multiple instances are safe — only one will apply pending migrations.
     - python3 -m alembic upgrade head
-  command: python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2
+  command: python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 1
   network:
     port: 8000
     env: PORT
