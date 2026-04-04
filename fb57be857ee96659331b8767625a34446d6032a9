@@ -1,0 +1,156 @@
+backend/apprunner.yaml
+  13025c6b67aff993 16-19,43-45,48-49,51
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.1.21",
+  "base_commit_sha": "fb57be857ee96659331b8767625a34446d6032a9",
+  "prompts": {
+    "13025c6b67aff993": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3afbca75-aebd-4c29-b27a-1cb9e8d7b395",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 15,
+      "total_deletions": 11,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    }
+  },
+  "change_history": [
+    {
+      "timestamp": 1775275655,
+      "kind": "human",
+      "files": {
+        "usability_test.csv": {
+          "added_lines": [],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 0,
+        "additions_sloc": 0,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1775275656,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "11e94d92-872e-4483-9e30-56afdc6bd85b",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "any other potential issues like this?",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "16-19"
+          ],
+          "deleted_lines": [
+            "16-17"
+          ],
+          "added_line_contents": [
+            "16:       # git is needed to clone lighteval; gcc + python3-devel are needed to compile",
+            "17:       # C extensions inside lighteval[extended_tasks] and some Poetry dependencies.",
+            "18:       # libpq-devel is required by psycopg2 / asyncpg at build time.",
+            "19:       - dnf install -y git gcc python3-devel libpq-devel libffi-devel"
+          ],
+          "deleted_line_contents": [
+            "16:       # Install git — not present in the App Runner Amazon Linux 2023 managed runtime",
+            "17:       - dnf install -y git"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 4,
+        "deletions": 2,
+        "additions_sloc": 4,
+        "deletions_sloc": 2
+      }
+    },
+    {
+      "timestamp": 1775275666,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "11e94d92-872e-4483-9e30-56afdc6bd85b",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "any other potential issues like this?",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "43-45",
+            "48-52"
+          ],
+          "deleted_lines": [
+            "43",
+            "46-49"
+          ],
+          "added_line_contents": [
+            "43:     - pip3 install \"setuptools<82\"",
+            "44:     # Wipe any leftover clone from a previous warm-instance pre-run before cloning again",
+            "45:     - rm -rf /tmp/lighteval",
+            "48:     # Run migrations only if this instance acquires the advisory lock (pg_try_advisory_lock).",
+            "49:     # This prevents concurrent Alembic runs when App Runner scales up multiple instances.",
+            "50:     - python3 -c \"import asyncio, sqlalchemy; from api.core.config import settings; from sqlalchemy import text, create_engine; e = create_engine(str(settings.DATABASE_URL).replace('+asyncpg','')); conn = e.connect(); result = conn.execute(text('SELECT pg_try_advisory_lock(42)')); locked = result.scalar(); conn.close(); exit(0 if locked else 0)\"",
+            "51:     - python3 -m alembic upgrade head || echo \"Migrations already applied or lock not acquired, skipping\"",
+            "52:   command: python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 1"
+          ],
+          "deleted_line_contents": [
+            "43:     # Install the forked lighteval library required for benchmark evaluations",
+            "46:     - pip3 install \"setuptools<82\"",
+            "47:     # Run Alembic migrations on every startup to keep the DB schema in sync",
+            "48:     - python3 -m alembic upgrade head",
+            "49:   command: python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 8,
+        "deletions": 5,
+        "additions_sloc": 8,
+        "deletions_sloc": 5
+      }
+    },
+    {
+      "timestamp": 1775275677,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "11e94d92-872e-4483-9e30-56afdc6bd85b",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "any other potential issues like this?",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "48-50"
+          ],
+          "deleted_lines": [
+            "48-51"
+          ],
+          "added_line_contents": [
+            "48:     # Alembic uses a DB-level lock on the alembic_version table, so concurrent runs",
+            "49:     # across multiple instances are safe — only one will apply pending migrations.",
+            "50:     - python3 -m alembic upgrade head"
+          ],
+          "deleted_line_contents": [
+            "48:     # Run migrations only if this instance acquires the advisory lock (pg_try_advisory_lock).",
+            "49:     # This prevents concurrent Alembic runs when App Runner scales up multiple instances.",
+            "50:     - python3 -c \"import asyncio, sqlalchemy; from api.core.config import settings; from sqlalchemy import text, create_engine; e = create_engine(str(settings.DATABASE_URL).replace('+asyncpg','')); conn = e.connect(); result = conn.execute(text('SELECT pg_try_advisory_lock(42)')); locked = result.scalar(); conn.close(); exit(0 if locked else 0)\"",
+            "51:     - python3 -m alembic upgrade head || echo \"Migrations already applied or lock not acquired, skipping\""
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 3,
+        "deletions": 4,
+        "additions_sloc": 3,
+        "deletions_sloc": 4
+      }
+    }
+  ]
+}
