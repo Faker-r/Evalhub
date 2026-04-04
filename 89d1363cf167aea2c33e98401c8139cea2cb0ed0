@@ -1,0 +1,92 @@
+backend/apprunner.yaml
+  13025c6b67aff993 16-17
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.1.21",
+  "base_commit_sha": "89d1363cf167aea2c33e98401c8139cea2cb0ed0",
+  "prompts": {
+    "13025c6b67aff993": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3afbca75-aebd-4c29-b27a-1cb9e8d7b395",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 6,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "27a0c969aed5f767": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2380c61-d331-4018-bfa0-30138a6553a4",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  },
+  "change_history": [
+    {
+      "timestamp": 1775275537,
+      "kind": "human",
+      "files": {
+        "usability_test.csv": {
+          "added_lines": [],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 0,
+        "additions_sloc": 0,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1775275539,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "422535c4-3290-464b-82c4-0779bd5500ca",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "[AppRunner] Deployment with ID : 9f14ba21115d453cba57590838cf7606 started. Triggering event : SERVICE_CREATE\n04-03-2026 08:59:44 PM [AppRunner] Deployment Artifact: [Repo Type: Source], [Repository: https://github.com/Faker-r/Evalhub], [Branch: apprunner-python311], [SourceDirectory: backend]\n04-03-2026 09:00:33 PM [AppRunner] Pulling source code from GITHUB Repository ( https://github.com/Faker-r/Evalhub ).\n04-03-2026 09:00:38 PM [AppRunner] Successfully pulled your application source code.\n04-03-2026 09:00:49 PM [AppRunner] Reading apprunner.yaml config file.\n04-03-2026 09:00:50 PM [AppRunner] Successfully validate configuration file.\n04-03-2026 09:00:50 PM [AppRunner] Starting source code build.\n04-03-2026 09:02:26 PM [AppRunner] Failed to build your application source code. Reason: Failed to execute 'build' command.\n04-03-2026 09:02:28 PM [AppRunner] Deployment with ID : 9f14ba21115d453cba57590838cf7606 failed.\n\n   - Installing yarl (1.22.0)\n04-03-2026 09:02:24 PM [PreRun] \u001b[91mWarning: The file chosen for install of numpy 2.4.0 (numpy-2.4.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl) is yanked. Reason for being yanked: Backward compatibility bug\n04-03-2026 09:02:24 PM [PreRun] \u001b[0mRemoving intermediate container 98dffdf88e72\n04-03-2026 09:02:24 PM [PreRun]  ---> 27a79bcd9f4d\n04-03-2026 09:02:24 PM [PreRun] Step 23/27 : RUN git clone https://github.com/pjavanrood/lighteval.git /tmp/lighteval\n04-03-2026 09:02:24 PM [PreRun]  ---> Running in 86d65e69bddf\n04-03-2026 09:02:24 PM [PreRun] \u001b[91m/bin/sh: line 1: git: command not found\n04-03-2026 09:02:24 PM [PreRun] \u001b[0mThe command '/bin/sh -c git clone https://github.com/pjavanrood/lighteval.git /tmp/lighteval' returned a non-zero code: 127\n04-03-2026 09:02:26 PM [AppRunner] Failed to build your application source code. Reason: Failed to execute 'build' command.\n04-03-2026 09:02:28 PM [AppRunner] Failed to deploy your application source code.",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "16-17"
+          ],
+          "deleted_lines": [
+            "16-18",
+            "20-22"
+          ],
+          "added_line_contents": [
+            "16:       # Install git — not present in the App Runner Amazon Linux 2023 managed runtime",
+            "17:       - dnf install -y git"
+          ],
+          "deleted_line_contents": [
+            "16:       # Copy dependency files into /app so they survive the build snapshot",
+            "17:       - cp pyproject.toml /app/ || true",
+            "18:       - cp poetry.lock /app/ || true",
+            "20:       # Only lightweight steps here — for python311, packages installed outside",
+            "21:       # /app during the build phase are discarded at runtime. Heavy installs go",
+            "22:       # in the run.pre-run section below so they run on each instance start."
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 6,
+        "additions_sloc": 2,
+        "deletions_sloc": 6
+      }
+    }
+  ]
+}
