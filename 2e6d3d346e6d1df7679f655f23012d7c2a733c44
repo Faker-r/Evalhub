@@ -1,0 +1,1700 @@
+frontend/package.json
+  75cb381c96c2a6db 66
+  61046490a5bc5e18 73
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.1.21",
+  "base_commit_sha": "2e6d3d346e6d1df7679f655f23012d7c2a733c44",
+  "prompts": {
+    "01b53945fec4edda": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "407c6e20-68bd-4f3e-aead-9c794607de6d",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "02f6e5a8c7b2afb6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ba704f18-30ce-425d-a646-c909641c9513",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "031df7401c81746b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dde40ca0-9747-4675-b25b-a85e66b49739",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "03a65855f0a3db6e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bd3879f6-deae-446e-97eb-ff2f83c145d9",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "045646fd07004a52": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "110566cd-6066-4597-8edf-221a4f23ea10",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "052b22d77dce52c7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7648ebb2-0524-4818-8f9e-21ff5c034006",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "07cab4e4eac78849": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aaf9f5fa-929a-4456-80df-0c64f69695f8",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "093209d746a2ab26": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e755195e-003f-4ffe-8d48-42afb021b9c5",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "11976cf103adbe59": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "75ea8234-9cf3-46c2-8350-b74ce8375f71",
+        "model": "composer-2-fast"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "1263c860e3b843a8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "12c0da47-4d35-4db0-af17-6d93d098c146",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "13780fb79935c48b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6407ef27-572c-482b-99b5-3777905e06bc",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "14a0078585b8aacb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5c6c80c3-4a8e-4b5c-886c-5c04f67a9140",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "15e1e1329ef3ff3a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cea494a8-1c60-4546-ae0d-c2f189bba397",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "15e248efae308774": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2bf02be1-0575-4db7-ac00-75aa3b77edc8",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "160143f7de3c46c0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "22a74179-5a1e-4244-bae9-f7827fa02d0a",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "188a71375bceb570": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f65a129f-1719-4544-8a92-4bc877d428de",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "1bfe76eaa87934b2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d18f7d35-ac8a-4cb1-8d65-db53008ee838",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "1c29ff5da5cc9067": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cba9a435-7bea-4f9f-a3a3-c842ef2c5e05",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "1e2a02c819901fe3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f95e661b-e4f2-438c-8fee-63eb9d7ae370",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "24470a1a7c31fa8d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7b8aebb9-af58-4cc9-b151-695828d2c78f",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "2561363e9c96ea80": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1bf54850-63b9-4184-80f1-c12299aea2a8",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "2d900ea89c7df772": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e33d0121-fb3b-4c64-9cee-edc3bb18528e",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "2e64d81886dc03d5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8d97d9e4-f37c-4ef7-ac55-9fdd6d15023a",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "3050d92206c9a815": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b7e70618-d090-4109-9b51-1acc71b54f68",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "4598b56f5a0419b2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "13f7917d-6601-4dcf-9112-9c924fac9140",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "491bdfce37bc60ba": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4dbaa6d6-52bf-42c0-ad00-21c11b34e685",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "4a1f066bcd8f828c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dff014dd-3693-47ee-acfa-8d8f28ec450a",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "4c0858519f96432e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "20668240-be7b-4907-9a51-ff6660135582",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "4f71b95af4f44a87": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5c533779-5b85-4f1a-a4b1-a1a161a97ec7",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "56366a8d7b23a6a4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d6dd9d64-c275-4c75-bf98-7aa6a415d4a8",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "5a8026a2cf72b0a6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "78dc623a-2bf9-4b90-9552-b1a34195d4fa",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "5a8c7b8568fe7ddf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "030c713c-15b6-4075-8402-556e8db3c561",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "5e3fd0d74acbf101": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "404ca2fb-2949-4866-9ccc-5bf6216cff19",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "5e5a52107c5c98cc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "22b708ce-fb6d-49fc-bc01-89e755670592",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "61046490a5bc5e18": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "91784537-68db-43fc-b19b-c95065ecd708",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "6192a28452cddc62": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d3253911-c42d-4318-8738-5e06fc98aac5",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "62451be8148ec58e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9ca64d91-19af-469b-8506-f2c1539e3fae",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "62cd30430b496924": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9679c5b8-5502-4ff0-b079-c9c480c3c181",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "65177469ec605ef9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "20bd8c24-e2ce-40ef-a256-36ac066e731e",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "65afbc8c97c39951": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0101f2c6-395b-4f24-9e8d-823a6b314c11",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "679ec2d9f94a9529": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1aa4f0e3-e6aa-466b-b134-192857353dae",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "689cf9943d0f2340": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "690f5ce0-248b-460c-9db6-b7df89a9334a",
+        "model": "composer-2-fast"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "69f632a6cf9011ce": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "aebadb4a-765c-46ff-a638-1ff522daa5c5",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "6b9e6092aa7893b0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0058f47c-2f1e-4a47-aa9b-5c24be841b45",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "6c06d4e1f7ca2ec9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2119b452-e3d3-4504-a5d8-c8534cfb3946",
+        "model": "composer-2-fast"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "71431992e0a44c73": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "392bf03e-5dd9-4065-a548-f963aba427e8",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "735470404d3b38d7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "66e01709-5044-4931-9c95-689ad42e143d",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "75cb381c96c2a6db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "934b7955-9405-49ed-8113-747197ee207a",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "77f3dc0d1f2c62cd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "27fbed4e-2e62-42b7-9629-7a102dc7b69c",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "7a2d0b5b8037fae1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b168941d-c074-4ce2-a718-1a93043f829c",
+        "model": "composer-2-fast"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "7cbea87be006d1a9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "745cc8d2-fa55-4460-ab04-32896d82e381",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "7e0b080e7bcb62b2": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d8f5d767-7f32-4df1-90f3-cb56a5ae9459",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "80eaea636c89dfb8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2fd5190d-e0f9-436a-9650-45fb8a70787d",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "829448a8f01dc2f9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5d1dc426-b1f2-40e0-8e08-31019f437bb0",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "831cb2e749df80d8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d598772d-b24d-4974-b33d-d34e3fb5fd4b",
+        "model": "composer-2-fast"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "92c75a5ba625418f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c9e4caa7-b3a5-4230-a708-0fbe4e197c50",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "932b32ad5b8e5873": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "392501f5-c02a-4a2e-ab0b-fd8608c611b4",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "94c1dca0dbda08af": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "750608f4-4916-4f02-ae6f-af55b5953ecc",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "9744a6403fe97870": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8ea504fe-13d0-48d3-ae3e-da38267c1ab2",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "98cf5d21d939f108": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "29ae66b9-8ecc-4e20-af60-1136006844e4",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "a0a3dd219abb0301": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f80af620-4057-4a60-aecf-6dd9f626f442",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "a1b0787858e46670": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "972cbd6b-b5b4-4e99-82c6-0d2e1d75d141",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "a31d3c70e1e24960": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "42f6e78b-4935-4545-b586-e7f2aaf7a96a",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "a7b18647b7028d28": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f31f5aca-cd4c-4916-8b39-41adf95c1f6c",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "a9f49140a9ee3391": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "643c0583-19e8-48d5-be13-5f2ea99f5d6b",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "aaef56d577091381": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4bad86be-b028-4939-8293-8c08b2f48a54",
+        "model": "composer-2-fast"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "b6de3addd0a51145": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d9c8e95b-60fa-49b9-b4a0-9bc757a83474",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "bb396e85c697c224": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8a6f4fcf-2b0a-4dfc-a471-22757a7d0164",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "bf7a2435aac51a24": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "461b3bb8-d414-4df9-b724-8115bc55f80c",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "bffc68e0ccc60761": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "42609b3c-d098-412a-8c2d-8a4e20dfcbe6",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "c159b74b05f15621": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a0b7847d-724c-4c7c-966d-5befeac24574",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "c249147d1e1e1004": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8bce8a31-ff1c-40d6-8cc4-d37d992df36b",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "cc383baf3b35c0b5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9ca93690-ce08-4b7c-b53a-5eb2460952be",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "ce4e790a27149321": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "10409437-6937-4fba-ac14-c695f6febdf2",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "cf70aea94e17b9f5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "acb2e238-2fa1-4faf-85cf-8022783db389",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "d4c2355f4f0776ff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1b10650f-b81e-48d4-b18a-bbd0dc00a15f",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "d838049fd755609b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5c0128fd-afe5-41ce-8a64-9fecae9fcc75",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "d9c876e95731e32a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c6e7af4d-48bf-4fbe-a3f9-03f859e4a3b2",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "db4c0928026bf95a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4cdf46af-9369-4ea3-9a3b-52f9903239f9",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "dbf81ee65376ef48": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4349d146-6840-41d5-9bd7-7d539edf2f51",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "e135e5cc670f52e5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ba71bd29-3921-42b4-9b40-b21632a16b79",
+        "model": "claude-4.6-opus-high-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "e3067fb7b20a52c3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "efe8a797-9293-4da9-aa96-71ef0657e626",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "e5838425347b7c05": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8946a8bf-ff08-41cc-a7a2-978cfa3b2a64",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "e622d67f102c1c40": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "23641f4d-7a78-4b5f-b3f6-4f6c72355a5e",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "eaefe0a5c32a9431": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "27b9357e-1792-4674-8c8b-a3ca607fb968",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "eb588b94209fa3f4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5b421d15-2714-49a0-bca5-6d0b0d970897",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 66,
+      "total_deletions": 43,
+      "accepted_lines": 39,
+      "overriden_lines": 1
+    },
+    "ed981d8fcb5eea60": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ae730601-a32b-405c-9684-ebd65e92a224",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "fa89dce510d851b6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bdc26847-71cc-4b0a-98cd-3b2e63a9c40c",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "fa8f78c72658ff7a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6398df69-686b-4bef-9866-c582350674c6",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "fdabf8aa7bf5946d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "39a32458-c506-4e63-bd7c-02055fc53245",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  },
+  "change_history": [
+    {
+      "timestamp": 1774674879,
+      "kind": "human",
+      "files": {
+        "usability_test.csv": {
+          "added_lines": [],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 0,
+        "additions_sloc": 0,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1774675858,
+      "kind": "ai_agent",
+      "conversation_id": "75cb381c96c2a6db",
+      "agent_type": "cursor",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "files": {
+        "frontend/package.json": {
+          "added_lines": [
+            "66"
+          ],
+          "deleted_lines": [
+            "66"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774675890,
+      "kind": "ai_agent",
+      "conversation_id": "75cb381c96c2a6db",
+      "agent_type": "cursor",
+      "prompt_id": "6bd7d49a-e26c-47d9-bbb7-333e4c4c4dcb",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "@/Users/Andrew/.cursor/projects/Users-Andrew-School-CPEN-491-Baseten-evalhub/terminals/5.txt:121-167",
+      "files": {
+        "frontend/package.json": {
+          "added_lines": [
+            "73"
+          ],
+          "deleted_lines": [
+            "73"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774678726,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "31088e6c-7461-458b-9efa-a354e7f08c8b",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "my audio got turned off for this remotion video. the background music. bring it back",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "29"
+          ],
+          "deleted_lines": [
+            "29"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774679487,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "26c63648-7acf-44b9-91e6-459bbb265f56",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "comment out everything exceopt for the last scene, and change frame count",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "12",
+            "15-17",
+            "22",
+            "29"
+          ],
+          "deleted_lines": [
+            "12",
+            "15-17",
+            "22",
+            "29"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 6,
+        "deletions": 6,
+        "additions_sloc": 6,
+        "deletions_sloc": 6
+      }
+    },
+    {
+      "timestamp": 1774679501,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "26c63648-7acf-44b9-91e6-459bbb265f56",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "comment out everything exceopt for the last scene, and change frame count",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "30-31",
+            "34",
+            "39",
+            "42",
+            "47",
+            "50",
+            "55"
+          ],
+          "deleted_lines": [
+            "30-31",
+            "34",
+            "39",
+            "42",
+            "47-48",
+            "51",
+            "56"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 8,
+        "deletions": 9,
+        "additions_sloc": 8,
+        "deletions_sloc": 8
+      }
+    },
+    {
+      "timestamp": 1774679505,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "26c63648-7acf-44b9-91e6-459bbb265f56",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "comment out everything exceopt for the last scene, and change frame count",
+      "files": {
+        "video-v2/src/Root.tsx": {
+          "added_lines": [
+            "4",
+            "6"
+          ],
+          "deleted_lines": [
+            "4",
+            "6"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 2,
+        "additions_sloc": 2,
+        "deletions_sloc": 2
+      }
+    },
+    {
+      "timestamp": 1774679555,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "82e77f71-78ba-497f-910f-f2908e1b1b95",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "make it 2 seconds longer. The last scene",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "22"
+          ],
+          "deleted_lines": [
+            "22"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774679559,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "82e77f71-78ba-497f-910f-f2908e1b1b95",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "make it 2 seconds longer. The last scene",
+      "files": {
+        "video-v2/src/Root.tsx": {
+          "added_lines": [
+            "4",
+            "6"
+          ],
+          "deleted_lines": [
+            "4",
+            "6"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 2,
+        "additions_sloc": 2,
+        "deletions_sloc": 2
+      }
+    },
+    {
+      "timestamp": 1774680345,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "2bc96d1f-16fd-4201-b318-41ed9e766783",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "for the billboard part, add some citation to the bottom for the sources of the images",
+      "files": {
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "16-25",
+            "28-30"
+          ],
+          "deleted_lines": [
+            "16-25"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 13,
+        "deletions": 10,
+        "additions_sloc": 12,
+        "deletions_sloc": 10
+      }
+    },
+    {
+      "timestamp": 1774680357,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "2bc96d1f-16fd-4201-b318-41ed9e766783",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "for the billboard part, add some citation to the bottom for the sources of the images",
+      "files": {
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "202-228"
+          ],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 27,
+        "deletions": 0,
+        "additions_sloc": 26,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1774680390,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "d35b6fce-4a80-4ca1-ad2e-20589eb1ca69",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "or say, various sources (NYT, Baseten, ...)",
+      "files": {
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "223"
+          ],
+          "deleted_lines": [
+            "222-224",
+            "226"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 4,
+        "additions_sloc": 1,
+        "deletions_sloc": 4
+      }
+    },
+    {
+      "timestamp": 1774680529,
+      "kind": "human",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "15-17",
+            "22",
+            "34",
+            "39",
+            "42",
+            "47-48",
+            "51",
+            "56"
+          ],
+          "deleted_lines": [
+            "15-17",
+            "22",
+            "34",
+            "39",
+            "42",
+            "47",
+            "50",
+            "55"
+          ]
+        },
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "223"
+          ],
+          "deleted_lines": [
+            "223"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 12,
+        "deletions": 11,
+        "additions_sloc": 11,
+        "deletions_sloc": 11
+      }
+    },
+    {
+      "timestamp": 1774680532,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "1c4db792-6ae4-486c-9aea-36c5cba2703d",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "I reverted the change on commenting out the sections, but num frames still not enough. \n\nAnd music is still gone.",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "12"
+          ],
+          "deleted_lines": [
+            "12"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774680536,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "1c4db792-6ae4-486c-9aea-36c5cba2703d",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "I reverted the change on commenting out the sections, but num frames still not enough. \n\nAnd music is still gone.",
+      "files": {
+        "video-v2/src/DemoVideo.tsx": {
+          "added_lines": [
+            "29",
+            "31"
+          ],
+          "deleted_lines": [
+            "29",
+            "31"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 2,
+        "deletions": 2,
+        "additions_sloc": 2,
+        "deletions_sloc": 2
+      }
+    },
+    {
+      "timestamp": 1774680606,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "792904bc-1345-4510-ae79-0e6cd5f3a45a",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "i want it from the start",
+      "files": {
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "216"
+          ],
+          "deleted_lines": [
+            "216"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1774680627,
+      "kind": "ai_agent",
+      "conversation_id": "eb588b94209fa3f4",
+      "agent_type": "cursor",
+      "prompt_id": "fe7bee97-e7c9-4177-a22f-0d9fe448cb94",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "i dont want it changing opacity",
+      "files": {
+        "video-v2/src/scenes/BillboardCascadeScene.tsx": {
+          "added_lines": [
+            "216"
+          ],
+          "deleted_lines": [
+            "216-219"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 4,
+        "additions_sloc": 1,
+        "deletions_sloc": 4
+      }
+    },
+    {
+      "timestamp": 1775267706,
+      "kind": "ai_agent",
+      "conversation_id": "61046490a5bc5e18",
+      "agent_type": "cursor",
+      "prompt_id": "7f5a9841-119d-4318-afcf-d0eed8b1fe45",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "18:52:44.220 \nnpm error While resolving: evalhub@1.0.0\n18:52:44.220 \nnpm error Found: eslint@10.2.0\n18:52:44.221 \nnpm error node_modules/eslint\n18:52:44.221 \nnpm error   dev eslint@\"^10.0.3\" from the root project\n18:52:44.222 \nnpm error\n18:52:44.222 \nnpm error Could not resolve dependency:\n18:52:44.222 \nnpm error peer eslint@\"^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0 || ^9.0.0\" from eslint-plugin-react-hooks@7.0.1\n18:52:44.222 \nnpm error node_modules/eslint-plugin-react-hooks\n18:52:44.222 \nnpm error   dev eslint-plugin-react-hooks@\"^7.0.1\" from the root project\n18:52:44.222 \nnpm error\n18:52:44.223 \nnpm error Fix the upstream dependency conflict, or retry\n18:52:44.223 \nnpm error this command with --force or --legacy-peer-deps\n18:52:44.223 \nnpm error to accept an incorrect (and potentially broken) dependency resolution.\n18:52:44.223 \nnpm error\n18:52:44.224 \nnpm error\n18:52:44.224 \nnpm error For a full report see:\n18:52:44.224 \nnpm error /vercel/.npm/_logs/2026-04-04T01_52_36_686Z-eresolve-report.txt\n18:52:44.225 \nnpm error A complete log of this run can be found in: /vercel/.npm/_logs/2026-04-04T01_52_36_686Z-debug-0.log\n18:52:44.257 \nError: Command \"npm install\" exited with 1\n\nvercel website, trying to set it up.",
+      "files": {
+        "frontend/package.json": {
+          "added_lines": [
+            "73"
+          ],
+          "deleted_lines": [
+            "73"
+          ],
+          "added_line_contents": [
+            "73:     \"eslint\": \"^10.0.3\","
+          ],
+          "deleted_line_contents": [
+            "73:     \"eslint\": \"^9.0.0\","
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    },
+    {
+      "timestamp": 1775267708,
+      "kind": "ai_agent",
+      "conversation_id": "61046490a5bc5e18",
+      "agent_type": "cursor",
+      "prompt_id": "7f5a9841-119d-4318-afcf-d0eed8b1fe45",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "18:52:44.220 \nnpm error While resolving: evalhub@1.0.0\n18:52:44.220 \nnpm error Found: eslint@10.2.0\n18:52:44.221 \nnpm error node_modules/eslint\n18:52:44.221 \nnpm error   dev eslint@\"^10.0.3\" from the root project\n18:52:44.222 \nnpm error\n18:52:44.222 \nnpm error Could not resolve dependency:\n18:52:44.222 \nnpm error peer eslint@\"^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0 || ^9.0.0\" from eslint-plugin-react-hooks@7.0.1\n18:52:44.222 \nnpm error node_modules/eslint-plugin-react-hooks\n18:52:44.222 \nnpm error   dev eslint-plugin-react-hooks@\"^7.0.1\" from the root project\n18:52:44.222 \nnpm error\n18:52:44.223 \nnpm error Fix the upstream dependency conflict, or retry\n18:52:44.223 \nnpm error this command with --force or --legacy-peer-deps\n18:52:44.223 \nnpm error to accept an incorrect (and potentially broken) dependency resolution.\n18:52:44.223 \nnpm error\n18:52:44.224 \nnpm error\n18:52:44.224 \nnpm error For a full report see:\n18:52:44.224 \nnpm error /vercel/.npm/_logs/2026-04-04T01_52_36_686Z-eresolve-report.txt\n18:52:44.225 \nnpm error A complete log of this run can be found in: /vercel/.npm/_logs/2026-04-04T01_52_36_686Z-debug-0.log\n18:52:44.257 \nError: Command \"npm install\" exited with 1\n\nvercel website, trying to set it up.",
+      "files": {
+        "frontend/package.json": {
+          "added_lines": [
+            "73"
+          ],
+          "deleted_lines": [
+            "73"
+          ],
+          "added_line_contents": [
+            "73:     \"eslint\": \"^9.0.0\","
+          ],
+          "deleted_line_contents": [
+            "73:     \"eslint\": \"^10.0.3\","
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    }
+  ]
+}
