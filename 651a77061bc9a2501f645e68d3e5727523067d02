@@ -1,0 +1,330 @@
+backend/apprunner.yaml
+  13025c6b67aff993 1-90
+backend/pyproject.toml
+  13025c6b67aff993 6
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.1.21",
+  "base_commit_sha": "651a77061bc9a2501f645e68d3e5727523067d02",
+  "prompts": {
+    "13025c6b67aff993": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3afbca75-aebd-4c29-b27a-1cb9e8d7b395",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 114,
+      "total_deletions": 24,
+      "accepted_lines": 91,
+      "overriden_lines": 0
+    },
+    "27a0c969aed5f767": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c2380c61-d331-4018-bfa0-30138a6553a4",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "683fff2978d3f9c5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "84492da9-6424-4c03-838e-713a9a52efda",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "6892c810e8cd1416": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "77a6f72c-f420-4dd5-9aa5-c2453cf5afe1",
+        "model": "unknown"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "ad44d47b62933eb1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "226d8bf1-39a1-44c5-8bd6-8f8661e9ef87",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  },
+  "change_history": [
+    {
+      "timestamp": 1775268906,
+      "kind": "human",
+      "files": {
+        "usability_test.csv": {
+          "added_lines": [],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 0,
+        "additions_sloc": 0,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1775274003,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "07c1145f-ee8a-40a5-beed-9700d451eaae",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Use a configuration file\nLet App Runner read your configuration from the apprunner.yaml file in the source directory of your code repository. App Runner defaults to the root directory if a Source directory wasn't specified in the previous step.\n\nmake a file for this project.",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "1-74"
+          ],
+          "deleted_lines": [],
+          "added_line_contents": [
+            "1: version: 1.0",
+            "2: runtime: python312",
+            "3: ",
+            "4: build:",
+            "5:   commands:",
+            "6:     pre-build:",
+            "7:       # Install Poetry and configure it to install into the system Python",
+            "8:       - pip install poetry",
+            "9:       - poetry config virtualenvs.create false",
+            "10:       - poetry config installer.no-binary :all:",
+            "11:     build:",
+            "12:       # Install Python dependencies via Poetry (no-root = skip installing the package itself)",
+            "13:       - poetry install --no-interaction --no-root",
+            "14:       # Install lighteval from the forked repo (required for benchmark evaluation tasks)",
+            "15:       - git clone https://github.com/pjavanrood/lighteval.git /tmp/lighteval",
+            "16:       - pip install --no-build-isolation -e \"/tmp/lighteval[extended_tasks]\"",
+            "17:       - pip install \"setuptools<82\"",
+            "18:     post-build:",
+            "19:       # Run any pending database migrations on deploy",
+            "20:       - python -m alembic upgrade head",
+            "21:   env:",
+            "22:     - name: PYTHONDONTWRITEBYTECODE",
+            "23:       value: \"1\"",
+            "24:     - name: PYTHONUNBUFFERED",
+            "25:       value: \"1\"",
+            "26:     - name: PYTHONFAULTHANDLER",
+            "27:       value: \"1\"",
+            "28:     - name: POETRY_NO_INTERACTION",
+            "29:       value: \"1\"",
+            "30: ",
+            "31: run:",
+            "32:   runtime-version: \"3.12\"",
+            "33:   # Start the FastAPI server; disable reload in production",
+            "34:   command: python -m uvicorn api.main:app --host 0.0.0.0 --port 8000",
+            "35:   network:",
+            "36:     port: 8000",
+            "37:     env: PORT",
+            "38:   env:",
+            "39:     - name: AWS_REGION",
+            "40:       value: us-east-2",
+            "41:     - name: S3_BUCKET_NAME",
+            "42:       value: evalhub-bucket",
+            "43:     # Celery workers are not supported in App Runner's single-container model.",
+            "44:     # For background task processing, connect to an external Redis (e.g. ElastiCache",
+            "45:     # or Upstash) and run Celery workers as a separate App Runner service or ECS task.",
+            "46:     - name: CELERY_WORKERS",
+            "47:       value: \"0\"",
+            "48:   # Sensitive secrets — store these in AWS Secrets Manager and reference their ARNs:",
+            "49:   #",
+            "50:   # secrets:",
+            "51:   #   - name: DATABASE_URL",
+            "52:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/DATABASE_URL\"",
+            "53:   #   - name: JWT_SECRET",
+            "54:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/JWT_SECRET\"",
+            "55:   #   - name: AWS_ACCESS_KEY_ID",
+            "56:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/AWS_ACCESS_KEY_ID\"",
+            "57:   #   - name: AWS_SECRET_ACCESS_KEY",
+            "58:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/AWS_SECRET_ACCESS_KEY\"",
+            "59:   #   - name: SUPABASE_URL",
+            "60:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_URL\"",
+            "61:   #   - name: SUPABASE_PUBLISHABLE_KEY",
+            "62:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_PUBLISHABLE_KEY\"",
+            "63:   #   - name: SUPABASE_SECRET_KEY",
+            "64:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_SECRET_KEY\"",
+            "65:   #   - name: SUPABASE_JWT_SECRET",
+            "66:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_JWT_SECRET\"",
+            "67:   #   - name: OPENAI_API",
+            "68:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/OPENAI_API\"",
+            "69:   #   - name: OPENROUTER_API_KEY",
+            "70:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/OPENROUTER_API_KEY\"",
+            "71:   #   - name: HF_TOKEN",
+            "72:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/HF_TOKEN\"",
+            "73:   #   - name: REDIS_URL",
+            "74:   #     value-from: \"arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/REDIS_URL\""
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 74,
+        "deletions": 0,
+        "additions_sloc": 72,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1775274096,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "f3ebfee4-b17e-4602-ad3c-6f9d06307c6e",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "does apprunner support python312?",
+      "files": {
+        "backend/apprunner.yaml": {
+          "added_lines": [
+            "2-11",
+            "16-18",
+            "20-23",
+            "25",
+            "33-34",
+            "37-51",
+            "60-62",
+            "65"
+          ],
+          "deleted_lines": [
+            "2",
+            "7-10",
+            "12-17",
+            "19-20",
+            "26-27",
+            "32-34",
+            "43-45",
+            "48-49"
+          ],
+          "added_line_contents": [
+            "2: runtime: python311",
+            "3: ",
+            "4: # NOTE: AWS App Runner is closing to new customers on April 30, 2026.",
+            "5: # If you are not already an App Runner customer, consider deploying via",
+            "6: # container image to ECS Fargate or another service instead.",
+            "7: #",
+            "8: # NOTE: python311 is the latest managed runtime App Runner offers.",
+            "9: # Your project requires Python 3.12 (pyproject.toml: requires-python = \">=3.12\").",
+            "10: # If strict 3.12 compatibility is needed, use the container image (Dockerfile) deploy",
+            "11: # path in App Runner instead of this managed runtime config file.",
+            "16:       # Copy dependency files into /app so they survive the build snapshot",
+            "17:       - cp pyproject.toml /app/ || true",
+            "18:       - cp poetry.lock /app/ || true",
+            "20:       # Only lightweight steps here — for python311, packages installed outside",
+            "21:       # /app during the build phase are discarded at runtime. Heavy installs go",
+            "22:       # in the run.pre-run section below so they run on each instance start.",
+            "23:       - echo \"Build phase complete\"",
+            "25:       - echo \"Post-build phase complete\"",
+            "33:     - name: POETRY_VIRTUALENVS_CREATE",
+            "34:       value: \"false\"",
+            "37:   runtime-version: \"3.11\"",
+            "38:   # pre-run executes on every instance start before the main command.",
+            "39:   # For python311 revised build, this is where pip-installed packages must live",
+            "40:   # because the build phase only persists /app contents to the runtime snapshot.",
+            "41:   pre-run:",
+            "42:     - pip3 install poetry",
+            "43:     - poetry config virtualenvs.create false",
+            "44:     - poetry install --no-interaction --no-root",
+            "45:     # Install the forked lighteval library required for benchmark evaluations",
+            "46:     - git clone https://github.com/pjavanrood/lighteval.git /tmp/lighteval",
+            "47:     - pip3 install --no-build-isolation -e \"/tmp/lighteval[extended_tasks]\"",
+            "48:     - pip3 install \"setuptools<82\"",
+            "49:     # Run Alembic migrations on every startup to keep the DB schema in sync",
+            "50:     - python3 -m alembic upgrade head",
+            "51:   command: python3 -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --workers 2",
+            "60:     # Celery workers cannot run alongside the API in App Runner's single-container model.",
+            "61:     # Connect to an external Redis (e.g. ElastiCache or Upstash) and run Celery workers",
+            "62:     # as a separate App Runner service or ECS task.",
+            "65:   # Sensitive secrets — store these in AWS Secrets Manager and reference their ARNs."
+          ],
+          "deleted_line_contents": [
+            "2: runtime: python312",
+            "7:       # Install Poetry and configure it to install into the system Python",
+            "8:       - pip install poetry",
+            "9:       - poetry config virtualenvs.create false",
+            "10:       - poetry config installer.no-binary :all:",
+            "12:       # Install Python dependencies via Poetry (no-root = skip installing the package itself)",
+            "13:       - poetry install --no-interaction --no-root",
+            "14:       # Install lighteval from the forked repo (required for benchmark evaluation tasks)",
+            "15:       - git clone https://github.com/pjavanrood/lighteval.git /tmp/lighteval",
+            "16:       - pip install --no-build-isolation -e \"/tmp/lighteval[extended_tasks]\"",
+            "17:       - pip install \"setuptools<82\"",
+            "19:       # Run any pending database migrations on deploy",
+            "20:       - python -m alembic upgrade head",
+            "26:     - name: PYTHONFAULTHANDLER",
+            "27:       value: \"1\"",
+            "32:   runtime-version: \"3.12\"",
+            "33:   # Start the FastAPI server; disable reload in production",
+            "34:   command: python -m uvicorn api.main:app --host 0.0.0.0 --port 8000",
+            "43:     # Celery workers are not supported in App Runner's single-container model.",
+            "44:     # For background task processing, connect to an external Redis (e.g. ElastiCache",
+            "45:     # or Upstash) and run Celery workers as a separate App Runner service or ECS task.",
+            "48:   # Sensitive secrets — store these in AWS Secrets Manager and reference their ARNs:",
+            "49:   #"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 39,
+        "deletions": 23,
+        "additions_sloc": 38,
+        "deletions_sloc": 23
+      }
+    },
+    {
+      "timestamp": 1775274708,
+      "kind": "ai_agent",
+      "conversation_id": "13025c6b67aff993",
+      "agent_type": "cursor",
+      "prompt_id": "282c68d0-ee5e-4f48-826c-54c3f0fadaae",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "let me set the python version properly. I can try changeing the pytoml version?",
+      "files": {
+        "backend/pyproject.toml": {
+          "added_lines": [
+            "6"
+          ],
+          "deleted_lines": [
+            "6"
+          ],
+          "added_line_contents": [
+            "6: requires-python = \">=3.11,<4.0.0\""
+          ],
+          "deleted_line_contents": [
+            "6: requires-python = \">=3.12,<4.0.0\""
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 1,
+        "additions_sloc": 1,
+        "deletions_sloc": 1
+      }
+    }
+  ]
+}
