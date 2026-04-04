@@ -65,29 +65,29 @@ run:
     # as a separate App Runner service or ECS task.
     - name: CELERY_WORKERS
       value: "0"
+    - name: REDIS_URL
+      value: "redis://18.188.153.212:6379/0"
   # Sensitive secrets — store these in AWS Secrets Manager and reference their ARNs.
-  # secrets:
-  #   - name: DATABASE_URL
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/DATABASE_URL"
-  #   - name: JWT_SECRET
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/JWT_SECRET"
-  #   - name: AWS_ACCESS_KEY_ID
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/AWS_ACCESS_KEY_ID"
-  #   - name: AWS_SECRET_ACCESS_KEY
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/AWS_SECRET_ACCESS_KEY"
-  #   - name: SUPABASE_URL
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_URL"
-  #   - name: SUPABASE_PUBLISHABLE_KEY
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_PUBLISHABLE_KEY"
-  #   - name: SUPABASE_SECRET_KEY
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_SECRET_KEY"
-  #   - name: SUPABASE_JWT_SECRET
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/SUPABASE_JWT_SECRET"
-  #   - name: OPENAI_API
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/OPENAI_API"
-  #   - name: OPENROUTER_API_KEY
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/OPENROUTER_API_KEY"
-  #   - name: HF_TOKEN
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/HF_TOKEN"
-  #   - name: REDIS_URL
-  #     value-from: "arn:aws:secretsmanager:us-east-2:<account-id>:secret:evalhub/REDIS_URL"
+  secrets:
+    - name: DATABASE_URL
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/DATABASE_URL"
+    - name: JWT_SECRET
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/JWT_SECRET"
+    - name: AWS_ACCESS_KEY_ID
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/AWS_ACCESS_KEY_ID"
+    - name: AWS_SECRET_ACCESS_KEY
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/AWS_SECRET_ACCESS_KEY"
+    - name: SUPABASE_URL
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_URL"
+    - name: SUPABASE_PUBLISHABLE_KEY
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_PUBLISHABLE_KEY"
+    - name: SUPABASE_SECRET_KEY
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_SECRET_KEY"
+    - name: SUPABASE_JWT_SECRET
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_JWT_SECRET"
+    - name: OPENAI_API
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/OPENAI_API"
+    - name: OPENROUTER_API_KEY
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/OPENROUTER_API_KEY"
+    - name: HF_TOKEN
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/HF_TOKEN"
