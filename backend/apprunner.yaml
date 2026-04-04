@@ -70,24 +70,20 @@ run:
   # Sensitive secrets — store these in AWS Secrets Manager and reference their ARNs.
   secrets:
     - name: DATABASE_URL
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/DATABASE_URL"
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/DATABASE_URL-gKFwR3"
     - name: JWT_SECRET
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/JWT_SECRET"
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/JWT_SECRET-cNSyqW"
     - name: AWS_ACCESS_KEY_ID
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/AWS_ACCESS_KEY_ID"
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/AWS_ACCESS_KEY_ID-arZJW9"
     - name: AWS_SECRET_ACCESS_KEY
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/AWS_SECRET_ACCESS_KEY"
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/AWS_SECRET_ACCESS_KEY-q55El8"
     - name: SUPABASE_URL
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_URL"
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_URL-4hQbW6"
     - name: SUPABASE_PUBLISHABLE_KEY
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_PUBLISHABLE_KEY"
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_PUBLISHABLE_KEY-Db4Jnz"
     - name: SUPABASE_SECRET_KEY
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_SECRET_KEY"
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_SECRET_KEY-TJVdFa"
     - name: SUPABASE_JWT_SECRET
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_JWT_SECRET"
-    - name: OPENAI_API
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/OPENAI_API"
-    - name: OPENROUTER_API_KEY
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/OPENROUTER_API_KEY"
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/SUPABASE_JWT_SECRET-oUx6Mv"
     - name: HF_TOKEN
-      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/HF_TOKEN"
+      value-from: "arn:aws:secretsmanager:us-east-2:214863335048:secret:evalhub/HF_TOKEN-kUeDpH"
