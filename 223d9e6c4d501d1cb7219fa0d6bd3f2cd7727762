@@ -1,0 +1,89 @@
+vercel.json
+  61046490a5bc5e18 1-10
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.1.21",
+  "base_commit_sha": "223d9e6c4d501d1cb7219fa0d6bd3f2cd7727762",
+  "prompts": {
+    "61046490a5bc5e18": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "91784537-68db-43fc-b19b-c95065ecd708",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 0,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    },
+    "94fff4edd945a600": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "32cbde0b-bb6e-45c6-b579-b56f9137610d",
+        "model": "claude-4.6-sonnet-medium-thinking"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  },
+  "change_history": [
+    {
+      "timestamp": 1775268325,
+      "kind": "human",
+      "files": {
+        "usability_test.csv": {
+          "added_lines": [],
+          "deleted_lines": []
+        }
+      },
+      "line_stats": {
+        "additions": 0,
+        "deletions": 0,
+        "additions_sloc": 0,
+        "deletions_sloc": 0
+      }
+    },
+    {
+      "timestamp": 1775268401,
+      "kind": "ai_agent",
+      "conversation_id": "61046490a5bc5e18",
+      "agent_type": "cursor",
+      "prompt_id": "5c606e11-1f80-420e-aa29-ed01d0234e8f",
+      "model": "claude-4.6-sonnet-medium-thinking",
+      "prompt_text": "Currently @frontend/.env frontend has this. How will the frontend find the backend path route once deployed to vercel? \nAlso some issues with vercel \n\n@/Users/Andrew/.cursor/projects/Users-Andrew-School-CPEN-491-Baseten-evalhub/terminals/1.txt:486-526",
+      "files": {
+        "vercel.json": {
+          "added_lines": [
+            "1-10"
+          ],
+          "deleted_lines": [],
+          "added_line_contents": [
+            "1: {",
+            "2:   \"buildCommand\": \"cd frontend && npm install && npm run build:client\",",
+            "3:   \"outputDirectory\": \"dist/public\",",
+            "4:   \"rewrites\": [",
+            "5:     {",
+            "6:       \"source\": \"/api/:path*\",",
+            "7:       \"destination\": \"https://YOUR_BACKEND_URL/api/:path*\"",
+            "8:     }",
+            "9:   ]",
+            "10: }"
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 10,
+        "deletions": 0,
+        "additions_sloc": 10,
+        "deletions_sloc": 0
+      }
+    }
+  ]
+}
