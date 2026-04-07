@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  celery-worker:
+    image: ${ECR_IMAGE_URI:-214863335048.dkr.ecr.us-east-2.amazonaws.com/evalhub-backend:latest}
+    command: celery -A api.core.celery_app:celery_app worker --loglevel=info --pool=solo --concurrency=1
+    env_file:
+      - .env
+    restart: unless-stopped
+    deploy:
+      replicas: ${CELERY_WORKERS:-4}
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A api.core.celery_app:celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - evalhub
+
+networks:
+  evalhub:
+    driver: bridge

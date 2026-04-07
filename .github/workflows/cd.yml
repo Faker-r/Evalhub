@@ -1,0 +1,180 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/cd.yml'
+
+env:
+  AWS_REGION: us-east-2
+  ECR_REPOSITORY: evalhub-backend
+  
+jobs:
+  build-and-push:
+    name: Build and Push to ECR
+    runs-on: ubuntu-latest
+    outputs:
+      image-uri: ${{ steps.build-image.outputs.image }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Extract metadata
+        id: meta
+        run: |
+          echo "tags=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }},${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
+          echo "build-date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build and push Docker image
+        id: build-image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-to: type=inline
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ steps.meta.outputs.build-date }}
+            VERSION=${{ github.ref_name }}
+      
+      - name: Output image URI
+        run: |
+          echo "Image pushed to: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest"
+          echo "Image SHA tag: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+
+  deploy-apprunner:
+    name: Deploy to App Runner
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Get App Runner service ARN
+        id: get-service
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services --region ${{ env.AWS_REGION }} --query "ServiceSummaryList[?ServiceName=='evalhub-api-runner-github'].ServiceArn" --output text)
+          echo "service-arn=${SERVICE_ARN}" >> $GITHUB_OUTPUT
+      
+      - name: Trigger App Runner deployment
+        run: |
+          aws apprunner start-deployment \
+            --service-arn ${{ steps.get-service.outputs.service-arn }} \
+            --region ${{ env.AWS_REGION }}
+      
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for App Runner deployment to complete..."
+          for i in {1..30}; do
+            STATUS=$(aws apprunner describe-service --service-arn ${{ steps.get-service.outputs.service-arn }} --region ${{ env.AWS_REGION }} --query 'Service.Status' --output text)
+            echo "Deployment status: $STATUS"
+            if [ "$STATUS" == "RUNNING" ]; then
+              echo "Deployment successful!"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "Deployment timed out"
+              exit 1
+            fi
+            sleep 30
+          done
+      
+      - name: Get service URL
+        id: get-url
+        run: |
+          SERVICE_URL=$(aws apprunner describe-service --service-arn ${{ steps.get-service.outputs.service-arn }} --region ${{ env.AWS_REGION }} --query 'Service.ServiceUrl' --output text)
+          echo "service-url=${SERVICE_URL}" >> $GITHUB_OUTPUT
+          echo "App Runner URL: https://${SERVICE_URL}"
+      
+      - name: Health check
+        run: |
+          echo "Performing health check..."
+          sleep 10
+          curl -f https://${{ steps.get-url.outputs.service-url }}/api/health || exit 1
+          echo "Health check passed!"
+
+  deploy-ec2-celery:
+    name: Deploy Celery Workers to EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          ECR_IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri }}
+        run: |
+          ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+            
+            echo "Logging into ECR..."
+            aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 214863335048.dkr.ecr.us-east-2.amazonaws.com
+            
+            cd /opt/evalhub || mkdir -p /opt/evalhub && cd /opt/evalhub
+            
+            if [ ! -f docker-compose.prod.yml ]; then
+              echo "Fetching docker-compose.prod.yml..."
+              curl -o docker-compose.prod.yml https://raw.githubusercontent.com/Faker-r/Evalhub/main/backend/docker-compose.prod.yml
+            fi
+            
+            echo "Fetching secrets from AWS Secrets Manager..."
+            bash /opt/evalhub/fetch_secrets.sh || echo "Warning: Secret fetch script not found, using existing .env"
+            
+            echo "Pulling latest image..."
+            export ECR_IMAGE_URI=214863335048.dkr.ecr.us-east-2.amazonaws.com/evalhub-backend:latest
+            docker pull $ECR_IMAGE_URI
+            
+            echo "Restarting Celery workers..."
+            docker-compose -f docker-compose.prod.yml down
+            docker-compose -f docker-compose.prod.yml up -d
+            
+            echo "Waiting for workers to start..."
+            sleep 15
+            
+            echo "Verifying workers..."
+            docker-compose -f docker-compose.prod.yml ps
+            
+            echo "Deployment complete!"
+          EOF
+      
+      - name: Verify deployment
+        run: |
+          ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+            docker-compose -f /opt/evalhub/docker-compose.prod.yml logs --tail=50
+          EOF

@@ -48,6 +48,24 @@ variable "apprunner_service_name" {
   default     = "evalhub-api-runner-github"
 }
 
+variable "apprunner_github_connection_arn" {
+  description = "App Runner GitHub connection ARN (code source)"
+  type        = string
+  default     = "arn:aws:apprunner:us-east-2:214863335048:connection/AWS-Github-Evalhub/9de71d8c50f74f0bb15f460eaae99a3d"
+}
+
+variable "apprunner_code_repository_url" {
+  description = "GitHub repository URL for App Runner code source"
+  type        = string
+  default     = "https://github.com/Faker-r/Evalhub"
+}
+
+variable "apprunner_code_branch" {
+  description = "Branch App Runner builds from"
+  type        = string
+  default     = "main"
+}
+
 variable "elasticache_name" {
   description = "Name for ElastiCache Serverless Redis instance"
   type        = string

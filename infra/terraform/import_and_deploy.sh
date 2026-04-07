@@ -63,6 +63,14 @@ terraform import -input=false aws_s3_bucket_server_side_encryption_configuration
 echo "  Importing KMS key..."
 terraform import -input=false aws_kms_key.evalhub 7b43a69b-9fe3-4239-beba-6c8bc4d2984e 2>&1 | grep -v "Resource already managed" || true
 
+# ECR repository (often created manually or by CI before Terraform manages it)
+echo "  Importing ECR repository..."
+terraform import -input=false aws_ecr_repository.backend evalhub-backend 2>&1 | grep -v "Resource already managed" || true
+
+# App Runner instance role (Secrets Manager + ECR pull for the task)
+echo "  Importing App Runner instance IAM role..."
+terraform import -input=false aws_iam_role.apprunner_instance evalhub-secrets-role 2>&1 | grep -v "Resource already managed" || true
+
 # EC2 instance
 echo "  Importing EC2 instance..."
 terraform import -input=false aws_instance.celery_worker i-00c9fff40fd501441 2>&1 | grep -v "Resource already managed" || true

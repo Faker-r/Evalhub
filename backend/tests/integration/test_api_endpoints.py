@@ -269,17 +269,23 @@ class TestAuthenticationProtection:
                 pytest.skip("Event loop conflict - run with live backend")
             raise
 
-    def test_guidelines_list_requires_authentication(self, sync_client: TestClient):
+    def test_guidelines_list_public_access(self, sync_client: TestClient):
         """
-        Test: GET /api/guidelines requires authentication
+        Test: GET /api/guidelines uses optional auth (publicly accessible)
+
+        The guidelines list endpoint accepts optional authentication and returns
+        results for both authenticated and unauthenticated users.
 
         Success Criteria:
-        - Without auth token: returns 401 or 403
+        - Without auth token: returns 200 (not 401/403)
+        - Response contains 'guidelines' array
         """
         try:
             response = sync_client.get("/api/guidelines")
 
-            assert response.status_code in [401, 403]
+            assert response.status_code == 200
+            data = response.json()
+            assert "guidelines" in data
         except RuntimeError as e:
             if "different loop" in str(e):
                 pytest.skip("Event loop conflict - run with live backend")
@@ -428,7 +434,8 @@ class TestLeaderboardEndpoints:
 
         Success Criteria:
         - Status code is 200 or 404 (if dataset doesn't exist)
-        - If 200: Response contains 'entries' array and 'dataset_name'
+        - If 200: Response contains 'datasets' array; each dataset has
+          'dataset_name' and 'entries'
         """
         try:
             response = sync_client.get("/api/leaderboard?dataset_name=test_dataset")
@@ -438,9 +445,13 @@ class TestLeaderboardEndpoints:
 
             if response.status_code == 200:
                 data = response.json()
-                assert "dataset_name" in data
-                assert "entries" in data
-                assert isinstance(data["entries"], list)
+                assert "datasets" in data
+                assert isinstance(data["datasets"], list)
+                if data["datasets"]:
+                    dataset = data["datasets"][0]
+                    assert "dataset_name" in dataset
+                    assert "entries" in dataset
+                    assert isinstance(dataset["entries"], list)
         except RuntimeError as e:
             if "different loop" in str(e):
                 pytest.skip("Event loop conflict - run with live backend")
@@ -630,9 +641,10 @@ class TestResponseSchemaCompliance:
 
             if response.status_code == 200:
                 data = response.json()
+                datasets = data.get("datasets", [])
 
-                if data.get("entries"):
-                    entry = data["entries"][0]
+                if datasets and datasets[0].get("entries"):
+                    entry = datasets[0]["entries"][0]
                     required_fields = [
                         "trace_id",
                         "completion_model",

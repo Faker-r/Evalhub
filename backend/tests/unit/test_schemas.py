@@ -30,9 +30,10 @@ from api.evaluations.schemas import (
     DatasetConfig,
     FlexibleEvaluationRequest,
     JudgeType,
-    ModelConfig,
     MultipleChoiceConfig,
+    OpenRouterEvaluationModelConfig,
     OutputType,
+    StandardEvaluationModelConfig,
     TaskEvaluationRequest,
     TextOutputConfig,
     TraceResponse,
@@ -138,6 +139,8 @@ class TestDatasetSchemas:
             "name": "test_dataset",
             "category": "question_answering",
             "sample_count": 100,
+            "visibility": "public",
+            "user_id": None,
         }
 
         response = DatasetResponse(**data)
@@ -150,8 +153,8 @@ class TestDatasetSchemas:
     def test_dataset_list_response(self):
         """Test DatasetListResponse schema."""
         datasets = [
-            DatasetResponse(id=1, name="ds1", category="qa", sample_count=100),
-            DatasetResponse(id=2, name="ds2", category="math", sample_count=200),
+            DatasetResponse(id=1, name="ds1", category="qa", sample_count=100, visibility="public", user_id=None),
+            DatasetResponse(id=2, name="ds2", category="math", sample_count=200, visibility="private", user_id="user-1"),
         ]
 
         response = DatasetListResponse(datasets=datasets)
@@ -255,54 +258,64 @@ class TestGuidelineSchemas:
 class TestEvaluationSchemas:
     """Tests for evaluation-related schemas (FR-2.0)."""
 
-    def test_model_config_valid(self):
-        """Test valid ModelConfig creation."""
-        data = {
+    def _standard_model_config(self) -> dict:
+        """Return a valid StandardEvaluationModelConfig payload."""
+        return {
             "api_source": "standard",
-            "model_name": "gpt-4o-mini",
-            "model_id": "1",
-            "api_name": "gpt-4o-mini",
-            "model_provider": "openai",
-            "model_provider_slug": "openai",
-            "model_provider_id": "1",
+            "model": {
+                "id": "1",
+                "display_name": "GPT-4o Mini",
+                "developer": "openai",
+                "api_name": "gpt-4o-mini",
+                "providers": [],
+            },
+            "provider": {
+                "id": "1",
+                "name": "OpenAI",
+                "slug": "openai",
+                "base_url": "https://api.openai.com/v1",
+            },
         }
 
-        config = ModelConfig(**data)
+    def _openrouter_model_config(self) -> dict:
+        """Return a valid OpenRouterEvaluationModelConfig payload."""
+        return {
+            "api_source": "openrouter",
+            "model": {
+                "id": "anthropic/claude-3-opus",
+                "name": "Claude 3 Opus",
+            },
+            "provider": {
+                "name": "Anthropic",
+                "slug": "Anthropic",
+            },
+        }
 
-        assert config.model_name == "gpt-4o-mini"
+    def test_model_config_valid(self):
+        """Test valid StandardEvaluationModelConfig creation."""
+        config = StandardEvaluationModelConfig(**self._standard_model_config())
+
+        assert config.model.api_name == "gpt-4o-mini"
         assert config.api_source == "standard"
-        assert config.model_provider == "openai"
+        assert config.provider.name == "OpenAI"
 
     def test_model_config_openrouter_source(self):
-        """Test ModelConfig with openrouter api_source."""
-        data = {
-            "api_source": "openrouter",
-            "model_name": "anthropic/claude-3-opus",
-            "model_id": "2",
-            "api_name": "anthropic/claude-3-opus",
-            "model_provider": "anthropic",
-            "model_provider_slug": "anthropic",
-            "model_provider_id": "2",
-        }
-
-        config = ModelConfig(**data)
+        """Test OpenRouterEvaluationModelConfig creation."""
+        config = OpenRouterEvaluationModelConfig(**self._openrouter_model_config())
 
         assert config.api_source == "openrouter"
+        assert config.model.id == "anthropic/claude-3-opus"
 
     def test_model_config_invalid_api_source(self):
         """Test that invalid api_source is rejected."""
         data = {
-            "api_source": "invalid_source",  # Invalid
-            "model_name": "test",
-            "model_id": "1",
-            "api_name": "test",
-            "model_provider": "test",
-            "model_provider_slug": "test",
-            "model_provider_id": "1",
+            "api_source": "invalid_source",
+            "model": {"id": "1", "display_name": "Test", "developer": "test", "api_name": "test", "providers": []},
+            "provider": {"id": "1", "name": "Test", "slug": "test", "base_url": "https://example.com"},
         }
 
         with pytest.raises(ValidationError):
-            ModelConfig(**data)
+            StandardEvaluationModelConfig(**data)
 
     def test_dataset_config_valid(self):
         """Test valid DatasetConfig creation."""
@@ -330,20 +343,10 @@ class TestEvaluationSchemas:
 
     def test_task_evaluation_request_valid(self):
         """Test valid TaskEvaluationRequest creation."""
-        model_config = {
-            "api_source": "standard",
-            "model_name": "gpt-4o-mini",
-            "model_id": "1",
-            "api_name": "gpt-4o-mini",
-            "model_provider": "openai",
-            "model_provider_slug": "openai",
-            "model_provider_id": "1",
-        }
-
         data = {
             "task_name": "gsm8k",
             "dataset_config": {"dataset_name": "gsm8k", "n_samples": 10},
-            "model_completion_config": model_config,
+            "model_completion_config": self._standard_model_config(),
         }
 
         request = TaskEvaluationRequest(**data)
@@ -354,23 +357,13 @@ class TestEvaluationSchemas:
 
     def test_flexible_evaluation_request_text_output(self):
         """Test FlexibleEvaluationRequest with text output type."""
-        model_config = {
-            "api_source": "standard",
-            "model_name": "gpt-4o-mini",
-            "model_id": "1",
-            "api_name": "gpt-4o-mini",
-            "model_provider": "openai",
-            "model_provider_slug": "openai",
-            "model_provider_id": "1",
-        }
-
         data = {
             "dataset_name": "custom_dataset",
             "input_field": "question",
             "output_type": OutputType.TEXT,
             "text_config": {"gold_answer_field": "answer"},
             "judge_type": JudgeType.F1_SCORE,
-            "model_completion_config": model_config,
+            "model_completion_config": self._standard_model_config(),
         }
 
         request = FlexibleEvaluationRequest(**data)
@@ -381,23 +374,13 @@ class TestEvaluationSchemas:
 
     def test_flexible_evaluation_request_multiple_choice(self):
         """Test FlexibleEvaluationRequest with multiple choice output type."""
-        model_config = {
-            "api_source": "standard",
-            "model_name": "gpt-4o-mini",
-            "model_id": "1",
-            "api_name": "gpt-4o-mini",
-            "model_provider": "openai",
-            "model_provider_slug": "openai",
-            "model_provider_id": "1",
-        }
-
         data = {
             "dataset_name": "mmlu",
             "input_field": "question",
             "output_type": OutputType.MULTIPLE_CHOICE,
             "mc_config": {"choices_field": "choices", "gold_answer_field": "answer"},
             "judge_type": JudgeType.EXACT_MATCH,
-            "model_completion_config": model_config,
+            "model_completion_config": self._standard_model_config(),
         }
 
         request = FlexibleEvaluationRequest(**data)
