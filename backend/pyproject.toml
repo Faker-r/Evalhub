@@ -3,7 +3,7 @@ name = "evalhub"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12,<4.0.0"
+requires-python = ">=3.11,<4.0.0"
 dependencies = [
     "alembic>=1.14.0",
     "asyncpg>=0.30.0",
