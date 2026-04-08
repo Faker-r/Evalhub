@@ -140,27 +140,37 @@ jobs:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           ECR_IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri }}
         run: |
-          ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh ec2-user@${{ secrets.EC2_HOST }} env \
+            ECR_IMAGE_URI="${{ needs.build-and-push.outputs.image-uri }}" \
+            REPO_RAW="https://raw.githubusercontent.com/${{ github.repository }}/main" \
+            bash -s <<'REMOTE_SCRIPT'
             set -e
             
             echo "Logging into ECR..."
             aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 214863335048.dkr.ecr.us-east-2.amazonaws.com
             
-            cd /opt/evalhub || mkdir -p /opt/evalhub && cd /opt/evalhub
+            sudo mkdir -p /opt/evalhub
+            sudo chown ec2-user:ec2-user /opt/evalhub
+            cd /opt/evalhub
             
-            if [ ! -f docker-compose.prod.yml ]; then
-              echo "Fetching docker-compose.prod.yml..."
-              curl -o docker-compose.prod.yml https://raw.githubusercontent.com/Faker-r/Evalhub/main/backend/docker-compose.prod.yml
-            fi
+            echo "Fetching docker-compose.prod.yml..."
+            curl -fsSL -o docker-compose.prod.yml "${REPO_RAW}/backend/docker-compose.prod.yml"
+            
+            echo "Fetching fetch_secrets.sh..."
+            curl -fsSL -o fetch_secrets.sh "${REPO_RAW}/backend/deploy/fetch_secrets.sh"
+            chmod +x fetch_secrets.sh
             
             echo "Fetching secrets from AWS Secrets Manager..."
-            bash /opt/evalhub/fetch_secrets.sh || echo "Warning: Secret fetch script not found, using existing .env"
+            bash ./fetch_secrets.sh || echo "Warning: Secret fetch failed, using existing .env if present"
             
-            echo "Pulling latest image..."
-            export ECR_IMAGE_URI=214863335048.dkr.ecr.us-east-2.amazonaws.com/evalhub-backend:latest
-            docker pull $ECR_IMAGE_URI
+            echo "Pruning dangling Docker data to free space..."
+            docker image prune -f || true
+            
+            echo "Pulling image ${ECR_IMAGE_URI}..."
+            docker pull "${ECR_IMAGE_URI}"
             
             echo "Restarting Celery workers..."
+            export ECR_IMAGE_URI
             docker-compose -f docker-compose.prod.yml down
             docker-compose -f docker-compose.prod.yml up -d
             
@@ -171,7 +181,7 @@ jobs:
             docker-compose -f docker-compose.prod.yml ps
             
             echo "Deployment complete!"
-          EOF
+          REMOTE_SCRIPT
       
       - name: Verify deployment
         run: |

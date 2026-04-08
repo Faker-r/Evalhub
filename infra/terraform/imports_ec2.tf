@@ -9,6 +9,11 @@ resource "aws_instance" "celery_worker" {
 
   vpc_security_group_ids = ["sg-052807540561ab35a"]
 
+  root_block_device {
+    volume_size = 40
+    volume_type = "gp3"
+  }
+
   user_data = <<-EOF
     #!/bin/bash
     set -e
