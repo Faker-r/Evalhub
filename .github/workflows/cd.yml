@@ -16,7 +16,7 @@ jobs:
     name: Build and Push to ECR
     runs-on: ubuntu-latest
     outputs:
-      image-uri: ${{ steps.build-image.outputs.image }}
+      image-uri: ${{ steps.set-image-uri.outputs.image }}
       image-tag: ${{ steps.meta.outputs.tags }}
     
     steps:
@@ -58,10 +58,13 @@ jobs:
             BUILD_DATE=${{ steps.meta.outputs.build-date }}
             VERSION=${{ github.ref_name }}
       
-      - name: Output image URI
+      - name: Set image URI output
+        id: set-image-uri
         run: |
+          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          echo "image=${IMAGE_URI}" >> $GITHUB_OUTPUT
           echo "Image pushed to: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest"
-          echo "Image SHA tag: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          echo "Image SHA tag: ${IMAGE_URI}""
 
   deploy-apprunner:
     name: Deploy to App Runner
