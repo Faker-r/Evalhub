@@ -149,46 +149,74 @@ jobs:
             REPO_RAW="https://raw.githubusercontent.com/${{ github.repository }}/main" \
             bash -s <<'REMOTE_SCRIPT'
             set -e
-            
-            echo "Logging into ECR..."
+
+            echo "=== Step 1: Stop old workers and free resources FIRST ==="
+            for i in {1..4}; do
+              docker stop celery-worker-$i 2>/dev/null || true
+              docker rm celery-worker-$i 2>/dev/null || true
+            done
+
+            echo "Pruning all unused Docker resources to free memory and disk..."
+            docker system prune -af || true
+
+            echo "=== Step 2: Authenticate with ECR ==="
             aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 214863335048.dkr.ecr.us-east-2.amazonaws.com
-            
+
+            echo "=== Step 3: Fetch secrets ==="
             sudo mkdir -p /opt/evalhub
             sudo chown ec2-user:ec2-user /opt/evalhub
             cd /opt/evalhub
-            
-            echo "Fetching docker-compose.prod.yml..."
-            curl -fsSL -o docker-compose.prod.yml "${REPO_RAW}/backend/docker-compose.prod.yml"
-            
-            echo "Fetching fetch_secrets.sh..."
+
             curl -fsSL -o fetch_secrets.sh "${REPO_RAW}/backend/deploy/fetch_secrets.sh"
             chmod +x fetch_secrets.sh
-            
+
             echo "Fetching secrets from AWS Secrets Manager..."
             bash ./fetch_secrets.sh || echo "Warning: Secret fetch failed, using existing .env if present"
-            
-            echo "Pruning dangling Docker data to free space..."
-            docker image prune -f || true
-            
+
+            echo "=== Step 4: Pull new image ==="
             echo "Pulling image ${ECR_IMAGE_URI}..."
             docker pull "${ECR_IMAGE_URI}"
-            
-            echo "Restarting Celery workers..."
-            export ECR_IMAGE_URI
-            docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d
-            
+
+            echo "=== Step 5: Start workers ==="
+            docker network create evalhub 2>/dev/null || echo "Network evalhub already exists"
+
+            CELERY_WORKERS=${CELERY_WORKERS:-2}
+            for i in $(seq 1 $CELERY_WORKERS); do
+              echo "Starting worker $i..."
+              docker run -d \
+                --name celery-worker-$i \
+                --env-file /opt/evalhub/.env \
+                --network evalhub \
+                --restart unless-stopped \
+                --memory=2g \
+                --cpus=1.5 \
+                --log-driver json-file \
+                --log-opt max-size=10m \
+                --log-opt max-file=3 \
+                --health-cmd='celery -A api.core.celery_app:celery_app inspect ping -d celery@$HOSTNAME || exit 1' \
+                --health-interval=30s \
+                --health-timeout=10s \
+                --health-retries=3 \
+                --health-start-period=60s \
+                "${ECR_IMAGE_URI}" \
+                celery -A api.core.celery_app:celery_app worker --loglevel=info --pool=solo --concurrency=1
+            done
+
             echo "Waiting for workers to start..."
             sleep 15
-            
-            echo "Verifying workers..."
-            docker compose -f docker-compose.prod.yml ps
-            
+
+            echo "=== Verifying workers ==="
+            docker ps --filter "name=celery-worker" --format "table {{.Names}}\t{{.Status}}\t{{.State}}"
+
             echo "Deployment complete!"
           REMOTE_SCRIPT
       
       - name: Verify deployment
         run: |
           ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-            docker compose -f /opt/evalhub/docker-compose.prod.yml logs --tail=50
+            echo "Worker logs:"
+            for i in {1..4}; do
+              echo "=== Worker $i ==="
+              docker logs --tail=20 celery-worker-$i 2>&1 || echo "Worker $i not running"
+            done
           EOF
