@@ -1,12 +1,11 @@
 """Security utilities for Supabase JWT verification."""
 
+import base64
 from dataclasses import dataclass
-from functools import lru_cache
 
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jwt import PyJWKClient
 
 from api.core.config import settings
 from api.core.logging import get_logger
@@ -25,32 +24,29 @@ class CurrentUser:
     email: str
 
 
-@lru_cache()
-def get_jwks_client() -> PyJWKClient:
-    """Get a cached JWKS client for Supabase.
+def _get_jwt_secret() -> bytes:
+    """Decode the Supabase JWT secret from base64."""
+    return base64.b64decode(settings.SUPABASE_JWT_SECRET)
 
-    Supabase exposes public keys at: {SUPABASE_URL}/auth/v1/.well-known/jwks.json
+
+def _decode_token(token: str) -> dict:
+    """Verify and decode a Supabase JWT using the local JWT secret (HS256).
+
+    Supabase signs JWTs with the project's JWT secret, so we can verify
+    locally without a network round-trip to the JWKS endpoint.
     """
-    jwks_url = f"{settings.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
-    return PyJWKClient(jwks_url)
+    return jwt.decode(
+        token,
+        _get_jwt_secret(),
+        algorithms=["HS256"],
+        options={"verify_aud": False},
+    )
 
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> CurrentUser:
-    """Dependency to get current authenticated user from Supabase JWT.
-
-    Verifies the JWT token using Supabase's public keys (JWKS).
-
-    Args:
-        credentials: Bearer token from Authorization header
-
-    Returns:
-        CurrentUser: The authenticated user's info
-
-    Raises:
-        HTTPException: If token is invalid or expired
-    """
+    """Dependency to get current authenticated user from Supabase JWT."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid authentication credentials",
@@ -60,19 +56,8 @@ async def get_current_user(
     token = credentials.credentials
 
     try:
-        # Get the signing key from Supabase JWKS
-        jwks_client = get_jwks_client()
-        signing_key = jwks_client.get_signing_key_from_jwt(token)
+        payload = _decode_token(token)
 
-        # Decode and verify the JWT using the public key
-        payload = jwt.decode(
-            token,
-            signing_key.key,
-            algorithms=["RS256", "ES256"],  # Supabase uses RS256 or ES256
-            options={"verify_aud": False},
-        )
-
-        # Extract user info from the JWT payload
         user_id: str = payload.get("sub")
         email: str = payload.get("email")
 
@@ -104,28 +89,12 @@ async def get_optional_current_user(
     """Dependency to optionally get current authenticated user.
 
     Returns None if no credentials provided, otherwise validates like get_current_user.
-
-    Args:
-        credentials: Optional bearer token from Authorization header
-
-    Returns:
-        CurrentUser | None: The authenticated user's info or None
     """
     if credentials is None:
         return None
 
     try:
-        # Get the signing key from Supabase JWKS
-        jwks_client = get_jwks_client()
-        signing_key = jwks_client.get_signing_key_from_jwt(credentials.credentials)
-
-        # Decode and verify the JWT using the public key
-        payload = jwt.decode(
-            credentials.credentials,
-            signing_key.key,
-            algorithms=["RS256", "ES256"],
-            options={"verify_aud": False},
-        )
+        payload = _decode_token(credentials.credentials)
 
         user_id: str = payload.get("sub")
         email: str = payload.get("email")
