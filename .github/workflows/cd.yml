@@ -173,15 +173,40 @@ jobs:
             echo "Pulling image ${ECR_IMAGE_URI}..."
             docker pull "${ECR_IMAGE_URI}"
             
-            echo "=== DEBUG: Testing Docker Compose availability ==="
-            echo "which docker-compose: $(which docker-compose 2>&1 || echo 'NOT FOUND')"
-            echo "docker-compose version: $(docker-compose --version 2>&1 || echo 'FAILED')"
-            echo "docker compose version: $(docker compose version 2>&1 || echo 'FAILED')"
-            echo "PATH: $PATH"
-            echo "sudo docker-compose version: $(sudo docker-compose --version 2>&1 || echo 'FAILED')"
-            echo "=== END DEBUG ==="
+            echo "=== DEBUG: Setting up deployment ==="
+            echo "Creating network if not exists..."
+            docker network create evalhub 2>/dev/null || echo "Network evalhub already exists"
             
-            echo "Restarting Celery workers..."
+            echo "Stopping and removing old workers..."
+            for i in {1..4}; do
+              docker stop celery-worker-$i 2>/dev/null || true
+              docker rm celery-worker-$i 2>/dev/null || true
+            done
+            
+            echo "Starting Celery workers..."
+            CELERY_WORKERS=${CELERY_WORKERS:-4}
+            for i in $(seq 1 $CELERY_WORKERS); do
+              echo "Starting worker $i..."
+              docker run -d \
+                --name celery-worker-$i \
+                --env-file /opt/evalhub/.env \
+                --network evalhub \
+                --restart unless-stopped \
+                --memory=3g \
+                --cpus=1.5 \
+                --log-driver json-file \
+                --log-opt max-size=10m \
+                --log-opt max-file=3 \
+                --health-cmd='celery -A api.core.celery_app:celery_app inspect ping -d celery@$HOSTNAME || exit 1' \
+                --health-interval=30s \
+                --health-timeout=10s \
+                --health-retries=3 \
+                --health-start-period=60s \
+                "${ECR_IMAGE_URI}" \
+                celery -A api.core.celery_app:celery_app worker --loglevel=info --pool=solo --concurrency=1
+            done
+            
+            echo "Waiting for workers to start..."
             export ECR_IMAGE_URI
             docker-compose -f docker-compose.prod.yml down
             docker-compose -f docker-compose.prod.yml up -d
@@ -189,8 +214,9 @@ jobs:
             echo "Waiting for workers to start..."
             sleep 15
             
-            echo "Verifying workers..."
-            docker-compose -f docker-compose.prod.yml ps
+            echo "=== DEBUG: Verifying workers ==="
+            docker ps --filter "name=celery-worker" --format "table {{.Names}}\t{{.Status}}\t{{.State}}"
+            echo "=== END DEBUG ==="
             
             echo "Deployment complete!"
           REMOTE_SCRIPT
@@ -198,5 +224,9 @@ jobs:
       - name: Verify deployment
         run: |
           ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-            docker-compose -f /opt/evalhub/docker-compose.prod.yml logs --tail=50
+            echo "Worker logs:"
+            for i in {1..4}; do
+              echo "=== Worker $i ==="
+              docker logs --tail=20 celery-worker-$i 2>&1 || echo "Worker $i not running"
+            done
           EOF
