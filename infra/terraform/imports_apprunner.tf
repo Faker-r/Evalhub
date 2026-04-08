@@ -42,8 +42,7 @@ resource "aws_apprunner_service" "evalhub" {
 
   network_configuration {
     egress_configuration {
-      egress_type       = "VPC"
-      vpc_connector_arn = aws_apprunner_vpc_connector.evalhub.arn
+      egress_type = "DEFAULT"
     }
 
     ingress_configuration {
