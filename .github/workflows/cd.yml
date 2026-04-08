@@ -86,12 +86,6 @@ jobs:
           SERVICE_ARN=$(aws apprunner list-services --region ${{ env.AWS_REGION }} --query "ServiceSummaryList[?ServiceName=='evalhub-api-runner-github'].ServiceArn" --output text)
           echo "service-arn=${SERVICE_ARN}" >> $GITHUB_OUTPUT
       
-      - name: Trigger App Runner deployment
-        run: |
-          aws apprunner start-deployment \
-            --service-arn ${{ steps.get-service.outputs.service-arn }} \
-            --region ${{ env.AWS_REGION }}
-      
       - name: Wait for deployment
         run: |
           echo "Waiting for App Runner deployment to complete..."
