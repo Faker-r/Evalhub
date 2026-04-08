@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/cd.yml'
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-2
@@ -64,7 +65,7 @@ jobs:
           IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
           echo "image=${IMAGE_URI}" >> $GITHUB_OUTPUT
           echo "Image pushed to: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest"
-          echo "Image SHA tag: ${IMAGE_URI}""
+          echo "Image SHA tag: ${IMAGE_URI}"
 
   deploy-apprunner:
     name: Deploy to App Runner
