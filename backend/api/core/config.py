@@ -25,13 +25,11 @@ class Settings(BaseSettings):
 
     REDIS_URL: str
 
-    RATE_LIMIT_BUCKET_CAPACITY: int = 5
-    RATE_LIMIT_FILL_RATE: float = 5.0
-    RATE_LIMIT_TTL_SECONDS: int = 3600
+    RATE_LIMIT: str = "5/second"
+    RATE_LIMIT_STRATEGY: str = "fixed-window"
     RATE_LIMIT_FAIL_OPEN: bool = True
     RATE_LIMIT_BEHIND_PROXY: bool = False
     RATE_LIMIT_KEY_PREFIX: str = "ratelimit:"
-    RATE_LIMIT_EXCLUDE_PATHS: tuple[str, ...] = ("/api/health", "/health", "/")
 
     model_config = SettingsConfigDict(
         env_file=".env",
