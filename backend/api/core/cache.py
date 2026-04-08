@@ -34,7 +34,6 @@ class CacheService:
 
     def _get_client(self):
         if self._redis_client is None:
-            logger.info(f"Initializing Redis client with URL: {settings.REDIS_URL}")
             try:
                 self._redis_client = redis.from_url(
                     settings.REDIS_URL,
@@ -46,7 +45,6 @@ class CacheService:
                     retry_on_timeout=True,
                     ssl_cert_reqs=None,
                 )
-                logger.info("Redis client initialized successfully")
             except Exception as e:
                 logger.error(f"Failed to initialize Redis client: {e}")
                 raise
@@ -56,31 +54,24 @@ class CacheService:
         self, key: str, revive: type[T] | Callable[[Any], T] | None = None
     ) -> T | dict[str, Any] | None:
         try:
-            logger.info(f"Redis GET: {key}")
             raw = self._get_client().get(key)
             if raw is None:
-                logger.info(f"Redis GET {key}: cache miss")
                 return None
-            logger.info(f"Redis GET {key}: cache hit")
             return _deserialize(raw, revive)
-        except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError) as e:
+        except Exception as e:
             logger.warning(f"Redis GET failed for key {key}: {e}")
             return None
 
     def set(self, key: str, value: Any, ex: int | None = None) -> None:
         try:
-            logger.info(f"Redis SET: {key} (ttl={ex})")
             self._get_client().set(key, _serialize(value), ex=ex)
-            logger.info(f"Redis SET {key}: success")
-        except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError) as e:
+        except Exception as e:
             logger.warning(f"Redis SET failed for key {key}: {e}")
 
     def delete(self, key: str) -> None:
         try:
-            logger.info(f"Redis DELETE: {key}")
             self._get_client().delete(key)
-            logger.info(f"Redis DELETE {key}: success")
-        except (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError) as e:
+        except Exception as e:
             logger.warning(f"Redis DELETE failed for key {key}: {e}")
 
 

@@ -5,24 +5,37 @@ resource "aws_apprunner_service" "evalhub" {
 
   source_configuration {
     authentication_configuration {
-      connection_arn = var.apprunner_github_connection_arn
+      access_role_arn = aws_iam_role.apprunner_access.arn
     }
 
-    code_repository {
-      repository_url   = var.apprunner_code_repository_url
-      source_directory = "backend"
+    image_repository {
+      image_identifier      = "${aws_ecr_repository.backend.repository_url}:latest"
+      image_repository_type = "ECR"
 
-      code_configuration {
-        configuration_source = "REPOSITORY"
-      }
-
-      source_code_version {
-        type  = "BRANCH"
-        value = var.apprunner_code_branch
+      image_configuration {
+        port = "8000"
+        runtime_environment_variables = {
+          AWS_REGION     = var.aws_region
+          S3_BUCKET_NAME = var.s3_bucket_name
+          CELERY_WORKERS = "0"
+          PORT           = "8000"
+        }
+        runtime_environment_secrets = {
+          DATABASE_URL             = aws_secretsmanager_secret.evalhub["DATABASE_URL"].arn
+          JWT_SECRET               = aws_secretsmanager_secret.evalhub["JWT_SECRET"].arn
+          AWS_ACCESS_KEY_ID        = aws_secretsmanager_secret.evalhub["AWS_ACCESS_KEY_ID"].arn
+          AWS_SECRET_ACCESS_KEY    = aws_secretsmanager_secret.evalhub["AWS_SECRET_ACCESS_KEY"].arn
+          SUPABASE_URL             = aws_secretsmanager_secret.evalhub["SUPABASE_URL"].arn
+          SUPABASE_PUBLISHABLE_KEY = aws_secretsmanager_secret.evalhub["SUPABASE_PUBLISHABLE_KEY"].arn
+          SUPABASE_SECRET_KEY      = aws_secretsmanager_secret.evalhub["SUPABASE_SECRET_KEY"].arn
+          SUPABASE_JWT_SECRET      = aws_secretsmanager_secret.evalhub["SUPABASE_JWT_SECRET"].arn
+          HF_TOKEN                 = aws_secretsmanager_secret.evalhub["HF_TOKEN"].arn
+          REDIS_URL                = aws_secretsmanager_secret.evalhub["REDIS_URL"].arn
+        }
       }
     }
 
-    auto_deployments_enabled = false
+    auto_deployments_enabled = true
   }
 
   instance_configuration {
@@ -57,11 +70,7 @@ resource "aws_apprunner_service" "evalhub" {
     observability_configuration_arn = "arn:aws:apprunner:${var.aws_region}:${data.aws_caller_identity.current.account_id}:observabilityconfiguration/DefaultConfiguration/1/00000000000000000000000000000001"
   }
 
-  lifecycle {
-    ignore_changes = [
-      source_configuration[0].code_repository[0].source_code_version,
-    ]
-  }
+
 }
 
 data "aws_caller_identity" "current" {}
