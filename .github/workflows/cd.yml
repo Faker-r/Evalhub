@@ -157,9 +157,6 @@ jobs:
             sudo chown ec2-user:ec2-user /opt/evalhub
             cd /opt/evalhub
             
-            echo "Fetching docker-compose.prod.yml..."
-            curl -fsSL -o docker-compose.prod.yml "${REPO_RAW}/backend/docker-compose.prod.yml"
-            
             echo "Fetching fetch_secrets.sh..."
             curl -fsSL -o fetch_secrets.sh "${REPO_RAW}/backend/deploy/fetch_secrets.sh"
             chmod +x fetch_secrets.sh
@@ -205,11 +202,6 @@ jobs:
                 "${ECR_IMAGE_URI}" \
                 celery -A api.core.celery_app:celery_app worker --loglevel=info --pool=solo --concurrency=1
             done
-            
-            echo "Waiting for workers to start..."
-            export ECR_IMAGE_URI
-            docker-compose -f docker-compose.prod.yml down
-            docker-compose -f docker-compose.prod.yml up -d
             
             echo "Waiting for workers to start..."
             sleep 15
