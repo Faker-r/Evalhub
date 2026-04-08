@@ -175,14 +175,14 @@ jobs:
             
             echo "Restarting Celery workers..."
             export ECR_IMAGE_URI
-            docker-compose -f docker-compose.prod.yml down
-            docker-compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml down
+            docker compose -f docker-compose.prod.yml up -d
             
             echo "Waiting for workers to start..."
             sleep 15
             
             echo "Verifying workers..."
-            docker-compose -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.prod.yml ps
             
             echo "Deployment complete!"
           REMOTE_SCRIPT
@@ -190,5 +190,5 @@ jobs:
       - name: Verify deployment
         run: |
           ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-            docker-compose -f /opt/evalhub/docker-compose.prod.yml logs --tail=50
+            docker compose -f /opt/evalhub/docker-compose.prod.yml logs --tail=50
           EOF
