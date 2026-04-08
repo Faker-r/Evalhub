@@ -67,6 +67,64 @@ jobs:
           echo "Image pushed to: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest"
           echo "Image SHA tag: ${IMAGE_URI}"
 
+  deploy-apprunner:
+    name: Deploy to App Runner
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Trigger App Runner deployment
+        id: deploy
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services --region ${{ env.AWS_REGION }} \
+            --query "ServiceSummaryList[?ServiceName=='evalhub-api-runner-github'].ServiceArn" \
+            --output text)
+          if [ -z "$SERVICE_ARN" ]; then
+            echo "No App Runner service found, skipping"
+            exit 0
+          fi
+          echo "service-arn=${SERVICE_ARN}" >> $GITHUB_OUTPUT
+          aws apprunner start-deployment --service-arn "$SERVICE_ARN" --region ${{ env.AWS_REGION }}
+          echo "Deployment triggered for $SERVICE_ARN"
+
+      - name: Wait for deployment to complete
+        run: |
+          for i in {1..40}; do
+            STATUS=$(aws apprunner describe-service \
+              --service-arn ${{ steps.deploy.outputs.service-arn }} \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Service.Status' --output text)
+            echo "[$i/40] Status: $STATUS"
+            if [ "$STATUS" == "RUNNING" ]; then
+              echo "Deployment complete!"
+              exit 0
+            fi
+            if [ "$STATUS" == "CREATE_FAILED" ] || [ "$STATUS" == "DELETE_FAILED" ]; then
+              echo "Deployment failed with status: $STATUS"
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for App Runner deployment"
+          exit 1
+
+      - name: Health check
+        run: |
+          SERVICE_URL=$(aws apprunner describe-service \
+            --service-arn ${{ steps.deploy.outputs.service-arn }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Service.ServiceUrl' --output text)
+          echo "Checking https://${SERVICE_URL}/api/health ..."
+          curl -f --retry 3 --retry-delay 5 "https://${SERVICE_URL}/api/health"
+          echo "Health check passed!"
+
   deploy-ec2-celery:
     name: Deploy Celery Workers to EC2
     needs: build-and-push
