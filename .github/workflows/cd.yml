@@ -67,56 +67,6 @@ jobs:
           echo "Image pushed to: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest"
           echo "Image SHA tag: ${IMAGE_URI}"
 
-  deploy-apprunner:
-    name: Deploy to App Runner
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-      
-      - name: Get App Runner service ARN
-        id: get-service
-        run: |
-          SERVICE_ARN=$(aws apprunner list-services --region ${{ env.AWS_REGION }} --query "ServiceSummaryList[?ServiceName=='evalhub-api-runner-github'].ServiceArn" --output text)
-          echo "service-arn=${SERVICE_ARN}" >> $GITHUB_OUTPUT
-      
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for App Runner deployment to complete..."
-          for i in {1..30}; do
-            STATUS=$(aws apprunner describe-service --service-arn ${{ steps.get-service.outputs.service-arn }} --region ${{ env.AWS_REGION }} --query 'Service.Status' --output text)
-            echo "Deployment status: $STATUS"
-            if [ "$STATUS" == "RUNNING" ]; then
-              echo "Deployment successful!"
-              break
-            fi
-            if [ "$i" -eq 30 ]; then
-              echo "Deployment timed out"
-              exit 1
-            fi
-            sleep 30
-          done
-      
-      - name: Get service URL
-        id: get-url
-        run: |
-          SERVICE_URL=$(aws apprunner describe-service --service-arn ${{ steps.get-service.outputs.service-arn }} --region ${{ env.AWS_REGION }} --query 'Service.ServiceUrl' --output text)
-          echo "service-url=${SERVICE_URL}" >> $GITHUB_OUTPUT
-          echo "App Runner URL: https://${SERVICE_URL}"
-      
-      - name: Health check
-        run: |
-          echo "Performing health check..."
-          sleep 10
-          curl -f https://${{ steps.get-url.outputs.service-url }}/api/health || exit 1
-          echo "Health check passed!"
-
   deploy-ec2-celery:
     name: Deploy Celery Workers to EC2
     needs: build-and-push
@@ -144,14 +94,26 @@ jobs:
             bash -s <<'REMOTE_SCRIPT'
             set -e
 
-            echo "=== Step 1: Stop old workers and free resources FIRST ==="
+            echo "=== Step 0: Ensure swap exists (prevents OOM crashes) ==="
+            if ! swapon --show | grep -q swapfile; then
+              sudo fallocate -l 2G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              echo '/swapfile swap swap defaults 0 0' | sudo tee -a /etc/fstab
+              echo "Swap created"
+            else
+              echo "Swap already present"
+            fi
+
+            echo "=== Step 1: Stop and remove old workers ==="
             for i in {1..4}; do
               docker stop celery-worker-$i 2>/dev/null || true
               docker rm celery-worker-$i 2>/dev/null || true
             done
 
-            echo "Pruning all unused Docker resources to free memory and disk..."
-            docker system prune -af || true
+            echo "Pruning unused Docker images to free disk..."
+            docker image prune -f || true
 
             echo "=== Step 2: Authenticate with ECR ==="
             aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 214863335048.dkr.ecr.us-east-2.amazonaws.com
@@ -165,7 +127,7 @@ jobs:
             chmod +x fetch_secrets.sh
 
             echo "Fetching secrets from AWS Secrets Manager..."
-            bash ./fetch_secrets.sh || echo "Warning: Secret fetch failed, using existing .env if present"
+            bash ./fetch_secrets.sh
 
             echo "=== Step 4: Pull new image ==="
             echo "Pulling image ${ECR_IMAGE_URI}..."
@@ -174,7 +136,7 @@ jobs:
             echo "=== Step 5: Start workers ==="
             docker network create evalhub 2>/dev/null || echo "Network evalhub already exists"
 
-            CELERY_WORKERS=${CELERY_WORKERS:-2}
+            CELERY_WORKERS=2
             for i in $(seq 1 $CELERY_WORKERS); do
               echo "Starting worker $i..."
               docker run -d \
@@ -182,16 +144,11 @@ jobs:
                 --env-file /opt/evalhub/.env \
                 --network evalhub \
                 --restart unless-stopped \
-                --memory=2g \
-                --cpus=1.5 \
+                --memory=1.5g \
+                --cpus=1.0 \
                 --log-driver json-file \
                 --log-opt max-size=10m \
                 --log-opt max-file=3 \
-                --health-cmd='celery -A api.core.celery_app:celery_app inspect ping -d celery@$HOSTNAME || exit 1' \
-                --health-interval=30s \
-                --health-timeout=10s \
-                --health-retries=3 \
-                --health-start-period=60s \
                 "${ECR_IMAGE_URI}" \
                 celery -A api.core.celery_app:celery_app worker --loglevel=info --pool=solo --concurrency=1
             done
@@ -209,7 +166,7 @@ jobs:
         run: |
           ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             echo "Worker logs:"
-            for i in {1..4}; do
+            for i in {1..2}; do
               echo "=== Worker $i ==="
               docker logs --tail=20 celery-worker-$i 2>&1 || echo "Worker $i not running"
             done
