@@ -4,15 +4,6 @@ variable "aws_region" {
   default     = "us-east-2"
 }
 
-variable "vpc_id" {
-  description = "Existing VPC ID"
-  type        = string
-}
-
-variable "private_subnet_ids" {
-  description = "List of private subnet IDs (at least 2 AZs required for ElastiCache)"
-  type        = list(string)
-}
 
 variable "default_tags" {
   description = "Default tags to apply to all resources"
@@ -66,20 +57,3 @@ variable "apprunner_code_branch" {
   default     = "main"
 }
 
-variable "elasticache_name" {
-  description = "Name for ElastiCache Serverless Redis instance"
-  type        = string
-  default     = "evalhub-redis"
-}
-
-variable "elasticache_max_storage_gb" {
-  description = "Maximum storage in GB for ElastiCache Serverless"
-  type        = number
-  default     = 1
-}
-
-variable "elasticache_max_ecpu" {
-  description = "Maximum ECPUs per second for ElastiCache Serverless"
-  type        = number
-  default     = 5000
-}
