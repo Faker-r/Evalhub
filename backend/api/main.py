@@ -6,6 +6,8 @@ from api.auth.routes import router as auth_router
 from api.benchmarks.routes import router as benchmarks_router
 from api.core.config import settings
 from api.core.logging import get_logger, setup_logging
+from api.core.ratelimiter import RateLimiterMiddleware, default_rate_limit_key
+from api.core.redis_client import close_async_redis_client
 from api.datasets.routes import router as datasets_router
 from api.evaluation_comparison.routes import router as evaluation_comparison_router
 from api.evaluations.routes import router as evaluations_router
@@ -30,6 +32,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Evalhub application")
     yield
     # Shutdown
+    await close_async_redis_client()
     logger.info("Shutting down Evalhub application")
 
 
@@ -38,6 +41,8 @@ app = FastAPI(
     debug=settings.DEBUG,
     lifespan=lifespan,
 )
+
+app.add_middleware(RateLimiterMiddleware, key_generator=default_rate_limit_key)
 
 # Create API router with /api prefix
 api_router = APIRouter(prefix="/api")
