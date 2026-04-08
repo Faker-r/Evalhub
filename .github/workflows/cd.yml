@@ -173,6 +173,14 @@ jobs:
             echo "Pulling image ${ECR_IMAGE_URI}..."
             docker pull "${ECR_IMAGE_URI}"
             
+            echo "=== DEBUG: Testing Docker Compose availability ==="
+            echo "which docker-compose: $(which docker-compose 2>&1 || echo 'NOT FOUND')"
+            echo "docker-compose version: $(docker-compose --version 2>&1 || echo 'FAILED')"
+            echo "docker compose version: $(docker compose version 2>&1 || echo 'FAILED')"
+            echo "PATH: $PATH"
+            echo "sudo docker-compose version: $(sudo docker-compose --version 2>&1 || echo 'FAILED')"
+            echo "=== END DEBUG ==="
+            
             echo "Restarting Celery workers..."
             export ECR_IMAGE_URI
             docker-compose -f docker-compose.prod.yml down
