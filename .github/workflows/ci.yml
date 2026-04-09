@@ -39,7 +39,6 @@ jobs:
       run: uv run black --check .
 
   test:
-    needs: lint
     runs-on: ubuntu-latest
     strategy:
       matrix:
