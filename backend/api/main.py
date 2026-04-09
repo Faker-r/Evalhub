@@ -1,11 +1,16 @@
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIASGIMiddleware
 
 from api.auth.routes import router as auth_router
 from api.benchmarks.routes import router as benchmarks_router
 from api.core.config import settings
 from api.core.logging import get_logger, setup_logging
+from api.core.ratelimiter import limiter
+from api.core.redis_client import close_async_redis_client
 from api.datasets.routes import router as datasets_router
 from api.evaluation_comparison.routes import router as evaluation_comparison_router
 from api.evaluations.routes import router as evaluations_router
@@ -30,6 +35,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Evalhub application")
     yield
     # Shutdown
+    await close_async_redis_client()
     logger.info("Shutting down Evalhub application")
 
 
@@ -38,6 +44,10 @@ app = FastAPI(
     debug=settings.DEBUG,
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIASGIMiddleware)
 
 # Create API router with /api prefix
 api_router = APIRouter(prefix="/api")
@@ -55,6 +65,7 @@ api_router.include_router(models_and_providers_router)
 
 
 @api_router.get("/health")
+@limiter.exempt
 async def health_check():
     """Health check endpoint."""
     return {"status": "ok"}
@@ -65,6 +76,7 @@ app.include_router(api_router)
 
 
 @app.get("/")
+@limiter.exempt
 async def root():
     """Root endpoint."""
     logger.debug("Root endpoint called")

@@ -6,6 +6,7 @@ This mimics what the evaluation service does.
 import os
 import tempfile
 
+import pytest
 from dotenv import load_dotenv
 from lighteval.logging.evaluation_tracker import EvaluationTracker
 from lighteval.models.endpoints.litellm_model import LiteLLMClient, LiteLLMModelConfig
@@ -40,8 +41,18 @@ guideline = {
 }
 
 
-def test_lighteval_integration():
+@pytest.mark.skipif(
+    not os.getenv("OPENAI_API_KEY"),
+    reason="OPENAI_API_KEY not set",
+)
+def test_lighteval_integration(tmp_path, monkeypatch):
     """Test the lighteval integration."""
+    hf_home = tmp_path / "hf"
+    hf_home.mkdir()
+    (hf_home / "datasets").mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("HF_HOME", str(hf_home))
+    monkeypatch.setenv("HF_DATASETS_CACHE", str(hf_home / "datasets"))
+
     print("Starting lighteval integration test...")
 
     # Step 1: Create judge metric

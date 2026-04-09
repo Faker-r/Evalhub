@@ -397,15 +397,24 @@ class TestEvaluationWorkflowE2E:
                 ), f"Unexpected status: {response.status_code}"
                 leaderboard = response.json()
 
-                # Verify structure
-                assert "dataset_name" in leaderboard
-                assert "entries" in leaderboard
+                assert "datasets" in leaderboard
+                datasets = leaderboard["datasets"]
+                matching = [
+                    d for d in datasets if d.get("dataset_name") == dataset_name
+                ]
+                block = matching[0] if matching else (datasets[0] if datasets else None)
+                if block is None:
+                    print(f"  ⚠ No leaderboard blocks returned for '{dataset_name}'")
+                    continue
 
-                print(f"  ✓ Leaderboard has {len(leaderboard['entries'])} entries")
+                assert "dataset_name" in block
+                assert "entries" in block
+
+                print(f"  ✓ Leaderboard has {len(block['entries'])} entries")
                 found_leaderboard = True
 
-                if leaderboard["entries"]:
-                    entry = leaderboard["entries"][0]
+                if block["entries"]:
+                    entry = block["entries"][0]
                     print(
                         f"  ✓ Top entry: {entry.get('completion_model', 'N/A')} (Provider: {entry.get('model_provider', 'N/A')})"
                     )

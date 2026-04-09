@@ -18,9 +18,9 @@ Test Matrix:
 | test_benchmark_by_id                   | FR-1 | GET /api/benchmarks/{id}    | Get single benchmark              |
 | test_benchmark_not_found               | FR-1 | GET /api/benchmarks/{id}    | 404 for missing benchmark         |
 | test_datasets_list                     | FR-1 | GET /api/datasets           | List datasets (requires auth)     |
-| test_datasets_list_unauthenticated     | FR-1 | GET /api/datasets           | 401 without auth                  |
+| test_datasets_list_public_without_auth | FR-1 | GET /api/datasets           | 200 public list                   |
 | test_guidelines_list                   | FR-1 | GET /api/guidelines         | List guidelines (requires auth)   |
-| test_leaderboard_requires_dataset      | FR-4 | GET /api/leaderboard        | Requires dataset_name param       |
+| test_leaderboard_returns_all_datasets  | FR-4 | GET /api/leaderboard        | 200 + datasets array              |
 | test_evaluation_traces_list            | FR-2 | GET /api/evaluations/traces | List traces (requires auth)       |
 | test_protected_route_no_auth           | FR-6 | Various                     | 401/403 without auth token        |
 | test_protected_route_invalid_token     | FR-6 | Various                     | 401 with invalid token            |
@@ -251,19 +251,21 @@ class TestBenchmarkEndpoints:
 class TestAuthenticationProtection:
     """Tests for authentication-protected endpoints (FR-6.0)."""
 
-    def test_datasets_list_requires_authentication(self, sync_client: TestClient):
+    def test_datasets_list_public_without_auth(self, sync_client: TestClient):
         """
-        Test: GET /api/datasets requires authentication
+        Test: GET /api/datasets is publicly listable (optional auth for filtering)
 
         Success Criteria:
-        - Without auth token: returns 401 or 403
-        - Response indicates authentication required
+        - Without auth token: returns 200
+        - Response contains 'datasets' array
         """
         try:
             response = sync_client.get("/api/datasets")
 
-            # Should be unauthorized without token
-            assert response.status_code in [401, 403]
+            assert response.status_code == 200
+            data = response.json()
+            assert "datasets" in data
+            assert isinstance(data["datasets"], list)
         except RuntimeError as e:
             if "different loop" in str(e):
                 pytest.skip("Event loop conflict - run with live backend")
@@ -411,47 +413,46 @@ class TestAuthenticatedEndpoints:
 class TestLeaderboardEndpoints:
     """Tests for leaderboard endpoints (FR-4.0)."""
 
-    def test_leaderboard_requires_dataset_parameter(self, sync_client: TestClient):
+    def test_leaderboard_returns_all_datasets(self, sync_client: TestClient):
         """
-        Test: GET /api/leaderboard requires dataset_name parameter
+        Test: GET /api/leaderboard returns aggregated leaderboard (no required query params)
 
         Success Criteria:
-        - Without dataset_name: returns 422 (validation error)
+        - Status code is 200
+        - Response contains 'datasets' array
         """
         try:
             response = sync_client.get("/api/leaderboard")
 
-            # Should fail validation without required parameter
-            assert response.status_code == 422
+            assert response.status_code == 200
+            data = response.json()
+            assert "datasets" in data
+            assert isinstance(data["datasets"], list)
+            if data["datasets"]:
+                dataset = data["datasets"][0]
+                assert "dataset_name" in dataset
+                assert "entries" in dataset
+                assert isinstance(dataset["entries"], list)
         except RuntimeError as e:
             if "different loop" in str(e):
                 pytest.skip("Event loop conflict - run with live backend")
             raise
 
-    def test_leaderboard_with_dataset_parameter(self, sync_client: TestClient):
+    def test_leaderboard_extra_query_params_ignored(self, sync_client: TestClient):
         """
-        Test: GET /api/leaderboard with dataset_name returns leaderboard
+        Test: Legacy ?dataset_name= query does not break the leaderboard endpoint
 
         Success Criteria:
-        - Status code is 200 or 404 (if dataset doesn't exist)
-        - If 200: Response contains 'datasets' array; each dataset has
-          'dataset_name' and 'entries'
+        - Status code is 200
+        - Response contains 'datasets' array
         """
         try:
             response = sync_client.get("/api/leaderboard?dataset_name=test_dataset")
 
-            # Accept 200 (found) or 404 (dataset not found)
-            assert response.status_code in [200, 404]
-
-            if response.status_code == 200:
-                data = response.json()
-                assert "datasets" in data
-                assert isinstance(data["datasets"], list)
-                if data["datasets"]:
-                    dataset = data["datasets"][0]
-                    assert "dataset_name" in dataset
-                    assert "entries" in dataset
-                    assert isinstance(dataset["entries"], list)
+            assert response.status_code == 200
+            data = response.json()
+            assert "datasets" in data
+            assert isinstance(data["datasets"], list)
         except RuntimeError as e:
             if "different loop" in str(e):
                 pytest.skip("Event loop conflict - run with live backend")
