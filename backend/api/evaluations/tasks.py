@@ -2,11 +2,11 @@
 
 import asyncio
 import json
-from pathlib import Path
 import statistics
 import tempfile
 import traceback
 from dataclasses import asdict
+from pathlib import Path
 
 from lighteval.logging.evaluation_tracker import EvaluationTracker
 from lighteval.models.endpoints.openai_model import (
@@ -51,14 +51,14 @@ def _create_model_config(
                 extra_body=model_config_data["extra_body"]
             ),
             cache_dir=API_CACHE_DIR,
-            is_reasoning_model=model_config_data.get("is_reasoning_model", False)
+            is_reasoning_model=model_config_data.get("is_reasoning_model", False),
         )
     return OpenAICompatibleModelConfig(
         model_name=model_config_data["model_name"],
         base_url=model_config_data["base_url"],
         api_key=model_config_data["api_key"],
         cache_dir=API_CACHE_DIR,
-        is_reasoning_model=model_config_data.get("is_reasoning_model", False)
+        is_reasoning_model=model_config_data.get("is_reasoning_model", False),
     )
 
 
@@ -628,7 +628,10 @@ def run_task_evaluation_task(
             results_s3_path=results_s3_path,
             report_scores=pipeline_output["summary"],
             summary=summary,
-            summary_extra={"metric_docs": metric_docs, "errors": pipeline_output.get("errors", {})},
+            summary_extra={
+                "metric_docs": metric_docs,
+                "errors": pipeline_output.get("errors", {}),
+            },
         )
 
         # Upload JSONL
@@ -637,7 +640,9 @@ def run_task_evaluation_task(
         logger.info(f"Task evaluation completed for trace {trace_id}")
 
     except Exception as e:
-        logger.error(f"Task evaluation failed for trace {trace_id}: {e}\n{traceback.format_exc()}")
+        logger.error(
+            f"Task evaluation failed for trace {trace_id}: {e}\n{traceback.format_exc()}"
+        )
         _mark_trace_failed(trace_id, str(e), traceback.format_exc())
     finally:
         clear_eval_progress(trace_id)

@@ -21,7 +21,9 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.add_column(
         "benchmarks",
-        sa.Column("hide", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column(
+            "hide", sa.Boolean(), nullable=False, server_default=sa.text("false")
+        ),
     )
 
 

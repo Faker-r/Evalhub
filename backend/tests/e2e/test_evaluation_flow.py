@@ -25,15 +25,11 @@ Evidence Collection:
 """
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-
-from api.core.security import CurrentUser, get_current_user
-from api.main import app
 
 # Evidence output directory
 EVIDENCE_DIR = Path(__file__).parent.parent / "evidence"

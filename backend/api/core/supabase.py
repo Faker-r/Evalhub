@@ -1,7 +1,6 @@
 """Supabase client configuration."""
 
 import httpx
-
 from supabase import Client, ClientOptions, create_client
 from supabase_auth import SyncMemoryStorage
 

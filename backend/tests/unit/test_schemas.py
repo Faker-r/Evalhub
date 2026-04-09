@@ -30,19 +30,15 @@ from api.evaluations.schemas import (
     DatasetConfig,
     FlexibleEvaluationRequest,
     JudgeType,
-    MultipleChoiceConfig,
     OpenRouterEvaluationModelConfig,
     OutputType,
     StandardEvaluationModelConfig,
     TaskEvaluationRequest,
-    TextOutputConfig,
-    TraceResponse,
 )
 from api.guidelines.schemas import (
     BooleanScaleConfig,
     CustomCategoryScaleConfig,
     GuidelineCreate,
-    GuidelineResponse,
     GuidelineScoringScale,
     NumericScaleConfig,
     PercentageScaleConfig,
@@ -153,8 +149,22 @@ class TestDatasetSchemas:
     def test_dataset_list_response(self):
         """Test DatasetListResponse schema."""
         datasets = [
-            DatasetResponse(id=1, name="ds1", category="qa", sample_count=100, visibility="public", user_id=None),
-            DatasetResponse(id=2, name="ds2", category="math", sample_count=200, visibility="private", user_id="user-1"),
+            DatasetResponse(
+                id=1,
+                name="ds1",
+                category="qa",
+                sample_count=100,
+                visibility="public",
+                user_id=None,
+            ),
+            DatasetResponse(
+                id=2,
+                name="ds2",
+                category="math",
+                sample_count=200,
+                visibility="private",
+                user_id="user-1",
+            ),
         ]
 
         response = DatasetListResponse(datasets=datasets)
@@ -310,8 +320,19 @@ class TestEvaluationSchemas:
         """Test that invalid api_source is rejected."""
         data = {
             "api_source": "invalid_source",
-            "model": {"id": "1", "display_name": "Test", "developer": "test", "api_name": "test", "providers": []},
-            "provider": {"id": "1", "name": "Test", "slug": "test", "base_url": "https://example.com"},
+            "model": {
+                "id": "1",
+                "display_name": "Test",
+                "developer": "test",
+                "api_name": "test",
+                "providers": [],
+            },
+            "provider": {
+                "id": "1",
+                "name": "Test",
+                "slug": "test",
+                "base_url": "https://example.com",
+            },
         }
 
         with pytest.raises(ValidationError):

@@ -1,7 +1,5 @@
 """ """
 
-import json
-import re
 import types
 from dataclasses import dataclass
 from typing import Any
@@ -60,7 +58,6 @@ from lighteval.metrics.utils.extractive_match_utils import (
     IndicesExtractionConfig,
     LatexExtractionConfig,
 )
-from lighteval.tasks.registry import Registry
 
 
 @dataclass(frozen=True)

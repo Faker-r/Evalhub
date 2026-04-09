@@ -29,13 +29,8 @@ Note: Some tests may fail due to database connection issues when running in isol
 The tests are designed to be run with a live backend for full integration testing.
 """
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 from fastapi.testclient import TestClient
-
-from api.core.security import CurrentUser, get_current_user
-from api.main import app
 
 # Mark all tests in this module to handle potential async issues
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")

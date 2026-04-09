@@ -18,7 +18,6 @@ from api.guidelines.routes import router as guidelines_router
 from api.leaderboard.routes import router as leaderboard_router
 from api.models_and_providers.routes import router as models_and_providers_router
 from api.users.routes import router as users_router
-from api.utils.migrations import run_migrations
 
 # Set up logging configuration
 setup_logging()

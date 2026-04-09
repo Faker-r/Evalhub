@@ -74,7 +74,6 @@ def _noop_upload_eval_results(self, trace_id: int, directory: str) -> str:
 
 def _noop_upload_trace(self, filename: str, content: str) -> None:
     """Skip S3 trace upload in test."""
-    pass
 
 
 S3Storage.upload_eval_results = _noop_upload_eval_results

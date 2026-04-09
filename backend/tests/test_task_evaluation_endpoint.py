@@ -3,7 +3,6 @@ Test script to verify the task evaluation service works end-to-end.
 """
 
 import asyncio
-import os
 
 from dotenv import load_dotenv
 

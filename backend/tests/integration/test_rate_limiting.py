@@ -69,11 +69,7 @@ def test_x_forwarded_for_splits_clients_when_behind_proxy(limited_app: FastAPI):
     with patch("api.core.ratelimiter.settings") as mock_settings:
         mock_settings.RATE_LIMIT_BEHIND_PROXY = True
         with TestClient(limited_app) as client:
-            a = client.get(
-                "/limited", headers={"X-Forwarded-For": "203.0.113.10"}
-            )
-            b = client.get(
-                "/limited", headers={"X-Forwarded-For": "203.0.113.20"}
-            )
+            a = client.get("/limited", headers={"X-Forwarded-For": "203.0.113.10"})
+            b = client.get("/limited", headers={"X-Forwarded-For": "203.0.113.20"})
             assert a.status_code == 200
             assert b.status_code == 200

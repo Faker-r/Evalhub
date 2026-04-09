@@ -8,9 +8,7 @@ This module provides:
 - Common test data factories
 """
 
-import os
 from typing import AsyncGenerator, Generator
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -18,14 +16,12 @@ import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 load_dotenv()
 
 from slowapi import Limiter
 
 from api.core.config import settings
-from api.core.database import get_session
 from api.core.ratelimiter import rate_limit_key
 from api.core.security import CurrentUser, get_current_user
 from api.main import app

@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import Any, Callable, TypeVar
+
 from pydantic import BaseModel
 
 from api.core.redis_client import get_redis_client

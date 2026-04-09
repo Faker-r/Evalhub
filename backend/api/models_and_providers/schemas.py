@@ -23,8 +23,6 @@ class StandardProviderBase(BaseProviderSchema):
 class ProviderCreate(StandardProviderBase):
     """Provider creation schema."""
 
-    pass
-
 
 class ProviderUpdate(BaseModel):
     """Provider update schema."""

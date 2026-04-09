@@ -8,7 +8,6 @@ Use --all-turns to create separate entries for each turn.
 
 import argparse
 import json
-from pathlib import Path
 
 
 def convert_mtbench(input_file: str, output_file: str, all_turns: bool = False):

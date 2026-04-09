@@ -51,14 +51,14 @@ class GuidelineRepository:
             list[Guideline]: List of visible guidelines
         """
         query = select(Guideline).order_by(Guideline.id.desc())
-        
+
         if user_id:
             query = query.where(
                 (Guideline.visibility == "public") | (Guideline.user_id == user_id)
             )
         else:
             query = query.where(Guideline.visibility == "public")
-        
+
         result = await self.session.execute(query)
         return list(result.scalars().all())
 

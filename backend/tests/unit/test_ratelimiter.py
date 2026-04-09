@@ -45,7 +45,9 @@ def test_rate_limit_key_uses_first_x_forwarded_for_when_behind_proxy():
 
 
 def test_rate_limit_key_strips_whitespace_for_forwarded_for():
-    req = _make_request(x_forwarded_for="  203.0.113.9  , 10.0.0.1", client_host="10.0.0.5")
+    req = _make_request(
+        x_forwarded_for="  203.0.113.9  , 10.0.0.1", client_host="10.0.0.5"
+    )
     with patch("api.core.ratelimiter.settings") as s:
         s.RATE_LIMIT_BEHIND_PROXY = True
         assert rate_limit_key(req) == "203.0.113.9"
