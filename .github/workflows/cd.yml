@@ -175,7 +175,7 @@ jobs:
             echo "=== Step 5: Start workers ==="
             docker network create evalhub 2>/dev/null || echo "Network evalhub already exists"
 
-            CELERY_WORKERS=2
+            CELERY_WORKERS=4
             for i in $(seq 1 $CELERY_WORKERS); do
               echo "Starting worker $i..."
               docker run -d \
@@ -183,8 +183,9 @@ jobs:
                 --env-file /opt/evalhub/.env \
                 --network evalhub \
                 --restart unless-stopped \
-                --memory=1.5g \
-                --cpus=1.0 \
+                --no-healthcheck \
+                --memory=768m \
+                --cpus=0.5 \
                 --log-driver json-file \
                 --log-opt max-size=10m \
                 --log-opt max-file=3 \
@@ -205,7 +206,7 @@ jobs:
         run: |
           ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             echo "Worker logs:"
-            for i in {1..2}; do
+            for i in {1..4}; do
               echo "=== Worker $i ==="
               docker logs --tail=20 celery-worker-$i 2>&1 || echo "Worker $i not running"
             done
