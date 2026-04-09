@@ -42,6 +42,7 @@ dependencies = [
 addopts = "-v --cov=api --cov-report=term-missing"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_test_loop_scope = "session"
 
 [tool.black]
 line-length = 88

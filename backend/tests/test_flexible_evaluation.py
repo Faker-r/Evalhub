@@ -12,15 +12,43 @@ from api.core.database import get_session
 from api.evaluations.schemas import (
     FlexibleEvaluationRequest,
     JudgeType,
-    ModelConfig,
     MultipleChoiceConfig,
     OutputType,
+    StandardEvaluationModelConfig,
     TextOutputConfig,
 )
 from api.evaluations.service import EvaluationService
+from api.models_and_providers.schemas import ModelResponse, ProviderResponse
 
 # Test user ID - replace with your own
 USER_ID = "e01da140-64b2-4ab9-b379-4f55dcaf0b22"
+
+
+def _std_model_config(
+    *,
+    model_id: str,
+    display_name: str,
+    api_name: str,
+    provider_name: str = "openai",
+) -> StandardEvaluationModelConfig:
+    prov = ProviderResponse(
+        id=f"p-{provider_name}",
+        name=provider_name,
+        slug=provider_name,
+        base_url="https://api.openai.com/v1",
+    )
+    model = ModelResponse(
+        id=model_id,
+        display_name=display_name,
+        developer=provider_name,
+        api_name=api_name,
+        providers=[prov],
+    )
+    return StandardEvaluationModelConfig(
+        api_source="standard",
+        model=model,
+        provider=prov,
+    )
 
 
 async def test_text_exact_match():
@@ -37,13 +65,10 @@ async def test_text_exact_match():
             choices_field="choices", gold_answer_field="answer"
         ),
         judge_type=JudgeType.EXACT_MATCH,
-        model_completion_config=ModelConfig(
-            model_name="gpt-5.1",
+        model_completion_config=_std_model_config(
             model_id="gpt-5.1",
-            model_slug="gpt-5.1",
-            model_provider="openai",
-            model_provider_slug="openai",
-            model_provider_id="0",
+            display_name="gpt-5.1",
+            api_name="gpt-5.1",
         ),
     )
 
@@ -62,13 +87,10 @@ async def test_text_f1_score():
         output_type=OutputType.TEXT,
         text_config=TextOutputConfig(gold_answer_field="answer"),
         judge_type=JudgeType.F1_SCORE,
-        model_completion_config=ModelConfig(
-            model_name="gpt-5.1",
+        model_completion_config=_std_model_config(
             model_id="gpt-5.1",
-            model_slug="gpt-5.1",
-            model_provider="openai",
-            model_provider_slug="openai",
-            model_provider_id="0",
+            display_name="gpt-5.1",
+            api_name="gpt-5.1",
         ),
     )
 
@@ -88,21 +110,15 @@ async def test_text_llm_judge():
         text_config=TextOutputConfig(gold_answer_field=None),
         judge_type=JudgeType.LLM_AS_JUDGE,
         guideline_names=["humor"],
-        model_completion_config=ModelConfig(
-            model_name="gpt-4o-mini",
+        model_completion_config=_std_model_config(
             model_id="gpt-4o-mini",
-            model_slug="gpt-4o-mini",
-            model_provider="openai",
-            model_provider_slug="openai",
-            model_provider_id="0",
+            display_name="gpt-4o-mini",
+            api_name="gpt-4o-mini",
         ),
-        judge_config=ModelConfig(
-            model_name="gpt-4o",
+        judge_config=_std_model_config(
             model_id="gpt-4o",
-            model_slug="gpt-4o",
-            model_provider="openai",
-            model_provider_slug="openai",
-            model_provider_id="0",
+            display_name="gpt-4o",
+            api_name="gpt-4o",
         ),
     )
 
