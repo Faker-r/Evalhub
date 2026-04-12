@@ -1,11 +1,21 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - evalhub
+
   celery-worker:
     image: ${ECR_IMAGE_URI:-214863335048.dkr.ecr.us-east-2.amazonaws.com/evalhub-backend:latest}
     command: celery -A api.core.celery_app:celery_app worker --loglevel=info --pool=solo --concurrency=1
     env_file:
       - .env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
     restart: unless-stopped
     deploy:
       replicas: ${CELERY_WORKERS:-4}
@@ -33,3 +43,6 @@ services:
 networks:
   evalhub:
     driver: bridge
+
+volumes:
+  redis_data:

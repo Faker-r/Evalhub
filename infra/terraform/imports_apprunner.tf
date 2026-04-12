@@ -31,6 +31,7 @@ resource "aws_apprunner_service" "evalhub" {
           SUPABASE_JWT_SECRET      = aws_secretsmanager_secret.evalhub["SUPABASE_JWT_SECRET"].arn
           HF_TOKEN                 = aws_secretsmanager_secret.evalhub["HF_TOKEN"].arn
           REDIS_URL                = aws_secretsmanager_secret.evalhub["REDIS_URL"].arn
+          CELERY_BROKER_URL        = aws_secretsmanager_secret.evalhub["CELERY_BROKER_URL"].arn
         }
       }
     }

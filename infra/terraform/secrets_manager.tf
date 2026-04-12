@@ -30,6 +30,9 @@ locals {
     "REDIS_URL" = {
       description = "Redis connection URL"
     }
+    "CELERY_BROKER_URL" = {
+      description = "Celery broker URL (EC2 Redis)"
+    }
   }
 }
 

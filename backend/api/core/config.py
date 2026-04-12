@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     HF_TOKEN: str | None = None
 
     REDIS_URL: str
+    CELERY_BROKER_URL: str
 
     RATE_LIMIT: str = "20/second"
     EVALUATION_RUN_RATE_LIMIT: str = "10/minute"
