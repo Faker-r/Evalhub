@@ -116,17 +116,15 @@ echo ""
 terraform output
 echo ""
 
-# Save Redis URL to a file for easy reference
-REDIS_URL=$(terraform output -raw redis_connection_string 2>/dev/null || echo "")
-if [ -n "$REDIS_URL" ]; then
-    echo "Redis connection string saved to redis_url.txt"
-    echo "$REDIS_URL" > redis_url.txt
-    chmod 600 redis_url.txt
-    
-    echo ""
-    echo "Next Steps:"
-    echo "1. Update App Runner environment variables with:"
-    echo "   REDIS_URL=$REDIS_URL"
-    echo "2. SSH to EC2 and update ~/.env with the same REDIS_URL"
-    echo "3. Restart App Runner and EC2 services"
+# Auto-update CELERY_BROKER_URL in Secrets Manager from EC2 public DNS
+EC2_DNS=$(terraform output -raw ec2_public_dns 2>/dev/null || echo "")
+if [ -n "$EC2_DNS" ]; then
+    CELERY_BROKER_URL="redis://${EC2_DNS}:6379/0"
+    aws secretsmanager put-secret-value \
+      --secret-id "evalhub/CELERY_BROKER_URL" \
+      --secret-string "$CELERY_BROKER_URL" \
+      --region "$REGION"
+    echo "✓ CELERY_BROKER_URL updated in Secrets Manager: $CELERY_BROKER_URL"
+else
+    echo "⚠ Could not determine EC2 public DNS — CELERY_BROKER_URL not updated"
 fi

@@ -14,6 +14,11 @@ output "ec2_instance_id" {
   value       = aws_instance.celery_worker.id
 }
 
+output "ec2_public_dns" {
+  description = "EC2 Celery worker public DNS"
+  value       = aws_instance.celery_worker.public_dns
+}
+
 output "apprunner_service_url" {
   description = "App Runner service URL"
   value       = aws_apprunner_service.evalhub.service_url
