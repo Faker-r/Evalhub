@@ -172,15 +172,30 @@ jobs:
             echo "Pulling image ${ECR_IMAGE_URI}..."
             docker pull "${ECR_IMAGE_URI}"
 
-            echo "=== Step 5: Start workers ==="
+            echo "=== Step 5: Redis (same Docker network as workers) ==="
             docker network create evalhub 2>/dev/null || echo "Network evalhub already exists"
+            docker pull redis:7-alpine
+            if docker ps --format '{{.Names}}' | grep -qx redis; then
+              echo "Redis already running"
+            else
+              docker rm -f redis 2>/dev/null || true
+              docker run -d \
+                --name redis \
+                --network evalhub \
+                --restart unless-stopped \
+                -v evalhub-redis-data:/data \
+                redis:7-alpine
+            fi
 
+            echo "=== Step 6: Start workers ==="
             CELERY_WORKERS=4
             for i in $(seq 1 $CELERY_WORKERS); do
               echo "Starting worker $i..."
               docker run -d \
                 --name celery-worker-$i \
                 --env-file /opt/evalhub/.env \
+                -e REDIS_URL=redis://redis:6379/0 \
+                -e CELERY_BROKER_URL=redis://redis:6379/0 \
                 --network evalhub \
                 --restart unless-stopped \
                 --no-healthcheck \
