@@ -39,4 +39,9 @@ variable "apprunner_service_name" {
   default     = "evalhub-api-runner-github"
 }
 
+variable "certbot_email" {
+  description = "Email address for Let's Encrypt certificate issuance and expiry notifications."
+  type        = string
+}
+
 

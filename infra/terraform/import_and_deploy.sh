@@ -116,15 +116,4 @@ echo ""
 terraform output
 echo ""
 
-# Auto-update CELERY_BROKER_URL in Secrets Manager from EC2 public DNS
-EC2_DNS=$(terraform output -raw ec2_public_dns 2>/dev/null || echo "")
-if [ -n "$EC2_DNS" ]; then
-    CELERY_BROKER_URL="redis://${EC2_DNS}:6379/0"
-    aws secretsmanager put-secret-value \
-      --secret-id "evalhub/CELERY_BROKER_URL" \
-      --secret-string "$CELERY_BROKER_URL" \
-      --region "$REGION"
-    echo "✓ CELERY_BROKER_URL updated in Secrets Manager: $CELERY_BROKER_URL"
-else
-    echo "⚠ Could not determine EC2 public DNS — CELERY_BROKER_URL not updated"
-fi
+echo "CELERY_BROKER_URL is managed by Terraform (rediss://:***@$(terraform output -raw redis_hostname 2>/dev/null):6380/0)"

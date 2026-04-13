@@ -1,5 +1,18 @@
 # Import existing EC2 instance
 
+# Allow public inbound TLS connections to the HAProxy Redis proxy on port 6380.
+# Port 6379 (plain Redis) is NOT opened; all external access goes through HAProxy.
+resource "aws_security_group_rule" "ec2_redis_tls_inbound" {
+  type              = "ingress"
+  from_port         = 6380
+  to_port           = 6380
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  ipv6_cidr_blocks  = ["::/0"]
+  security_group_id = "sg-052807540561ab35a"
+  description       = "Public Redis TLS via HAProxy (rediss://)"
+}
+
 resource "aws_instance" "celery_worker" {
   ami                  = "ami-0c55b159cbfafe1f0"
   instance_type        = "t3.medium"

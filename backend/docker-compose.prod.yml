@@ -4,10 +4,26 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - evalhub
+
+  haproxy-redis:
+    image: haproxy:3.0-alpine
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:6380:6380"
+    volumes:
+      - ./haproxy-redis.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - /opt/evalhub/certs/redis.pem:/etc/haproxy/certs/redis.pem:ro
+    networks:
+      - evalhub
+    depends_on:
+      - redis
 
   celery-worker:
     image: ${ECR_IMAGE_URI:-214863335048.dkr.ecr.us-east-2.amazonaws.com/evalhub-backend:latest}
@@ -15,7 +31,8 @@ services:
     env_file:
       - .env
     environment:
-      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
     restart: unless-stopped
     deploy:
       replicas: ${CELERY_WORKERS:-4}

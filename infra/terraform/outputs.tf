@@ -19,6 +19,16 @@ output "ec2_public_dns" {
   value       = aws_instance.celery_worker.public_dns
 }
 
+output "ec2_public_ip" {
+  description = "EC2 Elastic IP (stable across stop/start)"
+  value       = aws_eip.celery_worker.public_ip
+}
+
+output "redis_hostname" {
+  description = "sslip.io hostname for the public Redis TLS endpoint (derived from Elastic IP)"
+  value       = local.redis_hostname
+}
+
 output "apprunner_service_url" {
   description = "App Runner service URL"
   value       = aws_apprunner_service.evalhub.service_url
