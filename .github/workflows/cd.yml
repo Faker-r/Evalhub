@@ -177,18 +177,19 @@ jobs:
             INTERNAL_REDIS_URL="redis://:${REDIS_PASSWORD}@redis:6379/0"
 
             echo "=== Step 3b: TLS certificate (Let's Encrypt HTTP-01) ==="
-            if ! command -v certbot &>/dev/null; then
-              sudo pip3 install certbot
-            fi
-            # certbot --standalone binds port 80 briefly for the ACME HTTP-01 challenge.
-            # --keep-until-expiring makes this idempotent: skips re-issuance when the
-            # existing cert has more than 30 days remaining.
-            sudo certbot certonly \
-              --standalone \
-              -d "$REDIS_HOSTNAME" \
-              --agree-tos --non-interactive \
-              --email "$CERTBOT_EMAIL" \
-              --keep-until-expiring
+            # Run certbot from its official Docker image — no host installation needed.
+            # --standalone binds port 80 inside the container (mapped to host :80).
+            # --keep-until-expiring skips re-issuance when the cert has >30 days left.
+            docker run --rm \
+              -p 80:80 \
+              -v /etc/letsencrypt:/etc/letsencrypt \
+              -v /var/lib/letsencrypt:/var/lib/letsencrypt \
+              certbot/certbot certonly \
+                --standalone \
+                -d "$REDIS_HOSTNAME" \
+                --agree-tos --non-interactive \
+                --email "$CERTBOT_EMAIL" \
+                --keep-until-expiring
             # Combine into a single PEM file (HAProxy format: fullchain + private key).
             sudo mkdir -p /opt/evalhub/certs
             sudo bash -c "cat /etc/letsencrypt/live/${REDIS_HOSTNAME}/fullchain.pem \
