@@ -220,14 +220,15 @@ jobs:
             curl -fsSL -o /opt/evalhub/haproxy-redis.cfg "${REPO_RAW}/backend/deploy/haproxy-redis.cfg"
             docker pull haproxy:3.0-alpine
             docker rm -f haproxy-redis 2>/dev/null || true
-            docker run -d \
-              --name haproxy-redis \
-              --network evalhub \
-              --restart unless-stopped \
-              -p 0.0.0.0:6380:6380 \
-              -v /opt/evalhub/haproxy-redis.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro \
-              -v /opt/evalhub/certs/redis.pem:/etc/haproxy/certs/redis.pem:ro \
-              haproxy:3.0-alpine
+              docker run -d \
+                --name haproxy-redis \
+                --network evalhub \
+                --restart unless-stopped \
+                --user root \
+                -p 0.0.0.0:6380:6380 \
+                -v /opt/evalhub/haproxy-redis.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro \
+                -v /opt/evalhub/certs/redis.pem:/etc/haproxy/certs/redis.pem:ro \
+                haproxy:3.0-alpine
             echo "HAProxy started on :6380"
 
             echo "=== Step 6: Start workers ==="
