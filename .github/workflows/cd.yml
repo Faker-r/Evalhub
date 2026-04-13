@@ -192,7 +192,7 @@ jobs:
             done
 
             echo "Pruning unused Docker images to free disk..."
-            docker image prune -f || true
+            docker image prune -a -f || true
 
             echo "=== Step 2: Authenticate with ECR ==="
             aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 214863335048.dkr.ecr.us-east-2.amazonaws.com
@@ -204,6 +204,8 @@ jobs:
 
             curl -fsSL -o fetch_secrets.sh "${REPO_RAW}/backend/deploy/fetch_secrets.sh"
             chmod +x fetch_secrets.sh
+            curl -fsSL -o cleanup_ecr_repo_images.sh "${REPO_RAW}/backend/deploy/cleanup_ecr_repo_images.sh"
+            chmod +x cleanup_ecr_repo_images.sh
 
             echo "Fetching secrets from AWS Secrets Manager..."
             bash ./fetch_secrets.sh
@@ -296,6 +298,9 @@ jobs:
 
             echo "=== Verifying workers ==="
             docker ps --filter "name=celery-worker" --format "table {{.Names}}\t{{.Status}}\t{{.State}}"
+
+            echo "Removing unused evalhub-backend images (keeps images still used by running containers)..."
+            bash /opt/evalhub/cleanup_ecr_repo_images.sh "${ECR_IMAGE_URI}"
 
             echo "Deployment complete!"
           REMOTE_SCRIPT

@@ -64,6 +64,9 @@ echo ""
 echo "Step 5: Starting new Celery workers..."
 docker-compose -f "$COMPOSE_FILE" up -d
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+bash "$SCRIPT_DIR/cleanup_ecr_repo_images.sh" "$ECR_IMAGE_URI"
+
 echo ""
 echo "Step 6: Waiting for workers to be ready..."
 sleep 15
