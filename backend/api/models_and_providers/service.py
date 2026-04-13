@@ -37,8 +37,8 @@ OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
 OPENROUTER_TIMEOUT_SECONDS = 30.0
 OPENROUTER_MODELS_CACHE_TTL_SECONDS = 30 * 60
 OPENROUTER_PROVIDERS_CACHE_TTL_SECONDS = 30 * 60
-OPENROUTER_ENDPOINTS_CACHE_TTL_SECONDS = 30 * 60
 OPENROUTER_PROVIDER_MODEL_MAP_CACHE_TTL_SECONDS = 30 * 60
+OPENROUTER_ALL_MODEL_ENDPOINTS_CACHE_TTL_SECONDS = 6 * 60 * 60
 
 
 class ModelsAndProvidersService:
@@ -504,24 +504,15 @@ class ModelsAndProvidersService:
             slug_by_normalized_name[normalize(provider.slug)] = provider.slug
 
         model_ids_by_provider_slug: dict[str, set[str]] = {}
-
-        providers_by_model_tasks = [
-            self.get_openrouter_providers_by_model(model.id)
-            for model in models_response.models
-        ]
-        providers_by_model_results = await asyncio.gather(
-            *providers_by_model_tasks, return_exceptions=True
+        all_endpoint_providers = (
+            await self._get_openrouter_all_model_endpoint_providers()
         )
 
-        for model, result in zip(
-            models_response.models, providers_by_model_results, strict=False
-        ):
-            if isinstance(result, Exception):
-                logger.warning(
-                    f"Failed to fetch providers for model '{model.id}': {result}"
-                )
+        for model in models_response.models:
+            provider_names = all_endpoint_providers.get(model.id, [])
+            if not isinstance(provider_names, list):
                 continue
-            for provider_name in result.providers:
+            for provider_name in provider_names:
                 provider_slug = slug_by_normalized_name.get(normalize(provider_name))
                 if not provider_slug:
                     continue
@@ -615,19 +606,12 @@ class ModelsAndProvidersService:
         ]
         return OpenRouterModelListResponse(models=models, total=len(models))
 
-    @cache_response(
-        key_generator=lambda self, model_id: f"openrouter:model-providers:{model_id}",
-        ttl=OPENROUTER_ENDPOINTS_CACHE_TTL_SECONDS,
-        revive=OpenRouterProvidersByModelResponse,
-    )
-    async def get_openrouter_providers_by_model(
+    async def _fetch_openrouter_endpoint_provider_names(
         self, model_id: str
-    ) -> OpenRouterProvidersByModelResponse:
-        """Get provider names for an OpenRouter model."""
+    ) -> list[str]:
         parts = model_id.split("/", 1)
         if len(parts) != 2:
-            return OpenRouterProvidersByModelResponse(model_id=model_id, providers=[])
-
+            return []
         author, slug = parts
         path = f"/models/{quote(author, safe='')}/{quote(slug, safe='')}/endpoints"
         try:
@@ -636,17 +620,50 @@ class ModelsAndProvidersService:
             logger.warning(
                 f"Failed to fetch OpenRouter model endpoints for '{model_id}': {e}"
             )
-            return OpenRouterProvidersByModelResponse(model_id=model_id, providers=[])
-
+            return []
         parsed = OpenRouterModelEndpointsApiResponse.model_validate(json)
-        providers = [
+        return [
             endpoint.provider_name
             for endpoint in parsed.data.endpoints
             if endpoint.provider_name
         ]
-        return OpenRouterProvidersByModelResponse(
-            model_id=model_id, providers=providers
-        )
+
+    @cache_response(
+        key_generator=lambda self: "openrouter:all-model-endpoint-providers",
+        ttl=OPENROUTER_ALL_MODEL_ENDPOINTS_CACHE_TTL_SECONDS,
+    )
+    async def _get_openrouter_all_model_endpoint_providers(
+        self,
+    ) -> dict[str, list[str]]:
+        models_response = await self._get_openrouter_models_base()
+        tasks = [
+            self._fetch_openrouter_endpoint_provider_names(m.id)
+            for m in models_response.models
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        out: dict[str, list[str]] = {}
+        for model, result in zip(models_response.models, results, strict=False):
+            if isinstance(result, Exception):
+                logger.warning(
+                    f"Failed to fetch providers for model '{model.id}': {result}"
+                )
+                out[model.id] = []
+            else:
+                out[model.id] = result
+        return out
+
+    async def get_openrouter_providers_by_model(
+        self, model_id: str
+    ) -> OpenRouterProvidersByModelResponse:
+        """Get provider names for an OpenRouter model."""
+        parts = model_id.split("/", 1)
+        if len(parts) != 2:
+            return OpenRouterProvidersByModelResponse(model_id=model_id, providers=[])
+        all_map = await self._get_openrouter_all_model_endpoint_providers()
+        names = all_map.get(model_id, [])
+        if not isinstance(names, list):
+            names = []
+        return OpenRouterProvidersByModelResponse(model_id=model_id, providers=names)
 
     async def _fetch_openrouter_json(self, path: str) -> dict:
         """Fetch JSON from OpenRouter API."""
