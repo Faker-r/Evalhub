@@ -77,12 +77,14 @@ jobs:
     name: Deploy to App Runner
     needs: build-and-push
     if: >-
-      ${{ (github.event.head_commit == null
+      ${{ always()
+      && !cancelled()
+      && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
+      && (github.event.head_commit == null
           || !contains(github.event.head_commit.message, '[skip-cd]'))
       && (github.event.head_commit == null
           || !contains(github.event.head_commit.message, '[only-')
-          || contains(github.event.head_commit.message, '[only-deploy-apprunner]'))
-      && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') }}
+          || contains(github.event.head_commit.message, '[only-deploy-apprunner]')) }}
 
     runs-on: ubuntu-latest
 
@@ -123,12 +125,14 @@ jobs:
     name: Deploy Celery Workers to EC2
     needs: build-and-push
     if: >-
-      ${{ (github.event.head_commit == null
+      ${{ always()
+      && !cancelled()
+      && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
+      && (github.event.head_commit == null
           || !contains(github.event.head_commit.message, '[skip-cd]'))
       && (github.event.head_commit == null
           || !contains(github.event.head_commit.message, '[only-')
-          || contains(github.event.head_commit.message, '[only-deploy-ec2-celery]'))
-      && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') }}
+          || contains(github.event.head_commit.message, '[only-deploy-ec2-celery]')) }}
 
     runs-on: ubuntu-latest
 
