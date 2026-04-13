@@ -11,12 +11,17 @@ on:
 env:
   AWS_REGION: us-east-2
   ECR_REPOSITORY: evalhub-backend
-  
+
 jobs:
   build-and-push:
     name: Build and Push to ECR
     runs-on: ubuntu-latest
-    if: ${{ !contains(github.event.head_commit.message, '[skip-cd]') }}
+    if: >-
+      ${{ (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[skip-cd]'))
+      && (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[only-')
+          || contains(github.event.head_commit.message, '[only-build-and-push]')) }}
     outputs:
       image-uri: ${{ steps.set-image-uri.outputs.image }}
       image-tag: ${{ steps.meta.outputs.tags }}
@@ -71,6 +76,14 @@ jobs:
   deploy-apprunner:
     name: Deploy to App Runner
     needs: build-and-push
+    if: >-
+      ${{ (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[skip-cd]'))
+      && (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[only-')
+          || contains(github.event.head_commit.message, '[only-deploy-apprunner]'))
+      && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') }}
+
     runs-on: ubuntu-latest
 
     steps:
@@ -109,12 +122,35 @@ jobs:
   deploy-ec2-celery:
     name: Deploy Celery Workers to EC2
     needs: build-and-push
+    if: >-
+      ${{ (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[skip-cd]'))
+      && (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[only-')
+          || contains(github.event.head_commit.message, '[only-deploy-ec2-celery]'))
+      && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') }}
+
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
+      - name: Configure AWS credentials
+        if: needs.build-and-push.result == 'skipped'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve ECR image (celery-only deploy)
+        id: celery-image
+        if: needs.build-and-push.result == 'skipped'
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          echo "uri=${ACCOUNT}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest" >> "$GITHUB_OUTPUT"
+
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
@@ -125,10 +161,10 @@ jobs:
       - name: Deploy to EC2
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
-          ECR_IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri }}
+          ECR_IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri || steps.celery-image.outputs.uri }}
         run: |
           ssh ec2-user@${{ secrets.EC2_HOST }} env \
-            ECR_IMAGE_URI="${{ needs.build-and-push.outputs.image-uri }}" \
+            ECR_IMAGE_URI="${{ needs.build-and-push.outputs.image-uri || steps.celery-image.outputs.uri }}" \
             REPO_RAW="https://raw.githubusercontent.com/${{ github.repository }}/main" \
             bash -s <<'REMOTE_SCRIPT'
             set -e
@@ -238,7 +274,6 @@ jobs:
               docker run -d \
                 --name celery-worker-$i \
                 --env-file /opt/evalhub/.env \
-                -e REDIS_URL="${INTERNAL_REDIS_URL}" \
                 -e CELERY_BROKER_URL="${INTERNAL_REDIS_URL}" \
                 --network evalhub \
                 --restart unless-stopped \
