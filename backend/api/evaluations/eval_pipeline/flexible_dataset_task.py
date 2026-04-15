@@ -25,13 +25,9 @@ from api.evaluations.schemas import (
 class DatasetFieldError(Exception):
     """Raised when a required field is missing from the dataset."""
 
-    pass
-
 
 class DatasetValueError(Exception):
     """Raised when a field value is invalid."""
-
-    pass
 
 
 class FlexibleDatasetTask:
@@ -127,7 +123,9 @@ class FlexibleDatasetTask:
 
             if output_type == OutputType.MULTIPLE_CHOICE:
                 # Get choices field with clear error message
-                choices = self._get_field_value(line, mc_config.choices_field, "choices")
+                choices = self._get_field_value(
+                    line, mc_config.choices_field, "choices"
+                )
 
                 # Validate choices is a list
                 if not isinstance(choices, list):

@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     HF_TOKEN: str | None = None
 
     REDIS_URL: str
+    CELERY_BROKER_URL: str
+
+    RATE_LIMIT: str = "20/second"
+    EVALUATION_RUN_RATE_LIMIT: str = "10/minute"
+    RATE_LIMIT_STRATEGY: str = "fixed-window"
+    RATE_LIMIT_FAIL_OPEN: bool = True
+    RATE_LIMIT_BEHIND_PROXY: bool = False
+    RATE_LIMIT_KEY_PREFIX: str = "ratelimit:"
 
     model_config = SettingsConfigDict(
         env_file=".env",

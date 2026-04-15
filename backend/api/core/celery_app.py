@@ -6,7 +6,7 @@ from api.core.config import settings
 def create_celery_app() -> Celery:
     app = Celery(
         "evalhub",
-        broker=settings.REDIS_URL,
+        broker=settings.CELERY_BROKER_URL,
         backend=None,
         include=["api.evaluations.tasks"],
     )

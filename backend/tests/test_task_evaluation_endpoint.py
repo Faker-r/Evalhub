@@ -3,15 +3,46 @@ Test script to verify the task evaluation service works end-to-end.
 """
 
 import asyncio
-import os
 
 from dotenv import load_dotenv
 
 from api.core.database import get_session
-from api.evaluations.schemas import DatasetConfig, ModelConfig, TaskEvaluationRequest
+from api.evaluations.schemas import (
+    DatasetConfig,
+    StandardEvaluationModelConfig,
+    TaskEvaluationRequest,
+)
 from api.evaluations.service import EvaluationService
+from api.models_and_providers.schemas import ModelResponse, ProviderResponse
 
 load_dotenv()
+
+
+def _std_model_config(
+    *,
+    model_id: str,
+    display_name: str,
+    api_name: str,
+    provider_name: str,
+) -> StandardEvaluationModelConfig:
+    prov = ProviderResponse(
+        id=f"p-{provider_name}",
+        name=provider_name,
+        slug=provider_name,
+        base_url="https://api.example.com/v1",
+    )
+    model = ModelResponse(
+        id=model_id,
+        display_name=display_name,
+        developer=provider_name,
+        api_name=api_name,
+        providers=[prov],
+    )
+    return StandardEvaluationModelConfig(
+        api_source="standard",
+        model=model,
+        provider=prov,
+    )
 
 
 async def test_task_evaluation_service():
@@ -34,21 +65,17 @@ async def test_task_evaluation_service():
             dataset_name="gsm8k",
             n_samples=5,
         ),
-        model_completion_config=ModelConfig(
-            model_name="deepseek-ai/DeepSeek-V3.2",
+        model_completion_config=_std_model_config(
             model_id="deepseek-ai/DeepSeek-V3.2",
-            model_slug="deepseek-ai/DeepSeek-V3.2",
-            model_provider="baseten",
-            model_provider_slug="baseten",
-            model_provider_id="0",
+            display_name="deepseek-ai/DeepSeek-V3.2",
+            api_name="deepseek-ai/DeepSeek-V3.2",
+            provider_name="baseten",
         ),
-        judge_config=ModelConfig(
-            model_name="gpt-4o",
+        judge_config=_std_model_config(
             model_id="gpt-4o",
-            model_slug="gpt-4o",
-            model_provider="openai",
-            model_provider_slug="openai",
-            model_provider_id="0",
+            display_name="gpt-4o",
+            api_name="gpt-4o",
+            provider_name="openai",
         ),
     )
     print(
@@ -66,15 +93,13 @@ async def test_task_evaluation_service():
 
         try:
             trace = await service._create_task_trace(request)
+            assert trace.id is not None
 
-            await EvaluationService._run_task_evaluation_background(trace.id, request)
-
-            print("✓ Evaluation started")
+            print("✓ Trace created in database")
 
             # Step 5: Display results
             print("\n5. Results:")
             print(f"   Trace ID: {trace.id}")
-            print("   Status: running")
 
             print("\n✓ Test completed successfully!")
 

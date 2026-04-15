@@ -99,7 +99,9 @@ async def get_current_user(
 
 
 async def get_optional_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(HTTPBearer(auto_error=False)),
+    credentials: HTTPAuthorizationCredentials | None = Depends(
+        HTTPBearer(auto_error=False)
+    ),
 ) -> CurrentUser | None:
     """Dependency to optionally get current authenticated user.
 

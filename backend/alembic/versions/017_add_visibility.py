@@ -20,13 +20,19 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     # Add visibility and user_id to datasets
-    op.add_column("datasets", sa.Column("visibility", sa.String(), nullable=False, server_default="public"))
+    op.add_column(
+        "datasets",
+        sa.Column("visibility", sa.String(), nullable=False, server_default="public"),
+    )
     op.add_column("datasets", sa.Column("user_id", sa.String(), nullable=True))
     op.create_index("ix_datasets_visibility", "datasets", ["visibility"])
     op.create_index("ix_datasets_user_id", "datasets", ["user_id"])
 
     # Add visibility and user_id to guidelines
-    op.add_column("guidelines", sa.Column("visibility", sa.String(), nullable=False, server_default="public"))
+    op.add_column(
+        "guidelines",
+        sa.Column("visibility", sa.String(), nullable=False, server_default="public"),
+    )
     op.add_column("guidelines", sa.Column("user_id", sa.String(), nullable=True))
     op.create_index("ix_guidelines_visibility", "guidelines", ["visibility"])
     op.create_index("ix_guidelines_user_id", "guidelines", ["user_id"])

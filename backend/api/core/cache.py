@@ -1,9 +1,12 @@
 import json
+import logging
 from typing import Any, Callable, TypeVar
-import redis
+
 from pydantic import BaseModel
 
-from api.core.config import settings
+from api.core.redis_client import get_redis_client
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -26,22 +29,44 @@ def _deserialize(
 
 
 class CacheService:
-    def __init__(self):
-        self._redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+    def _get_client(self):
+        return get_redis_client()
 
     def get(
         self, key: str, revive: type[T] | Callable[[Any], T] | None = None
     ) -> T | dict[str, Any] | None:
-        raw = self._redis_client.get(key)
-        if raw is None:
+        try:
+            client = self._get_client()
+            if client is None:
+                logger.warning(f"Redis client unavailable for GET key {key}")
+                return None
+            raw = client.get(key)
+            if raw is None:
+                return None
+            return _deserialize(raw, revive)
+        except Exception as e:
+            logger.warning(f"Redis GET failed for key {key}: {e}")
             return None
-        return _deserialize(raw, revive)
 
     def set(self, key: str, value: Any, ex: int | None = None) -> None:
-        self._redis_client.set(key, _serialize(value), ex=ex)
+        try:
+            client = self._get_client()
+            if client is None:
+                logger.warning(f"Redis client unavailable for SET key {key}")
+                return
+            client.set(key, _serialize(value), ex=ex)
+        except Exception as e:
+            logger.warning(f"Redis SET failed for key {key}: {e}")
 
     def delete(self, key: str) -> None:
-        self._redis_client.delete(key)
+        try:
+            client = self._get_client()
+            if client is None:
+                logger.warning(f"Redis client unavailable for DELETE key {key}")
+                return
+            client.delete(key)
+        except Exception as e:
+            logger.warning(f"Redis DELETE failed for key {key}: {e}")
 
 
 cache_service = CacheService()

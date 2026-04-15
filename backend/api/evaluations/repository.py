@@ -100,7 +100,9 @@ class EvaluationRepository:
     async def get_traces_by_user(self, user_id: str, limit: int = 20, offset: int = 0) -> tuple[list[Trace], int, dict[str, int]]:
         """Get paginated traces for a user, including total status counts."""
         base = select(Trace).where(Trace.user_id == user_id)
-        count_result = await self.session.execute(select(func.count()).select_from(base.subquery()))
+        count_result = await self.session.execute(
+            select(func.count()).select_from(base.subquery())
+        )
         total = count_result.scalar_one()
 
         status_query = (

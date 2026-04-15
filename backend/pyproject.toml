@@ -3,13 +3,14 @@ name = "evalhub"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12,<4.0.0"
+requires-python = ">=3.11,<4.0.0"
 dependencies = [
     "alembic>=1.14.0",
     "asyncpg>=0.30.0",
     "fastapi>=0.115.6",
     "pydantic-settings>=2.6.1",
     "python-dotenv>=1.0.1",
+    "slowapi (>=0.1.9)",
     "sqlalchemy>=2.0.36",
     "greenlet>=3.0.0",
     "uvicorn>=0.32.1",
@@ -41,6 +42,7 @@ dependencies = [
 addopts = "-v --cov=api --cov-report=term-missing"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_test_loop_scope = "session"
 
 [tool.black]
 line-length = 88

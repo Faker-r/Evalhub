@@ -8,10 +8,7 @@ This module provides:
 - Common test data factories
 """
 
-import asyncio
-import os
 from typing import AsyncGenerator, Generator
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -19,30 +16,35 @@ import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 load_dotenv()
 
-from api.core.database import get_session
+from slowapi import Limiter
+
+from api.core.config import settings
+from api.core.ratelimiter import rate_limit_key
 from api.core.security import CurrentUser, get_current_user
 from api.main import app
 
 # =============================================================================
-# Event Loop Configuration
-# =============================================================================
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an event loop for the test session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-# =============================================================================
 # Test Client Fixtures
 # =============================================================================
+
+
+@pytest.fixture(autouse=True)
+def _memory_rate_limit_storage():
+    """Avoid requiring Redis for rate limits during tests (SlowAPI uses app.state.limiter)."""
+    orig = app.state.limiter
+    app.state.limiter = Limiter(
+        key_func=rate_limit_key,
+        application_limits=["1000/second"],
+        default_limits=[],
+        storage_uri="memory://",
+        strategy=settings.RATE_LIMIT_STRATEGY,
+        swallow_errors=settings.RATE_LIMIT_FAIL_OPEN,
+    )
+    yield
+    app.state.limiter = orig
 
 
 @pytest.fixture

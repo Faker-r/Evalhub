@@ -37,7 +37,9 @@ async def get_guidelines(
     current_user: CurrentUser | None = Depends(get_optional_current_user),
 ) -> GuidelineListResponse:
     """Get all guidelines."""
-    logger.debug(f"Getting all guidelines for user {current_user.email if current_user else 'anonymous'}")
+    logger.debug(
+        f"Getting all guidelines for user {current_user.email if current_user else 'anonymous'}"
+    )
     user_id = current_user.id if current_user else None
     guidelines = await GuidelineService(session).get_all_guidelines(user_id)
     return GuidelineListResponse(guidelines=guidelines)

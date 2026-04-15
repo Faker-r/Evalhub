@@ -313,7 +313,7 @@ class EvaluationService:
                 "model_name": model_name,
                 "base_url": model_url,
                 "api_key": model_api_key,
-                "is_reasoning_model": False # Default to False for standard models
+                "is_reasoning_model": False,  # Default to False for standard models
             }
         else:
             model_api_key = self.s3.download_api_key(
@@ -330,7 +330,8 @@ class EvaluationService:
                     }
                 },
                 "is_reasoning_model": any(
-                    "reasoning" in p.lower() for p in model_completion_config.model.supported_parameters or []
+                    "reasoning" in p.lower()
+                    for p in model_completion_config.model.supported_parameters or []
                 ),
             }
 
@@ -358,7 +359,9 @@ class EvaluationService:
     async def get_traces(self, limit: int = 20, offset: int = 0) -> tuple[list[Trace], int, dict[str, int]]:
         """Get paginated traces for the current user."""
         await self.repository.mark_stale_traces_failed(self.user_id)
-        return await self.repository.get_traces_by_user(self.user_id, limit=limit, offset=offset)
+        return await self.repository.get_traces_by_user(
+            self.user_id, limit=limit, offset=offset
+        )
 
     async def get_distinct_models(self) -> list[dict]:
         """Get distinct model/provider pairs the current user has evaluated."""

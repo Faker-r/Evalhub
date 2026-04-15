@@ -53,14 +53,14 @@ class DatasetRepository:
             list[Dataset]: List of visible datasets
         """
         query = select(Dataset).order_by(Dataset.id.desc())
-        
+
         if user_id:
             query = query.where(
                 (Dataset.visibility == "public") | (Dataset.user_id == user_id)
             )
         else:
             query = query.where(Dataset.visibility == "public")
-        
+
         result = await self.session.execute(query)
         return list(result.scalars().all())
 

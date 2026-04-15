@@ -226,3 +226,5 @@ traces_rows.csv
 landing/*
 
 *_cache/
+
+.DS_Store

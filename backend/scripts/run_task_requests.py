@@ -7,6 +7,7 @@ Auth: set AUTH_EMAIL + AUTH_PASSWORD, or the script uses default admin login.
 import os
 import sys
 import time
+
 import httpx
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,10 +34,10 @@ TASKS = [
 #     ("moonshotai/kimi-k2.5", "MoonshotAI: Kimi K2.5", ["BaseTen", "Together"]),
 # ]
 MODELS_AND_PROVIDERS = [
-    ('moonshotai/kimi-k2.5', 'MoonshotAI: Kimi K2.5', ['BaseTen']),
-    ('z-ai/glm-4.6', 'Z.AI: GLM 4.6', ['BaseTen']),
-    ('openai/gpt-oss-120b', 'OpenAI: gpt-oss-120b', ['BaseTen']),
-    ('deepseek/deepseek-chat-v3-0324', 'DeepSeek: DeepSeek Chat V3 0324', ['BaseTen']),
+    ("moonshotai/kimi-k2.5", "MoonshotAI: Kimi K2.5", ["BaseTen"]),
+    ("z-ai/glm-4.6", "Z.AI: GLM 4.6", ["BaseTen"]),
+    ("openai/gpt-oss-120b", "OpenAI: gpt-oss-120b", ["BaseTen"]),
+    ("deepseek/deepseek-chat-v3-0324", "DeepSeek: DeepSeek Chat V3 0324", ["BaseTen"]),
 ]
 
 # Provider names and slugs from OpenRouter log (provider_name as key, slug for API)
@@ -95,7 +96,7 @@ def main() -> None:
                 )
 
     for i, payload in enumerate(requests_to_send):
-        
+
         with httpx.Client(timeout=120.0) as client:
             task_name = payload["task_name"]
             model = payload["model_completion_config"]["model"]["id"]
