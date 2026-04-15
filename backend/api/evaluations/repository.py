@@ -97,18 +97,43 @@ class EvaluationRepository:
         if stale_traces:
             await self.session.commit()
 
-    async def get_traces_by_user(
-        self, user_id: str, limit: int = 20, offset: int = 0
-    ) -> tuple[list[Trace], int]:
-        """Get paginated traces for a user."""
+    async def get_traces_by_user(self, user_id: str, limit: int = 20, offset: int = 0) -> tuple[list[Trace], int, dict[str, int]]:
+        """Get paginated traces for a user, including total status counts."""
         base = select(Trace).where(Trace.user_id == user_id)
         count_result = await self.session.execute(
             select(func.count()).select_from(base.subquery())
         )
         total = count_result.scalar_one()
+
+        status_query = (
+            select(Trace.status, func.count())
+            .where(Trace.user_id == user_id)
+            .group_by(Trace.status)
+        )
+        status_result = await self.session.execute(status_query)
+        status_counts = {row[0]: row[1] for row in status_result.all()}
+
         query = base.order_by(Trace.id.desc()).limit(limit).offset(offset)
         result = await self.session.execute(query)
-        return list(result.scalars().all()), total
+        return list(result.scalars().all()), total, status_counts
+
+    async def get_distinct_models_by_user(self, user_id: str) -> list[dict]:
+        """Get distinct completion_model + model_provider pairs for a user's completed traces."""
+        query = (
+            select(Trace.completion_model_config)
+            .where(Trace.user_id == user_id, Trace.status == "completed")
+            .distinct()
+        )
+        result = await self.session.execute(query)
+        seen = set()
+        models = []
+        for (config,) in result.all():
+            trace = Trace(completion_model_config=config)
+            key = (trace.completion_model, trace.model_provider)
+            if key not in seen and key[0]:
+                seen.add(key)
+                models.append({"model": trace.completion_model, "provider": trace.model_provider})
+        return models
 
     # ==================== TraceEvent Methods ====================
 

@@ -101,6 +101,7 @@ export function ModelSelection({ value, onChange, label = "Model Selection", ini
       return;
     }
 
+    const isByModel = openRouterTab === "by-model";
     onChange({
       is_openrouter: true,
       openrouter_model_id: model.id,
@@ -114,8 +115,8 @@ export function ModelSelection({ value, onChange, label = "Model Selection", ini
       openrouter_model_supported_parameters: model.supported_parameters,
       openrouter_model_per_request_limits: model.per_request_limits,
       openrouter_model_provider_slugs: model.provider_slugs,
-      openrouter_provider_slug: value.openrouter_provider_slug,
-      openrouter_provider_name: value.openrouter_provider_name,
+      openrouter_provider_slug: isByModel ? undefined : value.openrouter_provider_slug,
+      openrouter_provider_name: isByModel ? undefined : value.openrouter_provider_name,
     });
     if (openRouterTab === "by-model") {
       setTimeout(() => byModelStep2Ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);

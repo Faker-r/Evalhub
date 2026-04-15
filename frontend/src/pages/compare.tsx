@@ -6,7 +6,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Sheet,
@@ -27,7 +26,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
-import { ModelSelection } from "@/components/model-selection";
 import {
   BarChart,
   Bar,
@@ -38,9 +36,11 @@ import {
   Legend,
   Tooltip as RechartsTooltip,
 } from "recharts";
-import { AlertCircle, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Plus, Trash2, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
+import { useAuth } from "@/hooks/use-auth";
 import {
   buildComparisonRows,
   buildGroupedBarData,
@@ -52,27 +52,13 @@ import {
   getNumericForDiff,
 } from "@/lib/comparison-adapter";
 import { cn } from "@/lib/utils";
-import type { ModelConfig } from "@/types/model-config";
-
-function configToPair(config: ModelConfig): { model: string; provider: string; label: string } | null {
-  if (config.is_openrouter) {
-    const model = config.openrouter_model_id ?? "";
-    const provider = config.openrouter_provider_slug ?? "openrouter";
-    const label = (config.openrouter_model_id ?? config.openrouter_model_name ?? model) || "OpenRouter model";
-    return model ? { model, provider, label } : null;
-  }
-  const model = (config.api_name ?? config.model_name) ?? "";
-  const provider = config.provider_slug ?? "";
-  const label = (config.api_name ?? config.model_name ?? model) || "Model";
-  return model && provider ? { model, provider, label } : null;
-}
 
 const BAR_COLORS = ["#39E29D", "#6366f1", "#f59e0b", "#ec4899", "#8b5cf6"];
 
 export default function Compare() {
+  const { isAuthenticated } = useAuth();
   const [pairs, setPairs] = useState<{ id: string; model: string; provider: string; label: string }[]>([]);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [addModalConfig, setAddModalConfig] = useState<ModelConfig>({ is_openrouter: false });
   const [overlappingCount, setOverlappingCount] = useState<number | null>(null);
   const [overlappingLoading, setOverlappingLoading] = useState(false);
   const [report, setReport] = useState<{
@@ -133,16 +119,21 @@ export default function Compare() {
       .finally(() => setReportLoading(false));
   }, [modelProviderPairs, pairs.length]);
 
-  const addPair = useCallback(() => {
-    const pair = configToPair(addModalConfig);
-    if (!pair) return;
+  const { data: myModelsData, isLoading: myModelsLoading } = useQuery({
+    queryKey: ["my-models"],
+    queryFn: () => apiClient.getMyModels(),
+    enabled: isAuthenticated,
+  });
+
+  const myModels = myModelsData?.models || [];
+
+  const addModelToPairs = useCallback((model: string, provider: string) => {
     setPairs((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), ...pair },
+      { id: crypto.randomUUID(), model, provider, label: model },
     ]);
     setAddModalOpen(false);
-    setAddModalConfig({ is_openrouter: false });
-  }, [addModalConfig]);
+  }, []);
 
   const removePair = useCallback((id: string) => {
     setPairs((prev) => prev.filter((p) => p.id !== id));
@@ -530,16 +521,41 @@ export default function Compare() {
           <DialogHeader>
             <DialogTitle>Add model to compare</DialogTitle>
           </DialogHeader>
-          <ModelSelection
-            value={addModalConfig}
-            onChange={setAddModalConfig}
-            label=""
-          />
-          <DialogFooter>
-            <Button onClick={addPair} disabled={!configToPair(addModalConfig)}>
-              Add to comparison
-            </Button>
-          </DialogFooter>
+          {myModelsLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : myModels.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No evaluated models found.</p>
+              <p className="text-sm mt-1">Run an evaluation first to compare models.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {myModels
+                .filter((m) => !pairs.some((p) => p.model === m.model && p.provider === m.provider))
+                .map((m) => (
+                  <Card
+                    key={`${m.model}|${m.provider}`}
+                    className="cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => addModelToPairs(m.model, m.provider)}
+                  >
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div>
+                        <div className="font-medium text-sm">{m.model}</div>
+                        <div className="text-xs text-muted-foreground">{m.provider}</div>
+                      </div>
+                      <Plus className="w-4 h-4 text-muted-foreground" />
+                    </CardContent>
+                  </Card>
+                ))}
+              {myModels.length > 0 && myModels.every((m) => pairs.some((p) => p.model === m.model && p.provider === m.provider)) && (
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  All your evaluated models have been added.
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

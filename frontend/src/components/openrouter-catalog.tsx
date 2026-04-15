@@ -72,7 +72,7 @@ export function OpenRouterModelCatalog({
   showRunButton = false,
   className,
 }: OpenRouterModelCatalogProps) {
-  const [search, setSearch] = useState(selectedModelId ?? "");
+  const [search, setSearch] = useState("");
   const [providerFilter, setProviderFilter] = useState(initialProviderSlug);
   const [sortBy, setSortBy] = useState<OpenRouterModelSort>("name");
   const [page, setPage] = useState(0);
@@ -124,6 +124,7 @@ export function OpenRouterModelCatalog({
             value={providerFilter}
             onChange={(event) => {
               setProviderFilter(event.target.value);
+              setSearch("");
               setPage(0);
             }}
             className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -140,6 +141,7 @@ export function OpenRouterModelCatalog({
           value={sortBy}
           onChange={(event) => {
             setSortBy(event.target.value as OpenRouterModelSort);
+            setSearch("");
             setPage(0);
           }}
           className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -208,7 +210,14 @@ export function OpenRouterModelCatalog({
                   canSelect && "cursor-pointer transition-colors",
                   isSelected && "border-emerald-600 bg-emerald-50/40"
                 )}
-                onClick={canSelect ? () => onSelectModel(isSelected ? null : model) : undefined}
+                onClick={
+                  canSelect
+                    ? () => {
+                        onSelectModel(isSelected ? null : model);
+                        setSearch("");
+                      }
+                    : undefined
+                }
               >
                 <CardHeader className="pb-3">
                   <div className="min-w-0">
@@ -324,7 +333,7 @@ export function OpenRouterProviderCatalog({
   showRunButton = false,
   className,
 }: OpenRouterProviderCatalogProps) {
-  const [search, setSearch] = useState(selectedProviderSlug ?? "");
+  const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<OpenRouterProviderSort>("models");
   const [page, setPage] = useState(0);
   const hasRestrictedProviders = Boolean(onlyProviderSlugs?.length);
@@ -394,6 +403,7 @@ export function OpenRouterProviderCatalog({
           value={sortBy}
           onChange={(event) => {
             setSortBy(event.target.value as OpenRouterProviderSort);
+            setSearch("");
             setPage(0);
           }}
           className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -452,7 +462,14 @@ export function OpenRouterProviderCatalog({
                   canSelect && "cursor-pointer transition-colors",
                   isSelected && "border-emerald-600 bg-emerald-50/40"
                 )}
-                onClick={canSelect ? () => onSelectProvider(isSelected ? null : provider) : undefined}
+                onClick={
+                  canSelect
+                    ? () => {
+                        onSelectProvider(isSelected ? null : provider);
+                        setSearch("");
+                      }
+                    : undefined
+                }
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-4">

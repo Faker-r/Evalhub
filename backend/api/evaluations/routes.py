@@ -85,10 +85,18 @@ async def get_traces(
 ) -> TraceListResponse:
     """Get evaluation traces for the current user."""
     logger.debug(f"Getting traces for user {current_user.email}")
-    traces, total = await EvaluationService(session, current_user.id).get_traces(
-        limit=limit, offset=offset
-    )
-    return TraceListResponse(traces=traces, total=total)
+    traces, total, status_counts = await EvaluationService(session, current_user.id).get_traces(limit=limit, offset=offset)
+    return TraceListResponse(traces=traces, total=total, status_counts=status_counts)
+
+
+@router.get("/my-models")
+async def get_my_models(
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """Get distinct model/provider pairs the current user has evaluated."""
+    models = await EvaluationService(session, current_user.id).get_distinct_models()
+    return {"models": models}
 
 
 @router.get("/traces/{trace_id}", response_model=TraceResponse)

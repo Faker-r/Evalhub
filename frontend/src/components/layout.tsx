@@ -212,7 +212,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Footer */}
       <footer className="border-t border-border bg-white py-12">
-        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="container mx-auto px-4">
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="flex items-center justify-center w-6 h-6 bg-black rounded text-white">
@@ -223,33 +223,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <p className="text-sm text-muted-foreground">
               The modern standard for LLM evaluation and benchmarking.
             </p>
-          </div>
-          
-          <div>
-            <h4 className="font-bold mb-4 text-sm">Platform</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/" className="hover:text-black">Leaderboard</Link></li>
-              <li><Link href="/models" className="hover:text-black">Models</Link></li>
-              <li><Link href="/providers" className="hover:text-black">Providers</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold mb-4 text-sm">Company</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-black">About</a></li>
-              <li><a href="#" className="hover:text-black">Blog</a></li>
-              <li><a href="#" className="hover:text-black">Careers</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold mb-4 text-sm">Connect</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-black">Twitter</a></li>
-              <li><a href="#" className="hover:text-black">GitHub</a></li>
-              <li><a href="#" className="hover:text-black">Discord</a></li>
-            </ul>
           </div>
         </div>
       </footer>

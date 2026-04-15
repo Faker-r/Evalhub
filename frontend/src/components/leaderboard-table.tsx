@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpRight, TrendingUp, Loader2, ArrowUpDown } from "lucide-react";
+import { TrendingUp, Loader2, ArrowUpDown } from "lucide-react";
 import { apiClient } from "@/lib/api";
 
 function formatModelProvider(provider: string) {
@@ -272,13 +272,10 @@ export function LeaderboardTable() {
                           #{entry.rank}
                         </TableCell>
                         <TableCell>
-                          <div className="font-bold flex items-center gap-2">
-                            {entry.completion_model}
-                            <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 text-mint-600 transition-opacity" />
-                          </div>
+                          <div className="font-bold">{entry.completion_model}</div>
                         </TableCell>
                         <TableCell>{formatModelProvider(entry.model_provider)}</TableCell>
-                        {datasetMetricStructure.map(({ dataset, metrics }) => 
+                        {datasetMetricStructure.map(({ dataset, metrics }) =>
                           metrics.map(metric => {
                             const score = entry.scoresByDataset?.get(dataset)?.get(metric);
                             return (
@@ -312,10 +309,7 @@ export function LeaderboardTable() {
                             #{entry.rank}
                           </TableCell>
                           <TableCell>
-                            <div className="font-bold flex items-center gap-2">
-                              {entry.completion_model}
-                              <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 text-mint-600 transition-opacity" />
-                            </div>
+                            <div className="font-bold">{entry.completion_model}</div>
                           </TableCell>
                           <TableCell>{formatModelProvider(entry.model_provider)}</TableCell>
                           {metricNames.map(metricName => {
