@@ -48,7 +48,15 @@ export function LeaderboardTable() {
   });
   const metricNames = Array.from(allMetricNames).sort();
 
-  const allEntriesByModel = new Map<string, any>();
+  interface AggregatedModelEntry {
+    completion_model: string;
+    model_provider: string;
+    trace_id: string;
+    created_at: string;
+    scoresByDataset: Map<string, Map<string, { mean: number; std: number; failed: number }>>;
+  }
+
+  const allEntriesByModel = new Map<string, AggregatedModelEntry>();
   if (showAllDatasets) {
     datasets.forEach(dataset => {
       dataset.entries.forEach(entry => {
@@ -296,8 +304,14 @@ export function LeaderboardTable() {
                     ))
                   ) : (
                     rankedEntries.map((entry) => {
+                      interface Score {
+                        metric_name: string;
+                        mean: number;
+                        std: number;
+                        failed: number;
+                      }
                       const scoresByMetric = new Map(
-                        entry.scores.map((s: any) => [s.metric_name, s])
+                        entry.scores.map((s: Score) => [s.metric_name, s])
                       );
                       
                       return (
@@ -319,8 +333,8 @@ export function LeaderboardTable() {
                               <TableCell key={metricName} className={`text-right font-mono text-sm ${isSortedBy ? 'bg-mint-50/50' : ''}`}>
                                 {score ? (
                                   <div>
-                                    <div className={isSortedBy ? "font-bold text-lg" : "font-bold"}>{((score as any).mean).toFixed(1)}</div>
-                                    <div className="text-xs text-muted-foreground">± {((score as any).std).toFixed(1)}</div>
+                                    <div className={isSortedBy ? "font-bold text-lg" : "font-bold"}>{score.mean.toFixed(1)}</div>
+                                    <div className="text-xs text-muted-foreground">± {score.std.toFixed(1)}</div>
                                   </div>
                                 ) : (
                                   <span className="text-muted-foreground">—</span>

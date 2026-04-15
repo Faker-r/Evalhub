@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Database, Upload, FileText, Calendar, Layers, Eye, Lock, Globe } from "lucide-react";
+import { Database, Upload, FileText, Layers, Eye, Lock, Globe } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { TagInput } from "@/components/ui/tag-input";
 
-const ExpandableCell = ({ value }: { value: any }) => {
+const ExpandableCell = ({ value }: { value: unknown }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (value === undefined || value === null) {

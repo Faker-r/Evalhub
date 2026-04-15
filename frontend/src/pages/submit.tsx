@@ -7,8 +7,6 @@ import { useState, useEffect, useRef } from "react";
 import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server, ChevronDown, Eye, Search, HelpCircle, BookOpen } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiClient, type EvaluationModelConfig } from "@/lib/api";
@@ -21,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface ExpandableCellProps {
-  value: any;
+  value: unknown;
 }
 
 const ExpandableCell = ({ value }: ExpandableCellProps) => {
@@ -510,12 +508,12 @@ export default function Submit() {
   const [judgeType, setJudgeType] = useState<"llm_as_judge" | "f1_score" | "exact_match" | null>(null);
 
   // Benchmark-specific state
-  const [selectedBenchmark, setSelectedBenchmark] = useState<any>(null);
+  const [selectedBenchmark, setSelectedBenchmark] = useState<Record<string, unknown> | null>(null);
   const [selectedTask, setSelectedTask] = useState("");
   const [numFewShots, setNumFewShots] = useState(0);
   const [numSamples, setNumSamples] = useState<number | undefined>(undefined);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
+  const [taskDetails, setTaskDetails] = useState<Record<string, Record<string, unknown>>>({});
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
 
   // Search state
@@ -574,7 +572,7 @@ export default function Submit() {
   const apiKeys = apiKeysData?.api_key_providers || [];
 
   // Get the selected dataset's ID for inline preview in Step 2
-  const selectedDatasetId = datasets.find((ds: any) => ds.name === selectedDataset)?.id;
+  const selectedDatasetId = datasets.find((ds) => (ds as { name: string; id: number }).name === selectedDataset)?.id;
 
   // Fetch preview for the selected dataset (for inline display in Step 2)
   const { data: inlinePreviewData, isLoading: isInlinePreviewLoading } = useQuery({
@@ -608,7 +606,7 @@ export default function Submit() {
     const taskName = params.get('task');
 
     if (benchmarkId && taskName) {
-      const benchmark = benchmarks.find((b: any) => b.id === parseInt(benchmarkId));
+      const benchmark = benchmarks.find((b) => (b as { id: number }).id === parseInt(benchmarkId));
       if (benchmark) {
         setSelectedBenchmark(benchmark);
         setSelectionType("benchmark");
@@ -692,12 +690,12 @@ export default function Submit() {
   }, [isCompletionConfigured, judgeType, judgeSectionRef, wasCompletionConfiguredRef]);
 
   // Filter datasets and benchmarks
-  const filteredDatasets = datasets.filter((ds: any) =>
+  const filteredDatasets = datasets.filter((ds: Record<string, unknown>) =>
     (ds.name && ds.name.toLowerCase().includes(datasetSearch.toLowerCase())) ||
     (ds.category && ds.category.toLowerCase().includes(datasetSearch.toLowerCase()))
   );
 
-  const filteredBenchmarks = benchmarks.filter((bm: any) =>
+  const filteredBenchmarks = benchmarks.filter((bm: Record<string, unknown>) =>
     (bm.dataset_name && bm.dataset_name.toLowerCase().includes(benchmarkSearch.toLowerCase())) ||
     (bm.description && bm.description.toLowerCase().includes(benchmarkSearch.toLowerCase()))
   );
@@ -900,14 +898,14 @@ export default function Submit() {
     }
   };
 
-  const handleSelectDataset = (ds: any) => {
+  const handleSelectDataset = (ds: Record<string, unknown>) => {
     resetDownstreamState(1);
     setSelectedDataset(ds.name);
     setSelectionType("dataset");
     setSelectedBenchmark(null);
   };
 
-  const handleSelectBenchmark = (benchmark: any) => {
+  const handleSelectBenchmark = (benchmark: Record<string, unknown>) => {
     resetDownstreamState(1);
     setSelectedBenchmark(benchmark);
     setSelectionType("benchmark");
@@ -941,7 +939,7 @@ export default function Submit() {
     }
   };
 
-  const NestedValue = ({ value, depth = 0 }: { value: any; depth?: number }) => {
+  const NestedValue = ({ value, depth = 0 }: { value: unknown; depth?: number }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     if (value === null || value === undefined) {
@@ -1097,7 +1095,7 @@ export default function Submit() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                          {filteredDatasets.map((ds: any) => (
+                          {filteredDatasets.map((ds: Record<string, unknown>) => (
                             <div
                               key={ds.id}
                               onClick={() => handleSelectDataset(ds)}
@@ -1155,7 +1153,7 @@ export default function Submit() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                          {filteredBenchmarks.map((benchmark: any) => (
+                          {filteredBenchmarks.map((benchmark: Record<string, unknown>) => (
                             <div
                               key={benchmark.id}
                               onClick={() => handleSelectBenchmark(benchmark)}
@@ -1216,7 +1214,7 @@ export default function Submit() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <span className="text-xs text-muted-foreground">
-                                  Fields: {Array.from(new Set(inlinePreviewData.samples.flatMap((s: any) => Object.keys(s)))).join(", ")}
+                                  Fields: {Array.from(new Set(inlinePreviewData.samples.flatMap((s: Record<string, unknown>) => Object.keys(s)))).join(", ")}
                                 </span>
                                 <ChevronDown className="w-4 h-4 text-muted-foreground" />
                               </div>
@@ -1230,7 +1228,7 @@ export default function Submit() {
                                     <TableRow>
                                       <TableHead className="w-12 text-xs">#</TableHead>
                                       {Array.from(
-                                        new Set(inlinePreviewData.samples.flatMap((s: any) => Object.keys(s)))
+                                        new Set(inlinePreviewData.samples.flatMap((s: Record<string, unknown>) => Object.keys(s)))
                                       ).map((key) => (
                                         <TableHead key={key as string} className="text-xs font-mono">
                                           {key as string}
@@ -1239,11 +1237,11 @@ export default function Submit() {
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {inlinePreviewData.samples.slice(0, 5).map((sample: any, idx: number) => (
+                                    {inlinePreviewData.samples.slice(0, 5).map((sample: Record<string, unknown>, idx: number) => (
                                       <TableRow key={idx}>
                                         <TableCell className="text-muted-foreground text-xs">{idx + 1}</TableCell>
                                         {Array.from(
-                                          new Set(inlinePreviewData.samples.flatMap((s: any) => Object.keys(s)))
+                                          new Set(inlinePreviewData.samples.flatMap((s: Record<string, unknown>) => Object.keys(s)))
                                         ).map((key) => (
                                           <TableCell key={key as string} className="max-w-xs align-top">
                                             <ExpandableCell value={sample[key as string]} />
@@ -1884,7 +1882,7 @@ export default function Submit() {
                   <span className="font-medium">Available fields: </span>
                   <span className="font-mono text-xs">
                     {Array.from(
-                      new Set(previewData.samples.flatMap((s: any) => Object.keys(s)))
+                      new Set(previewData.samples.flatMap((s: Record<string, unknown>) => Object.keys(s)))
                     ).join(", ")}
                   </span>
                 </span>
@@ -1903,7 +1901,7 @@ export default function Submit() {
                   // Get all unique keys from all samples
                   const allKeys = Array.from(
                     new Set(
-                      previewData.samples.flatMap((sample: any) => Object.keys(sample))
+                      previewData.samples.flatMap((sample: Record<string, unknown>) => Object.keys(sample))
                     )
                   );
 
@@ -1919,7 +1917,7 @@ export default function Submit() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {previewData.samples.map((sample: any, idx: number) => (
+                          {previewData.samples.map((sample: Record<string, unknown>, idx: number) => (
                             <TableRow key={idx}>
                               <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                               {allKeys.map((key) => (
@@ -1956,7 +1954,7 @@ export default function Submit() {
                   <span className="font-medium">Available fields: </span>
                   <span className="font-mono text-xs">
                     {Array.from(
-                      new Set(benchmarkPreviewData.samples.flatMap((s: any) => Object.keys(s)))
+                      new Set(benchmarkPreviewData.samples.flatMap((s: Record<string, unknown>) => Object.keys(s)))
                     ).join(", ")}
                   </span>
                 </span>
@@ -1976,7 +1974,7 @@ export default function Submit() {
                   // Get all unique keys from all samples
                   const allKeys = Array.from(
                     new Set(
-                      benchmarkPreviewData.samples.flatMap((sample: any) => Object.keys(sample))
+                      benchmarkPreviewData.samples.flatMap((sample: Record<string, unknown>) => Object.keys(sample))
                     )
                   );
 
@@ -1992,7 +1990,7 @@ export default function Submit() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {benchmarkPreviewData.samples.map((sample: any, idx: number) => (
+                          {benchmarkPreviewData.samples.map((sample: Record<string, unknown>, idx: number) => (
                             <TableRow key={idx}>
                               <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                               {allKeys.map((key) => (

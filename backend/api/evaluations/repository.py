@@ -97,7 +97,9 @@ class EvaluationRepository:
         if stale_traces:
             await self.session.commit()
 
-    async def get_traces_by_user(self, user_id: str, limit: int = 20, offset: int = 0) -> tuple[list[Trace], int, dict[str, int]]:
+    async def get_traces_by_user(
+        self, user_id: str, limit: int = 20, offset: int = 0
+    ) -> tuple[list[Trace], int, dict[str, int]]:
         """Get paginated traces for a user, including total status counts."""
         base = select(Trace).where(Trace.user_id == user_id)
         count_result = await self.session.execute(
@@ -132,7 +134,9 @@ class EvaluationRepository:
             key = (trace.completion_model, trace.model_provider)
             if key not in seen and key[0]:
                 seen.add(key)
-                models.append({"model": trace.completion_model, "provider": trace.model_provider})
+                models.append(
+                    {"model": trace.completion_model, "provider": trace.model_provider}
+                )
         return models
 
     # ==================== TraceEvent Methods ====================

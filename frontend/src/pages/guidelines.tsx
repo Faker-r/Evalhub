@@ -31,7 +31,7 @@ export default function Guidelines() {
     category: "",
     categories: [] as string[],
     scoring_scale: "numeric" as "boolean" | "custom_category" | "numeric" | "percentage",
-    scoring_scale_config: { min_value: 0, max_value: 10 } as any,
+    scoring_scale_config: { min_value: 0, max_value: 10 } as Record<string, unknown>,
     visibility: "public" as "public" | "private",
   });
 
@@ -112,7 +112,7 @@ export default function Guidelines() {
 
   const handleScoringScaleChange = (value: string) => {
     const scale = value as "boolean" | "custom_category" | "numeric" | "percentage";
-    let config: any = {};
+    let config: Record<string, unknown> = {};
     
     if (scale === "boolean") {
       config = {};

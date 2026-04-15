@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Play } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -349,14 +349,13 @@ export function OpenRouterProviderCatalog({
       }),
   });
 
-  const providers = data?.providers || [];
-
   const allowedSlugs = useMemo(() => {
     if (!onlyProviderSlugs?.length) return null;
     return new Set(onlyProviderSlugs);
   }, [onlyProviderSlugs]);
 
   const visibleProviders = useMemo(() => {
+    const providers = data?.providers || [];
     const filteredByAllowed = allowedSlugs
       ? providers.filter((provider) => allowedSlugs.has(provider.slug) || allowedSlugs.has(provider.name))
       : providers;
@@ -369,17 +368,12 @@ export function OpenRouterProviderCatalog({
         provider.name.toLowerCase().includes(loweredSearch) ||
         provider.slug.toLowerCase().includes(loweredSearch)
     );
-  }, [allowedSlugs, hasRestrictedProviders, providers, search]);
+  }, [allowedSlugs, hasRestrictedProviders, data?.providers, search]);
   const total = hasRestrictedProviders ? visibleProviders.length : data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const pagedProviders = hasRestrictedProviders
     ? visibleProviders.slice(page * pageSize, page * pageSize + pageSize)
     : visibleProviders;
-
-  useEffect(() => {
-    if (page <= totalPages - 1) return;
-    setPage(Math.max(0, totalPages - 1));
-  }, [page, totalPages]);
 
   const canSelect = selectable && typeof onSelectProvider === "function";
   const [, setLocation] = useLocation();

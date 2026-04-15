@@ -44,11 +44,13 @@ export default function Profile() {
     enabled: isAuthenticated,
   });
 
-  const providers = providersData?.providers || [];
+  const providers = useMemo(() => providersData?.providers || [], [providersData?.providers]);
 
   useEffect(() => {
     if (!newKey.providerId && providers.length > 0) {
-      setNewKey((prev) => ({ ...prev, providerId: String(providers[0].id) }));
+      Promise.resolve().then(() => {
+        setNewKey((prev) => ({ ...prev, providerId: String(providers[0].id) }));
+      });
     }
   }, [newKey.providerId, providers]);
 
