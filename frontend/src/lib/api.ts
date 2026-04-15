@@ -332,7 +332,14 @@ class ApiClient {
         created_at: string;
       }[];
       total: number;
+      status_counts: Record<string, number>;
     }>(`/evaluations/traces${q ? '?' + q : ''}`);
+  }
+
+  async getMyModels() {
+    return this.request<{
+      models: { model: string; provider: string }[];
+    }>('/evaluations/my-models');
   }
 
   async getTrace(traceId: number) {

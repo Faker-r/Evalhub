@@ -77,6 +77,7 @@ class TraceListResponse(BaseModel):
 
     traces: list[TraceResponse]
     total: int
+    status_counts: dict[str, int] = {}
 
 
 class TraceDetailsResponse(BaseModel):

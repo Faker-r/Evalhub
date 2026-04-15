@@ -66,6 +66,7 @@ export default function Results() {
 
   const traces = tracesData?.traces || [];
   const total = tracesData?.total ?? 0;
+  const statusCounts = tracesData?.status_counts ?? {};
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const [selectedTrace, setSelectedTrace] = useState<any>(null);
@@ -317,7 +318,7 @@ export default function Results() {
                 <div>
                   <p className="text-sm text-muted-foreground">Completed</p>
                   <p className="text-3xl font-bold text-green-600">
-                    {traces.filter((t) => t.status === "completed").length}
+                    {statusCounts.completed ?? 0}
                   </p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-600" />
@@ -330,7 +331,7 @@ export default function Results() {
                 <div>
                   <p className="text-sm text-muted-foreground">Running</p>
                   <p className="text-3xl font-bold text-blue-600">
-                    {traces.filter((t) => t.status === "running").length}
+                    {statusCounts.running ?? 0}
                   </p>
                 </div>
                 <Loader2 className="w-8 h-8 text-blue-600" />
@@ -343,7 +344,7 @@ export default function Results() {
                 <div>
                   <p className="text-sm text-muted-foreground">Failed</p>
                   <p className="text-3xl font-bold text-red-600">
-                    {traces.filter((t) => t.status === "failed").length}
+                    {statusCounts.failed ?? 0}
                   </p>
                 </div>
                 <XCircle className="w-8 h-8 text-red-600" />

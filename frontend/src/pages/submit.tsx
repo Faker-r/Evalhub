@@ -491,6 +491,10 @@ export default function Submit() {
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentStep]);
+
   // Selection type
   const [selectionType, setSelectionType] = useState<SelectionType>(null);
 
