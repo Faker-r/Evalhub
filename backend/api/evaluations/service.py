@@ -356,7 +356,9 @@ class EvaluationService:
 
     # ==================== Public Query Methods ====================
 
-    async def get_traces(self, limit: int = 20, offset: int = 0) -> tuple[list[Trace], int, dict[str, int]]:
+    async def get_traces(
+        self, limit: int = 20, offset: int = 0
+    ) -> tuple[list[Trace], int, dict[str, int]]:
         """Get paginated traces for the current user."""
         await self.repository.mark_stale_traces_failed(self.user_id)
         return await self.repository.get_traces_by_user(

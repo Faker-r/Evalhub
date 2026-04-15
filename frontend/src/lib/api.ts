@@ -221,7 +221,7 @@ class ApiClient {
   }
 
   async getDatasetPreview(id: number) {
-    return this.request<{ samples: any[] }>(`/datasets/${id}/preview`);
+    return this.request<{ samples: Record<string, unknown>[] }>(`/datasets/${id}/preview`);
   }
 
   // Guideline endpoints
@@ -230,7 +230,7 @@ class ApiClient {
     prompt: string;
     category: string;
     scoring_scale: string;
-    scoring_scale_config: any;
+    scoring_scale_config: Record<string, unknown>;
     visibility?: string;
   }) {
     return this.request<{
@@ -239,7 +239,7 @@ class ApiClient {
       prompt: string;
       category: string;
       scoring_scale: string;
-      scoring_scale_config: any;
+      scoring_scale_config: Record<string, unknown>;
       visibility: string;
       user_id: string | null;
     }>('/guidelines', {
@@ -259,7 +259,7 @@ class ApiClient {
         prompt: string;
         category: string;
         scoring_scale: string;
-        scoring_scale_config: any;
+        scoring_scale_config: Record<string, unknown>;
         visibility: string;
         user_id: string | null;
       }[];
@@ -328,7 +328,7 @@ class ApiClient {
         judge_model: string;
         judge_model_provider: string;
         status: string;
-        summary: any;
+        summary: Record<string, unknown> | null;
         created_at: string;
       }[];
       total: number;
@@ -367,7 +367,7 @@ class ApiClient {
   }
 
   async getTraceSamples(traceId: number) {
-    return this.request<{ samples: any[] }>(`/evaluations/traces/${traceId}/samples`);
+    return this.request<{ samples: Record<string, unknown>[] }>(`/evaluations/traces/${traceId}/samples`);
   }
 
   async getEvalProgress(traceId: number) {
@@ -489,14 +489,14 @@ class ApiClient {
   async getTaskDetails(taskName: string) {
     const response = await this.request<{
       task_name: string;
-      task_details_nested_dict: Record<string, any> | null;
+      task_details_nested_dict: Record<string, unknown> | null;
     }>(`/benchmarks/task-details/${encodeURIComponent(taskName)}`);
     return response.task_details_nested_dict || {};
   }
 
   async getBenchmarkPreview(benchmarkId: number, numSamples: number = 10) {
     return this.request<{
-      samples: any[];
+      samples: Record<string, unknown>[];
       hf_repo: string;
       dataset_name: string;
     }>(`/benchmarks/${benchmarkId}/preview?num_samples=${numSamples}`);

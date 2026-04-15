@@ -88,11 +88,11 @@ export default function Benchmarks() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showAllLanguages, setShowAllLanguages] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
-  const [selectedBenchmark, setSelectedBenchmark] = useState<any>(null);
+  const [selectedBenchmark, setSelectedBenchmark] = useState<Record<string, unknown> | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
+  const [taskDetails, setTaskDetails] = useState<Record<string, Record<string, unknown>>>({});
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
-  const [benchmarkTasks, setBenchmarkTasks] = useState<Record<number, any[]>>({});
+  const [benchmarkTasks, setBenchmarkTasks] = useState<Record<number, Record<string, unknown>[]>>({});
   const [loadingBenchmarkTasks, setLoadingBenchmarkTasks] = useState<Set<number>>(new Set());
 
   const [, setLocation] = useLocation();
@@ -208,7 +208,7 @@ export default function Benchmarks() {
   const visibleLanguages = showAllLanguages ? LANGUAGE_FILTERS : LANGUAGE_FILTERS.slice(0, 8);
   const visibleTags = showAllTags ? VALID_BENCHMARK_TAGS : VALID_BENCHMARK_TAGS.slice(0, 15);
 
-  const NestedValue = ({ value, depth = 0 }: { value: any; depth?: number }) => {
+  const NestedValue = ({ value, depth = 0 }: { value: unknown; depth?: number }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     
     if (value === null || value === undefined) {
@@ -684,9 +684,9 @@ export default function Benchmarks() {
                                   <div className="px-3 pb-3 border-t border-gray-100">
                                     {/* Task-specific size and tokens */}
                                     {(() => {
-                                      const taskData = benchmarkTasks[selectedBenchmark.id]?.find(
-                                        (t: any) => t.task_name === task
-                                      );
+                                      const taskData = benchmarkTasks[selectedBenchmark.id as number]?.find(
+                                        (t: Record<string, unknown>) => (t.task_name as string) === task
+                                      ) as { dataset_size?: number; estimated_input_tokens?: number } | undefined;
                                       if (taskData && (taskData.dataset_size || taskData.estimated_input_tokens)) {
                                         return (
                                           <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2 mb-2 py-2 px-2 bg-gray-50 rounded">

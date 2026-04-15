@@ -77,23 +77,36 @@ export default function Compare() {
   );
 
   useEffect(() => {
-    if (pairs.length < 2) {
-      setOverlappingCount(null);
-      return;
-    }
     let cancelled = false;
-    setOverlappingLoading(true);
-    apiClient
-      .getOverlappingDatasets(modelProviderPairs)
-      .then((r) => {
-        if (!cancelled) setOverlappingCount(r.count);
-      })
-      .catch(() => {
-        if (!cancelled) setOverlappingCount(0);
-      })
-      .finally(() => {
-        if (!cancelled) setOverlappingLoading(false);
+
+    if (pairs.length < 2) {
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setOverlappingCount(null);
+          setOverlappingLoading(false);
+        }
       });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      setOverlappingLoading(true);
+      setOverlappingCount(null);
+      apiClient
+        .getOverlappingDatasets(modelProviderPairs)
+        .then((r) => {
+          if (!cancelled) setOverlappingCount(r.count);
+        })
+        .catch(() => {
+          if (!cancelled) setOverlappingCount(0);
+        })
+        .finally(() => {
+          if (!cancelled) setOverlappingLoading(false);
+        });
+    });
     return () => {
       cancelled = true;
     };

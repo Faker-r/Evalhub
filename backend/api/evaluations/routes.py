@@ -85,7 +85,9 @@ async def get_traces(
 ) -> TraceListResponse:
     """Get evaluation traces for the current user."""
     logger.debug(f"Getting traces for user {current_user.email}")
-    traces, total, status_counts = await EvaluationService(session, current_user.id).get_traces(limit=limit, offset=offset)
+    traces, total, status_counts = await EvaluationService(
+        session, current_user.id
+    ).get_traces(limit=limit, offset=offset)
     return TraceListResponse(traces=traces, total=total, status_counts=status_counts)
 
 

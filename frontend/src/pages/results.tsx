@@ -69,7 +69,13 @@ export default function Results() {
   const statusCounts = tracesData?.status_counts ?? {};
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const [selectedTrace, setSelectedTrace] = useState<any>(null);
+  interface SelectedTrace {
+    id: number;
+    status: string;
+    [key: string]: unknown;
+  }
+
+  const [selectedTrace, setSelectedTrace] = useState<SelectedTrace | null>(null);
 
   const { data: traceDetails, isLoading: isLoadingDetails } = useQuery({
     queryKey: ["traceDetails", selectedTrace?.id],
@@ -129,11 +135,13 @@ export default function Results() {
     return provider;
   };
 
-  const renderScores = (scores: any, metricDocs: any) => {
+  const renderScores = (scores: Record<string, unknown>, metricDocs: Record<string, unknown>) => {
     if (!scores) return null;
 
     const scoreEntries = Object.entries(scores);
-    const hasCategoricalScores = scoreEntries.some(([, scoreData]: [string, any]) => 'distribution' in scoreData);
+    const hasCategoricalScores = scoreEntries.some(([, scoreData]) =>
+      typeof scoreData === 'object' && scoreData !== null && 'distribution' in scoreData
+    );
 
     return (
       <Table>
@@ -146,9 +154,10 @@ export default function Results() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {scoreEntries.map(([guidelineName, scoreData]: [string, any]) => {
-            const isNumeric = 'mean' in scoreData;
-            const isCategorical = 'distribution' in scoreData;
+          {scoreEntries.map(([guidelineName, scoreData]) => {
+            const scoreDataObj = scoreData as Record<string, unknown>;
+            const isNumeric = 'mean' in scoreDataObj;
+            const isCategorical = 'distribution' in scoreDataObj;
             const hasMetricDoc = metricDocs && metricDocs[guidelineName];
 
             return (
@@ -164,7 +173,7 @@ export default function Results() {
                           </TooltipTrigger>
                           <TooltipContent className="max-w-md">
                             <div className="space-y-2 text-sm">
-                              {metricDocs[guidelineName].map((desc: any, idx: number) => (
+                              {(metricDocs[guidelineName] as Array<{ measure: string; sample_level: string; corpus_level: string }>).map((desc, idx: number) => (
                                 <div key={idx} className="space-y-1">
                                   <p><span className="font-semibold">Measure:</span> {desc.measure}</p>
                                   <p><span className="font-semibold">Sample:</span> {desc.sample_level}</p>
@@ -181,18 +190,18 @@ export default function Results() {
                 <TableCell>
                   {isNumeric && (
                     <span className="font-mono">
-                      {scoreData.mean.toFixed(2)} ± {scoreData.std.toFixed(2)}
+                      {(scoreDataObj.mean as number).toFixed(2)} ± {(scoreDataObj.std as number).toFixed(2)}
                     </span>
                   )}
                   {isCategorical && (
-                    <span className="font-medium">{scoreData.mode || 'N/A'}</span>
+                    <span className="font-medium">{(scoreDataObj.mode as string) || 'N/A'}</span>
                   )}
                 </TableCell>
                 {hasCategoricalScores && (
                   <TableCell>
                     {isCategorical && (
                       <div className="flex flex-wrap gap-1">
-                        {Object.entries(scoreData.distribution).map(([category, count]: [string, any]) => (
+                        {Object.entries(scoreDataObj.distribution as Record<string, number>).map(([category, count]) => (
                           <Badge key={category} variant="outline" className="text-xs">
                             {category}: {count}
                           </Badge>
@@ -561,7 +570,7 @@ export default function Results() {
                                         </div>
                                       ) : traceSamples.length > 0 ? (
                                         <div className="space-y-6">
-                                          {traceSamples.map((sample: any, idx: number) => (
+                                          {traceSamples.map((sample: Record<string, unknown>, idx: number) => (
                                             <Card key={idx}>
                                               <CardHeader className="pb-3">
                                                 <CardTitle className="text-base font-medium">Sample {idx + 1}</CardTitle>
