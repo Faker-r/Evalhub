@@ -50,6 +50,9 @@ async def run_task_evaluation(
         f"Running task evaluation: task={body.task_name}, "
         f"model={_model_log_name(body.model_completion_config)}, user={current_user.email}"
     )
+    # TEMPORARY: auto-flag submissions from admin@evalhub.com for the leaderboard.
+    if current_user.email == "admin@evalhub.com":
+        body.count_on_leaderboard = True
     return await EvaluationService(session, current_user.id).run_task_evaluation(body)
 
 
@@ -71,6 +74,9 @@ async def run_flexible_evaluation(
         f"Running flexible evaluation: dataset={body.dataset_name}, "
         f"judge_type={body.judge_type}, user={current_user.email}"
     )
+    # TEMPORARY: auto-flag submissions from admin@evalhub.com for the leaderboard.
+    if current_user.email == "admin@evalhub.com":
+        body.count_on_leaderboard = True
     return await EvaluationService(session, current_user.id).run_flexible_evaluation(
         body
     )
