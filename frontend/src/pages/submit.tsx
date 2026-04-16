@@ -594,6 +594,14 @@ export default function Submit() {
   const isOpenRouterSelectionComplete = (config: ModelConfig) =>
     Boolean(config.openrouter_provider_slug && config.openrouter_model_id);
 
+  const isStandardSelectionComplete = (config: ModelConfig) =>
+    Boolean(config.provider_id && config.model_id);
+
+  const isModelConfigComplete = (config: ModelConfig) =>
+    config.is_openrouter
+      ? isOpenRouterSelectionComplete(config)
+      : isStandardSelectionComplete(config);
+
   const isCompletionConfigured = isOpenRouterSelectionComplete(completionModelConfig);
 
   // Handle pre-selection from URL params (from benchmarks page)
@@ -814,6 +822,24 @@ export default function Submit() {
         toast({
           title: "Error",
           description: "Please select a task",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    if (currentStep === 3) {
+      if (!isModelConfigComplete(completionModelConfig)) {
+        toast({
+          title: "Error",
+          description: "Please select a provider and model for completion",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (judgeType === "llm_as_judge" && !isModelConfigComplete(judgeModelConfig)) {
+        toast({
+          title: "Error",
+          description: "Please select a provider and model for the judge",
           variant: "destructive",
         });
         return;
