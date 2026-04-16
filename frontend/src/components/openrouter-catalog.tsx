@@ -214,7 +214,6 @@ export function OpenRouterModelCatalog({
                   canSelect
                     ? () => {
                         onSelectModel(isSelected ? null : model);
-                        setSearch("");
                       }
                     : undefined
                 }
@@ -460,7 +459,6 @@ export function OpenRouterProviderCatalog({
                   canSelect
                     ? () => {
                         onSelectProvider(isSelected ? null : provider);
-                        setSearch("");
                       }
                     : undefined
                 }
