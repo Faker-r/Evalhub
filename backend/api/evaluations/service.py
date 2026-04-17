@@ -1,9 +1,9 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.core.exceptions import NotFoundException
+from api.core.exceptions import BadRequestException, NotFoundException
 from api.core.logging import get_logger
-from api.core.s3 import S3Storage
+from api.core.s3 import EVAL_RESULTS_PREFIX, S3Storage
 from api.evaluations.models import Trace
 from api.evaluations.repository import EvaluationRepository
 from api.evaluations.schemas import (
@@ -394,6 +394,29 @@ class EvaluationService:
             judge_model_provider=trace.judge_model_provider,
             spec=spec_event.data,
         )
+
+    async def get_trace_download_files(self, trace_id: int) -> tuple[list[str], str]:
+        """Get the list of S3 keys for a trace's eval results, after validating access.
+
+        Returns:
+            Tuple of (list of S3 keys, S3 prefix).
+
+        Raises:
+            HTTPException 403: If user doesn't own the trace.
+            BadRequestException: If trace is not completed.
+            NotFoundException: If no result files exist.
+        """
+        trace = await self.get_trace(trace_id)
+
+        if trace.status != "completed":
+            raise BadRequestException("Evaluation results are only available for completed runs")
+
+        prefix = f"{EVAL_RESULTS_PREFIX}/{trace_id}"
+        files = self.s3.list_files(prefix)
+        if not files:
+            raise NotFoundException("No evaluation result files found for this trace")
+
+        return files, prefix
 
     async def get_trace_samples(
         self, request: TraceSamplesRequest

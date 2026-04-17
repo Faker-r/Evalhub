@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
@@ -153,3 +153,39 @@ async def get_trace_progress(
     if progress is None:
         return JSONResponse(content=None)
     return progress
+
+
+@router.get("/traces/{trace_id}/download")
+async def download_trace_results(
+    trace_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> StreamingResponse:
+    """Download evaluation results as a zip archive."""
+    import io
+    import os
+    import zipfile
+
+    from api.core.s3 import S3Storage
+
+    service = EvaluationService(session, current_user.id)
+    files, prefix = await service.get_trace_download_files(trace_id)
+
+    s3 = S3Storage()
+
+    def generate_zip():
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for s3_key in files:
+                relative_path = os.path.relpath(s3_key, prefix)
+                body = s3.get_file_stream(s3_key)
+                zf.writestr(relative_path, body.read())
+        buf.seek(0)
+        yield buf.read()
+
+    filename = f"eval_results_{trace_id}.zip"
+    return StreamingResponse(
+        generate_zip(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

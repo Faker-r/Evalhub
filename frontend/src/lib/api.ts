@@ -370,6 +370,27 @@ class ApiClient {
     return this.request<{ samples: Record<string, unknown>[] }>(`/evaluations/traces/${traceId}/samples`);
   }
 
+  async downloadTraceResults(traceId: number) {
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    const response = await fetch(`${API_BASE}/evaluations/traces/${traceId}/download`, { headers });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Download failed' }));
+      throw new Error(typeof error.detail === 'string' ? error.detail : 'Download failed');
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `eval_results_${traceId}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
   async getEvalProgress(traceId: number) {
     return this.request<{ stage: string; percent: number | null; detail: string } | null>(
       `/evaluations/traces/${traceId}/progress`

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye, Info, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye, Info, AlertTriangle, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
@@ -90,6 +90,19 @@ export default function Results() {
   });
 
   const traceSamples = traceSamplesData?.samples || [];
+
+  const [downloadingTraceId, setDownloadingTraceId] = useState<number | null>(null);
+
+  const handleDownload = async (traceId: number) => {
+    setDownloadingTraceId(traceId);
+    try {
+      await apiClient.downloadTraceResults(traceId);
+    } catch (err) {
+      console.error('Download failed:', err);
+    } finally {
+      setDownloadingTraceId(null);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -422,6 +435,7 @@ export default function Results() {
                       </TableCell>
                       <TableCell>
                         {trace.status === "completed" && trace.summary && (
+                          <div className="flex items-center gap-1">
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button
@@ -626,6 +640,21 @@ export default function Results() {
                               )}
                             </DialogContent>
                           </Dialog>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => handleDownload(trace.id)}
+                            disabled={downloadingTraceId === trace.id}
+                          >
+                            {downloadingTraceId === trace.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Download className="w-4 h-4" />
+                            )}
+                            Download
+                          </Button>
+                          </div>
                         )}
                         {trace.status === "failed" && trace.summary?.error && (
                           <Dialog>
