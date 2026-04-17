@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.exceptions import BadRequestException, NotFoundException
 from api.core.logging import get_logger
+from api.core.trace_context import trace_id_var
 from api.core.s3 import EVAL_RESULTS_PREFIX, S3Storage
 from api.evaluations.models import Trace
 from api.evaluations.repository import EvaluationRepository
@@ -74,6 +75,7 @@ class EvaluationService:
             n_fewshots=request.dataset_config.n_fewshots,
             model_config_data=model_config_data,
             request_data=request_data,
+            request_trace_id=trace_id_var.get(""),
         )
 
         # Return immediately with running status
@@ -158,6 +160,7 @@ class EvaluationService:
             model_config_data=model_config_data,
             judge_config_data=judge_config_data,
             request_data=request_data,
+            request_trace_id=trace_id_var.get(""),
         )
 
         # Return immediately with running status
