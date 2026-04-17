@@ -1,10 +1,12 @@
 """
 Test script to verify the task evaluation service works end-to-end.
+Requires a live database and API keys — skipped in CI / offline environments.
 """
 
 import asyncio
 import os
 
+import pytest
 from dotenv import load_dotenv
 
 from api.core.database import get_session
@@ -14,6 +16,10 @@ from api.evaluations.service import EvaluationService
 load_dotenv()
 
 
+@pytest.mark.skipif(
+    not os.getenv("RUN_INTEGRATION_TESTS"),
+    reason="Manual integration test — set RUN_INTEGRATION_TESTS=1 to run",
+)
 async def test_task_evaluation_service():
     """Test the task evaluation service."""
     print("Starting task evaluation service test...")
@@ -35,17 +41,19 @@ async def test_task_evaluation_service():
             n_samples=5,
         ),
         model_completion_config=ModelConfig(
+            api_source="standard",
             model_name="deepseek-ai/DeepSeek-V3.2",
-            model_id="deepseek-ai/DeepSeek-V3.2",
-            model_slug="deepseek-ai/DeepSeek-V3.2",
+            model_id=1,
+            api_name="deepseek-ai/DeepSeek-V3.2",
             model_provider="baseten",
             model_provider_slug="baseten",
             model_provider_id=0,
         ),
         judge_config=ModelConfig(
+            api_source="standard",
             model_name="gpt-4o",
-            model_id="gpt-4o",
-            model_slug="gpt-4o",
+            model_id=2,
+            api_name="gpt-4o",
             model_provider="openai",
             model_provider_slug="openai",
             model_provider_id=0,

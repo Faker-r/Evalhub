@@ -6,10 +6,18 @@ This mimics what the evaluation service does.
 import os
 import tempfile
 
+import pytest
 from dotenv import load_dotenv
 from lighteval.logging.evaluation_tracker import EvaluationTracker
-from lighteval.models.endpoints.litellm_model import LiteLLMClient, LiteLLMModelConfig
 from lighteval.tasks.registry import Registry
+
+from lighteval.models.endpoints.litellm_model import LiteLLMClient, LiteLLMModelConfig
+
+try:
+    import litellm  # noqa: F401
+    _has_litellm = True
+except ImportError:
+    _has_litellm = False
 
 from api.evaluations.eval_pipeline.dataset_task import DatasetTask
 from api.evaluations.eval_pipeline.eval_pipeline import (
@@ -40,6 +48,7 @@ guideline = {
 }
 
 
+@pytest.mark.skipif(not _has_litellm, reason="litellm[caching] not installed")
 def test_lighteval_integration():
     """Test the lighteval integration."""
     print("Starting lighteval integration test...")

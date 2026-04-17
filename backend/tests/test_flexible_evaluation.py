@@ -1,7 +1,11 @@
 """
 Test script to verify the flexible evaluation service works end-to-end.
+Requires a live database and API keys — skipped in CI / offline environments.
 """
 
+import os
+
+import pytest
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,7 +26,13 @@ from api.evaluations.service import EvaluationService
 # Test user ID - replace with your own
 USER_ID = "e01da140-64b2-4ab9-b379-4f55dcaf0b22"
 
+_requires_live_db = pytest.mark.skipif(
+    not os.getenv("RUN_INTEGRATION_TESTS"),
+    reason="Manual integration test — set RUN_INTEGRATION_TESTS=1 to run",
+)
 
+
+@_requires_live_db
 async def test_text_exact_match():
     """Test text output with exact match scoring."""
     print("\n" + "=" * 60)
@@ -38,9 +48,10 @@ async def test_text_exact_match():
         ),
         judge_type=JudgeType.EXACT_MATCH,
         model_completion_config=ModelConfig(
+            api_source="standard",
             model_name="gpt-5.1",
-            model_id="gpt-5.1",
-            model_slug="gpt-5.1",
+            model_id=1,
+            api_name="gpt-5.1",
             model_provider="openai",
             model_provider_slug="openai",
             model_provider_id=0,
@@ -50,6 +61,7 @@ async def test_text_exact_match():
     await run_evaluation(request, "Text + Exact Match")
 
 
+@_requires_live_db
 async def test_text_f1_score():
     """Test text output with F1 score."""
     print("\n" + "=" * 60)
@@ -63,9 +75,10 @@ async def test_text_f1_score():
         text_config=TextOutputConfig(gold_answer_field="answer"),
         judge_type=JudgeType.F1_SCORE,
         model_completion_config=ModelConfig(
+            api_source="standard",
             model_name="gpt-5.1",
-            model_id="gpt-5.1",
-            model_slug="gpt-5.1",
+            model_id=1,
+            api_name="gpt-5.1",
             model_provider="openai",
             model_provider_slug="openai",
             model_provider_id=0,
@@ -75,6 +88,7 @@ async def test_text_f1_score():
     await run_evaluation(request, "Text + F1 Score")
 
 
+@_requires_live_db
 async def test_text_llm_judge():
     """Test text output with LLM as judge."""
     print("\n" + "=" * 60)
@@ -89,17 +103,19 @@ async def test_text_llm_judge():
         judge_type=JudgeType.LLM_AS_JUDGE,
         guideline_names=["humor"],
         model_completion_config=ModelConfig(
+            api_source="standard",
             model_name="gpt-4o-mini",
-            model_id="gpt-4o-mini",
-            model_slug="gpt-4o-mini",
+            model_id=2,
+            api_name="gpt-4o-mini",
             model_provider="openai",
             model_provider_slug="openai",
             model_provider_id=0,
         ),
         judge_config=ModelConfig(
+            api_source="standard",
             model_name="gpt-4o",
-            model_id="gpt-4o",
-            model_slug="gpt-4o",
+            model_id=3,
+            api_name="gpt-4o",
             model_provider="openai",
             model_provider_slug="openai",
             model_provider_id=0,

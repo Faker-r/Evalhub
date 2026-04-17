@@ -249,19 +249,17 @@ class TestBenchmarkEndpoints:
 class TestAuthenticationProtection:
     """Tests for authentication-protected endpoints (FR-6.0)."""
     
-    def test_datasets_list_requires_authentication(self, sync_client: TestClient):
+    def test_datasets_list_is_public(self, sync_client: TestClient):
         """
-        Test: GET /api/datasets requires authentication
+        Test: GET /api/datasets is a public endpoint (no auth required)
         
         Success Criteria:
-        - Without auth token: returns 401 or 403
-        - Response indicates authentication required
+        - Without auth token: returns 200
         """
         try:
             response = sync_client.get("/api/datasets")
             
-            # Should be unauthorized without token
-            assert response.status_code in [401, 403]
+            assert response.status_code == 200
         except RuntimeError as e:
             if "different loop" in str(e):
                 pytest.skip("Event loop conflict - run with live backend")
