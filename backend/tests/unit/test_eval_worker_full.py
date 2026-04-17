@@ -13,7 +13,7 @@ class TestRunLightevalPipelineWorker:
     @patch("api.evaluations.eval_worker.CustomTaskEvaluationPipeline")
     @patch("api.evaluations.eval_worker.GuidelineJudgeMetric")
     @patch("api.evaluations.eval_worker.Registry")
-    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")
+    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")  # nosec B108
     def test_success(self, mock_mkdtemp, MockRegistry, MockMetric, MockPipeline,
                      MockTracker, mock_create_cfg, MockClient, MockDatasetTask):
         from api.evaluations.eval_worker import run_lighteval_pipeline_worker
@@ -66,7 +66,7 @@ class TestRunLightevalTaskPipelineWorker:
     @patch("api.evaluations.eval_worker.OpenAICompatibleClient")
     @patch("api.evaluations.eval_worker._create_model_config")
     @patch("api.evaluations.eval_worker.EvaluationTracker")
-    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")
+    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")  # nosec B108
     def test_success(self, mock_mkdtemp, MockTracker, mock_create_cfg,
                      MockClient, MockPipeline, MockRegistry, MockDocGen):
         from api.evaluations.eval_worker import run_lighteval_task_pipeline_worker
@@ -96,7 +96,7 @@ class TestRunLightevalTaskPipelineWorker:
     @patch("api.evaluations.eval_worker.Pipeline")
     @patch("api.evaluations.eval_worker._create_model_config")
     @patch("api.evaluations.eval_worker.EvaluationTracker")
-    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")
+    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")  # nosec B108
     def test_with_pipe_in_task_name(self, mock_mkdtemp, MockTracker, mock_create_cfg, MockPipeline):
         from api.evaluations.eval_worker import run_lighteval_task_pipeline_worker
 
@@ -114,7 +114,7 @@ class TestRunLightevalTaskPipelineWorker:
         from api.evaluations.eval_worker import run_lighteval_task_pipeline_worker
 
         with patch("api.evaluations.eval_worker.EvaluationTracker", side_effect=Exception("fail")):
-            with patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/x"):
+            with patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/x"):  # nosec B108
                 result = run_lighteval_task_pipeline_worker(
                     task_name="t", n_samples=5, n_fewshots=0,
                     model_config_data={"model_name": "m", "base_url": "u", "api_key": "k"},
@@ -129,7 +129,7 @@ class TestRunFlexibleLightevalPipelineWorker:
     @patch("api.evaluations.eval_worker.EvaluationTracker")
     @patch("api.evaluations.eval_worker.CustomTaskEvaluationPipeline")
     @patch("api.evaluations.eval_worker.Registry")
-    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")
+    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")  # nosec B108
     def test_success_exact_match(self, mock_mkdtemp, MockRegistry, MockPipeline,
                                   MockTracker, mock_create_cfg, MockClient, MockFlexTask):
         from api.evaluations.eval_worker import run_flexible_lighteval_pipeline_worker
@@ -171,7 +171,7 @@ class TestRunFlexibleLightevalPipelineWorker:
     @patch("api.evaluations.eval_worker.CustomTaskEvaluationPipeline")
     @patch("api.evaluations.eval_worker.GuidelineJudgeMetric")
     @patch("api.evaluations.eval_worker.Registry")
-    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")
+    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")  # nosec B108
     def test_success_llm_judge(self, mock_mkdtemp, MockRegistry, MockMetric, MockPipeline,
                                 MockTracker, mock_create_cfg, MockClient, MockFlexTask):
         from api.evaluations.eval_worker import run_flexible_lighteval_pipeline_worker
@@ -214,7 +214,7 @@ class TestRunFlexibleLightevalPipelineWorker:
     @patch("api.evaluations.eval_worker.EvaluationTracker")
     @patch("api.evaluations.eval_worker.CustomTaskEvaluationPipeline")
     @patch("api.evaluations.eval_worker.Registry")
-    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")
+    @patch("api.evaluations.eval_worker.tempfile.mkdtemp", return_value="/tmp/test")  # nosec B108
     def test_success_mc_config(self, mock_mkdtemp, MockRegistry, MockPipeline,
                                 MockTracker, mock_create_cfg, MockClient, MockFlexTask):
         from api.evaluations.eval_worker import run_flexible_lighteval_pipeline_worker

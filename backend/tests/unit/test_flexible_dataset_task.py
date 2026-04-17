@@ -179,10 +179,12 @@ class TestCleanup:
     def test_cleanup_removes_file(self, text_task):
         import tempfile
         text_task.temp_file = MagicMock()
-        text_task.temp_file.name = tempfile.mktemp(suffix=".jsonl")
-        Path(text_task.temp_file.name).write_text("test")
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+            f.write(b"test")
+            temp_path = f.name
+        text_task.temp_file.name = temp_path
         text_task.cleanup()
-        assert not Path(text_task.temp_file.name).exists()
+        assert not Path(temp_path).exists()
 
     def test_cleanup_no_file(self):
         task = FlexibleDatasetTask(
