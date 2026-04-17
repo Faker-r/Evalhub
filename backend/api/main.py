@@ -10,6 +10,7 @@ from api.benchmarks.routes import router as benchmarks_router
 from api.core.config import settings
 from api.core.logging import get_logger, setup_logging
 from api.core.ratelimiter import limiter
+from api.core.trace_context import TraceIDMiddleware
 from api.core.redis_client import close_async_redis_client
 from api.datasets.routes import router as datasets_router
 from api.evaluation_comparison.routes import router as evaluation_comparison_router
@@ -47,6 +48,7 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIASGIMiddleware)
+app.add_middleware(TraceIDMiddleware)
 
 # Create API router with /api prefix
 api_router = APIRouter(prefix="/api")
