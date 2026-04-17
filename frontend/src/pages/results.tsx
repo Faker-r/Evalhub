@@ -148,6 +148,12 @@ export default function Results() {
     return provider;
   };
 
+  const formatCost = (cost: number | undefined | null): string => {
+    if (cost == null || cost === 0) return "$0.00";
+    if (cost < 0.01) return `$${cost.toFixed(4)}`;
+    return `$${cost.toFixed(2)}`;
+  };
+
   const renderScores = (scores: Record<string, unknown>, metricDocs: Record<string, unknown>) => {
     if (!scores) return null;
 
@@ -513,6 +519,15 @@ export default function Results() {
                                             <span className="text-sm text-muted-foreground">Created:</span>
                                             <p className="font-medium">{formatDate(traceDetails.created_at)}</p>
                                           </div>
+                                          {selectedTrace.summary?.cost && (
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Cost:</span>
+                                              <p className="font-medium">{formatCost(selectedTrace.summary.cost.total_cost)}</p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {selectedTrace.summary.cost.prompt_tokens?.toLocaleString()} prompt + {selectedTrace.summary.cost.completion_tokens?.toLocaleString()} completion tokens
+                                              </p>
+                                            </div>
+                                          )}
                                         </>
                                       ) : (
                                         <>
@@ -562,6 +577,15 @@ export default function Results() {
                                             <span className="text-sm text-muted-foreground">Created:</span>
                                             <p className="font-medium">{formatDate(selectedTrace.created_at)}</p>
                                           </div>
+                                          {selectedTrace.summary?.cost && (
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Cost:</span>
+                                              <p className="font-medium">{formatCost(selectedTrace.summary.cost.total_cost)}</p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {selectedTrace.summary.cost.prompt_tokens?.toLocaleString()} prompt + {selectedTrace.summary.cost.completion_tokens?.toLocaleString()} completion tokens
+                                              </p>
+                                            </div>
+                                          )}
                                         </>
                                       )}
                                     </CardContent>
