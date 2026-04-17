@@ -1851,10 +1851,7 @@ export default function Submit() {
                       {apiKeys.length === 0 && (
                         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                           <p className="text-sm text-yellow-800">
-                            Warning: No API keys configured. Please add your{" "}
-                            {completionModelConfig.is_openrouter
-                              ? (completionModelConfig.openrouter_provider_name || completionModelConfig.openrouter_provider_slug || 'OpenRouter')
-                              : completionModelConfig.provider_name} API key in your profile settings.
+                            No API keys, please add OpenRouter API key in your profile settings.
                           </p>
                         </div>
                       )}
