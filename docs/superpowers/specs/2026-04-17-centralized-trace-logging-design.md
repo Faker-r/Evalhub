@@ -52,6 +52,7 @@ Request → TraceIDMiddleware → ContextVar → JSONFormatter → stdout (JSON)
 - `trace_id` is read from `trace_id_var.get("")` — zero changes to existing log call sites. Every `logger.info(...)` throughout the codebase automatically includes the trace ID.
 - `get_logger()` function signature unchanged — callers are unaffected.
 - `setup_logging()` configures a `StreamHandler` with the `JSONFormatter` on the root logger.
+- Noisy third-party loggers (e.g., `uvicorn.access`, `celery`) are suppressed to WARNING level to keep logs focused on application events.
 
 ### Layer 3: Celery Trace Propagation
 
