@@ -60,7 +60,11 @@ jobs:
     - name: Install the project
       working-directory: backend
       run: uv sync --all-extras
-        
+
+    - name: Install lighteval (vendored dep, not in pyproject)
+      working-directory: backend
+      run: uv run python scripts/setup_lighteval.py
+
     - name: Run tests
       working-directory: backend
       run: uv run pytest tests
