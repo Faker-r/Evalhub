@@ -73,3 +73,15 @@ class TestSetupLogging:
             for h in root.handlers
         )
         assert has_json
+
+    def test_setup_logging_is_idempotent(self):
+        setup_logging()
+        root = logging.getLogger()
+        count_before = sum(
+            1 for h in root.handlers if isinstance(h.formatter, JSONFormatter)
+        )
+        setup_logging()
+        count_after = sum(
+            1 for h in root.handlers if isinstance(h.formatter, JSONFormatter)
+        )
+        assert count_before == count_after
