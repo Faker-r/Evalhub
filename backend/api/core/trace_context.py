@@ -13,7 +13,10 @@ trace_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
 class TraceIDMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         tid = request.headers.get("x-trace-id") or str(uuid.uuid4())
-        trace_id_var.set(tid)
-        response = await call_next(request)
-        response.headers["x-trace-id"] = tid
-        return response
+        token = trace_id_var.set(tid)
+        try:
+            response = await call_next(request)
+            response.headers["x-trace-id"] = tid
+            return response
+        finally:
+            trace_id_var.reset(token)

@@ -65,6 +65,13 @@ class TestGetLogger:
 
 
 class TestSetupLogging:
+    def teardown_method(self):
+        root = logging.getLogger()
+        root.handlers = [
+            h for h in root.handlers
+            if not isinstance(h.formatter, JSONFormatter)
+        ]
+
     def test_root_logger_has_json_formatter(self):
         setup_logging()
         root = logging.getLogger()
