@@ -1,0 +1,58 @@
+frontend/src/pages/submit.tsx
+  eb35d1dc90ec82dc 1854
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.1.21",
+  "base_commit_sha": "2edd98a06b7dadeb052a7268e4d3ddf19bcdaeba",
+  "prompts": {
+    "eb35d1dc90ec82dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "898c23f4-61d0-4a90-9efc-369858dd4552",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andrew Wang <awang60@student.ubc.ca>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 4,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  },
+  "change_history": [
+    {
+      "timestamp": 1776467028,
+      "kind": "ai_agent",
+      "conversation_id": "eb35d1dc90ec82dc",
+      "agent_type": "claude",
+      "model": "claude-opus-4-7",
+      "prompt_text": "change this    {apiKeys.length === 0 && (\n                        <div className=\"p-4 bg-yellow-50 border border-yellow-200 rounded-lg\">\n                          <p className=\"text-sm text-yellow-800\">\n                            Warning: No API keys configured. Please add your{\" \"}\n                            {completionModelConfig.is_openrouter\n                              ? (completionModelConfig.openrouter_provider_name || completionModelConfig.openrouter_provider_slug || 'OpenRouter')\n                              : completionModelConfig.provider_name} API key in your profile settings.\n                          </p>\n                        </div>\n                      )}\n                    </div> to just say no api keys, please add openrouter API key in your profile settings.",
+      "files": {
+        "frontend/src/pages/submit.tsx": {
+          "added_lines": [
+            "1854"
+          ],
+          "deleted_lines": [
+            "1854-1857"
+          ],
+          "added_line_contents": [
+            "1854:                             No API keys, please add OpenRouter API key in your profile settings."
+          ],
+          "deleted_line_contents": [
+            "1854:                             Warning: No API keys configured. Please add your{\" \"}",
+            "1855:                             {completionModelConfig.is_openrouter",
+            "1856:                               ? (completionModelConfig.openrouter_provider_name || completionModelConfig.openrouter_provider_slug || 'OpenRouter')",
+            "1857:                               : completionModelConfig.provider_name} API key in your profile settings."
+          ]
+        }
+      },
+      "line_stats": {
+        "additions": 1,
+        "deletions": 4,
+        "additions_sloc": 1,
+        "deletions_sloc": 4
+      }
+    }
+  ]
+}
