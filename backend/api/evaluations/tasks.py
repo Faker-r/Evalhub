@@ -5,6 +5,7 @@ import json
 import statistics
 import tempfile
 import traceback
+import uuid
 from dataclasses import asdict
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from lighteval.tasks.registry import Registry
 
 from api.core.celery_app import celery_app
 from api.core.logging import get_logger
+from api.core.trace_context import trace_id_var
 from api.core.redis_client import clear_eval_progress, set_eval_progress
 from api.evaluations.eval_pipeline.eval_pipeline import (
     CustomTaskEvaluationPipeline,
@@ -616,8 +618,10 @@ def run_task_evaluation_task(
     model_config_data: dict,
     request_data: dict,
     model_pricing: dict | None = None,
+    request_trace_id: str = "",
 ) -> None:
     """Celery task: run a task evaluation pipeline, post-process results, handle errors."""
+    trace_id_var.set(request_trace_id or str(uuid.uuid4()))
     try:
         logger.info(f"Starting task evaluation for trace {trace_id}")
         set_eval_progress(trace_id, "starting", 0, "Initializing...")
@@ -714,8 +718,10 @@ def run_flexible_evaluation_task(
     judge_config_data: dict | None,
     request_data: dict,
     model_pricing: dict | None = None,
+    request_trace_id: str = "",
 ) -> None:
     """Celery task: run a flexible evaluation pipeline, post-process results, handle errors."""
+    trace_id_var.set(request_trace_id or str(uuid.uuid4()))
     try:
         logger.info(f"Starting flexible evaluation for trace {trace_id}")
         set_eval_progress(trace_id, "starting", 0, "Initializing...")
