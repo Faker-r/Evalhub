@@ -269,7 +269,7 @@ def _create_celery_session():
 
     database_url = settings.DATABASE_URL
     connect_args = {
-        "ssl": "require",
+        "ssl": False if settings.DB_SSL_MODE == "disable" else settings.DB_SSL_MODE,
         "statement_cache_size": 0,
     }
     engine = create_async_engine(

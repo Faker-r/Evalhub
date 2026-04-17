@@ -6,6 +6,7 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "Evalhub"
     DATABASE_URL: str
+    DB_SSL_MODE: str = "require"
     DEBUG: bool = False
 
     # Supabase Settings

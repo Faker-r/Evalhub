@@ -7,10 +7,10 @@ from api.core.config import settings
 # Convert DATABASE_URL to async driver and remove sslmode parameter
 database_url = settings.DATABASE_URL
 
-# Configure SSL for asyncpg (Supabase requires SSL)
+# Configure SSL for asyncpg (Supabase requires SSL; CI/local may not offer it)
 # Disable prepared statement cache for pgbouncer compatibility
 connect_args = {
-    "ssl": "require",
+    "ssl": False if settings.DB_SSL_MODE == "disable" else settings.DB_SSL_MODE,
     "statement_cache_size": 0,  # Required for pgbouncer compatibility
 }
 

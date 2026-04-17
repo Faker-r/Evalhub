@@ -72,6 +72,7 @@ jobs:
       run: uv run pytest tests
       env:
         DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5432/test_db"
+        DB_SSL_MODE: "disable"
         SUPABASE_URL: "https://test.supabase.co"
         SUPABASE_PUBLISHABLE_KEY: "test_publishable_key"
         SUPABASE_SECRET_KEY: "test_secret_key"
