@@ -49,6 +49,11 @@ class CustomTaskEvaluationPipeline:
         # Work-unit tracking (set in evaluate())
         self._total_work = 1
         self._completed_work = 0
+        self._total_token_usage: dict[str, int] = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
 
     def _pct(self) -> int:
         """Current progress mapped to 0–_PIPELINE_MAX_PCT range."""
@@ -57,6 +62,13 @@ class CustomTaskEvaluationPipeline:
     def _report(self, stage: str, detail: str = "") -> None:
         if self.progress_callback:
             self.progress_callback(stage, self._pct(), detail)
+
+    def _accumulate_usage(self, responses: list[ModelResponse]) -> None:
+        for resp in responses:
+            if resp.token_usage:
+                self._total_token_usage["prompt_tokens"] += resp.token_usage.get("prompt_tokens", 0)
+                self._total_token_usage["completion_tokens"] += resp.token_usage.get("completion_tokens", 0)
+                self._total_token_usage["total_tokens"] += resp.token_usage.get("total_tokens", 0)
 
     def _run_model(self, docs: list[Doc]) -> list[ModelResponse]:
         """Run model on documents.
@@ -150,6 +162,7 @@ class CustomTaskEvaluationPipeline:
 
         self._report("model_inference", "Starting inference...")
         responses = self._run_model(docs)
+        self._accumulate_usage(responses)
 
         self._report("computing_metrics", "Computing metrics...")
         outputs = self._compute_metrics(responses, docs)
@@ -186,6 +199,7 @@ class CustomTaskEvaluationPipeline:
             "summary": aggregated,
             "scores": scores_by_metric,
             "sample_count": len(docs),
+            "token_usage": self._total_token_usage,
         }
 
     def save_and_push_results(self):

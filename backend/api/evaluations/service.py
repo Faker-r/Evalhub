@@ -10,6 +10,7 @@ from api.evaluations.schemas import (
     EvaluationModelConfig,
     FlexibleEvaluationRequest,
     JudgeType,
+    OpenRouterEvaluationModelConfig,
     StandardEvaluationModelConfig,
     TaskEvaluationRequest,
     TaskEvaluationResponse,
@@ -65,6 +66,8 @@ class EvaluationService:
             "n_fewshots": request.dataset_config.n_fewshots,
         }
 
+        model_pricing = self._get_model_pricing(request.model_completion_config)
+
         # Dispatch to Celery
         run_task_evaluation_task.delay(
             trace_id=trace.id,
@@ -74,6 +77,7 @@ class EvaluationService:
             n_fewshots=request.dataset_config.n_fewshots,
             model_config_data=model_config_data,
             request_data=request_data,
+            model_pricing=model_pricing,
         )
 
         # Return immediately with running status
@@ -143,6 +147,8 @@ class EvaluationService:
             "judge_model": judge_model,
         }
 
+        model_pricing = self._get_model_pricing(request.model_completion_config)
+
         # Dispatch to Celery
         run_flexible_evaluation_task.delay(
             trace_id=trace.id,
@@ -158,6 +164,7 @@ class EvaluationService:
             model_config_data=model_config_data,
             judge_config_data=judge_config_data,
             request_data=request_data,
+            model_pricing=model_pricing,
         )
 
         # Return immediately with running status
@@ -345,6 +352,12 @@ class EvaluationService:
         if "|" in request.task_name:
             return request.task_name
         return f"{request.task_name}|{request.dataset_config.n_fewshots}"
+
+    def _get_model_pricing(self, config: EvaluationModelConfig) -> dict | None:
+        """Extract per-token pricing from an OpenRouter model config."""
+        if isinstance(config, OpenRouterEvaluationModelConfig):
+            return config.model.pricing
+        return None
 
     async def _load_guidelines(self, guideline_names: list[str]) -> list[Guideline]:
         """Load guidelines from database."""

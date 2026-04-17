@@ -32,6 +32,41 @@ from api.evaluations.schemas import JudgeType
 logger = get_logger(__name__)
 
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
+
+
+def _extract_token_usage_from_details(evaluation_tracker: EvaluationTracker) -> dict[str, int]:
+    """Sum token usage across all ModelResponse objects in the evaluation tracker."""
+    total = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    for task_name, details in evaluation_tracker.details_logger.details.items():
+        for detail in details:
+            usage = getattr(detail.model_response, "token_usage", None)
+            if usage:
+                total["prompt_tokens"] += usage.get("prompt_tokens", 0)
+                total["completion_tokens"] += usage.get("completion_tokens", 0)
+                total["total_tokens"] += usage.get("total_tokens", 0)
+    return total
+
+
+def _compute_cost(token_usage: dict[str, int] | None, pricing: dict[str, str] | None) -> dict | None:
+    """Compute cost from token usage and per-token pricing."""
+    if not token_usage or not pricing:
+        return None
+    try:
+        prompt_price = float(pricing.get("prompt", 0))
+        completion_price = float(pricing.get("completion", 0))
+    except (ValueError, TypeError):
+        return None
+    prompt_cost = token_usage["prompt_tokens"] * prompt_price
+    completion_cost = token_usage["completion_tokens"] * completion_price
+    total_cost = prompt_cost + completion_cost
+    return {
+        "prompt_tokens": token_usage["prompt_tokens"],
+        "completion_tokens": token_usage["completion_tokens"],
+        "total_tokens": token_usage["total_tokens"],
+        "prompt_cost": round(prompt_cost, 6),
+        "completion_cost": round(completion_cost, 6),
+        "total_cost": round(total_cost, 6),
+    }
 API_CACHE_DIR = str(Path(__file__).parent.parent.parent / ".api_cache")
 
 
@@ -119,6 +154,8 @@ def _run_task_pipeline(
 
     pipeline.save_and_push_results()
 
+    token_usage = _extract_token_usage_from_details(evaluation_tracker)
+
     results = pipeline.get_results()
 
     task_results = results["results"]["all"]
@@ -150,6 +187,7 @@ def _run_task_pipeline(
         "temp_dir": temp_dir,
         "metric_docs": metric_docs_serialized,
         "errors": errors,
+        "token_usage": token_usage,
     }
 
 
@@ -247,6 +285,7 @@ def _run_flexible_pipeline(
         "sample_count": results["sample_count"],
         "temp_dir": temp_dir,
         "errors": errors,
+        "token_usage": results.get("token_usage"),
     }
 
 
@@ -576,6 +615,7 @@ def run_task_evaluation_task(
     n_fewshots: int | None,
     model_config_data: dict,
     request_data: dict,
+    model_pricing: dict | None = None,
 ) -> None:
     """Celery task: run a task evaluation pipeline, post-process results, handle errors."""
     try:
@@ -610,6 +650,8 @@ def run_task_evaluation_task(
         # Extract summary
         summary = _extract_task_summary(pipeline_output)
 
+        cost_data = _compute_cost(pipeline_output.get("token_usage"), model_pricing)
+
         # Build spec data from request_data
         spec_data = {
             "task_name": request_data["task_name"],
@@ -631,6 +673,7 @@ def run_task_evaluation_task(
             summary_extra={
                 "metric_docs": metric_docs,
                 "errors": pipeline_output.get("errors", {}),
+                "cost": cost_data,
             },
         )
 
@@ -670,6 +713,7 @@ def run_flexible_evaluation_task(
     model_config_data: dict,
     judge_config_data: dict | None,
     request_data: dict,
+    model_pricing: dict | None = None,
 ) -> None:
     """Celery task: run a flexible evaluation pipeline, post-process results, handle errors."""
     try:
@@ -709,6 +753,8 @@ def run_flexible_evaluation_task(
             pipeline_output, judge_type, guidelines_data
         )
 
+        cost_data = _compute_cost(pipeline_output.get("token_usage"), model_pricing)
+
         # Build spec data from request_data
         spec_data = {
             "dataset_name": request_data["dataset_name"],
@@ -730,7 +776,7 @@ def run_flexible_evaluation_task(
             results_s3_path=results_s3_path,
             report_scores=pipeline_output["summary"],
             summary=summary,
-            summary_extra={"errors": pipeline_output.get("errors", {})},
+            summary_extra={"errors": pipeline_output.get("errors", {}), "cost": cost_data},
         )
 
         # Upload JSONL
