@@ -8,15 +8,15 @@ from dataclasses import dataclass
 
 import litellm
 from dotenv import load_dotenv
+from lighteval.metrics import apply_metric
+from lighteval.models.abstract_model import LightevalModel
+from lighteval.models.model_output import ModelResponse
+from lighteval.tasks.requests import Doc
 
 from api.evaluations.eval_pipeline.guideline_judge import (
     GuidelineJudgeMetric,
     GuidelineScoringScale,
 )
-from lighteval.metrics import apply_metric
-from lighteval.models.abstract_model import LightevalModel
-from lighteval.models.model_output import ModelResponse
-from lighteval.tasks.requests import Doc
 
 load_dotenv()
 

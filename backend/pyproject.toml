@@ -54,6 +54,11 @@ ensure_newline_before_comments = true
 line_length = 88
 known_third_party = ["lighteval"]
 known_first_party = ["api", "scripts"]
+skip = ["lighteval", "experiments"]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
