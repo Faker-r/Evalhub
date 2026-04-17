@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
@@ -160,7 +160,7 @@ async def download_trace_results(
     trace_id: int,
     session: AsyncSession = Depends(get_session),
     current_user: CurrentUser = Depends(get_current_user),
-) -> StreamingResponse:
+):
     """Download evaluation results as a zip archive."""
     import io
     import os
@@ -173,19 +173,17 @@ async def download_trace_results(
 
     s3 = S3Storage()
 
-    def generate_zip():
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-            for s3_key in files:
-                relative_path = os.path.relpath(s3_key, prefix)
-                body = s3.get_file_stream(s3_key)
-                zf.writestr(relative_path, body.read())
-        buf.seek(0)
-        yield buf.read()
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for s3_key in files:
+            relative_path = os.path.relpath(s3_key, prefix)
+            body = s3.get_file_stream(s3_key)
+            zf.writestr(relative_path, body.read())
+    buf.seek(0)
 
     filename = f"eval_results_{trace_id}.zip"
-    return StreamingResponse(
-        generate_zip(),
+    return Response(
+        content=buf.getvalue(),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
