@@ -31,10 +31,106 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from api.core.database import get_session
+from api.core.s3 import S3Storage
 from api.core.supabase import get_supabase_client
 from api.evaluations.repository import EvaluationRepository
-from api.evaluations.schemas import DatasetConfig, ModelConfig, TaskEvaluationRequest
+from api.evaluations.schemas import (
+    DatasetConfig,
+    StandardEvaluationModelConfig,
+    TaskEvaluationRequest,
+)
 from api.evaluations.service import EvaluationService
+from api.models_and_providers.schemas import ModelResponse, ProviderResponse
+
+# Monkey-patch S3Storage.download_api_key to use local .env keys instead of AWS
+_original_download_api_key = S3Storage.download_api_key
+
+
+def _local_download_api_key(self, user_id: str, provider: str) -> str:
+    """Use API key from environment instead of S3."""
+    env_key_map = {
+        "openai": "OPENAI_API_KEY",
+        "baseten": "BASETEN_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
+    }
+    env_var = env_key_map.get(provider, f"{provider.upper()}_API_KEY")
+    api_key = os.environ.get(env_var)
+    if not api_key:
+        raise ValueError(
+            f"No API key found in environment for provider '{provider}' "
+            f"(expected env var: {env_var})"
+        )
+    return api_key
+
+
+S3Storage.download_api_key = _local_download_api_key
+
+
+def _noop_upload_eval_results(self, trace_id: int, directory: str) -> str:
+    """Skip S3 upload in test — just return a fake path."""
+    return f"test-results/{trace_id}"
+
+
+def _noop_upload_trace(self, filename: str, content: str) -> None:
+    """Skip S3 trace upload in test."""
+
+
+S3Storage.upload_eval_results = _noop_upload_eval_results
+S3Storage.upload_trace = _noop_upload_trace
+
+
+# Monkey-patch _get_model_api_name_and_base_url to use config data directly
+# instead of doing a DB lookup (test uses synthetic IDs)
+async def _local_get_model_api_name_and_base_url(
+    self, config: StandardEvaluationModelConfig
+) -> tuple[str, str]:
+    return config.model.api_name, config.provider.base_url
+
+
+EvaluationService._get_model_api_name_and_base_url = (
+    _local_get_model_api_name_and_base_url
+)
+
+
+# Monkey-patch Celery .delay() to run tasks synchronously in-process
+# so we don't need a running Celery worker for the test
+import api.evaluations.tasks as _tasks_module
+from api.evaluations.tasks import run_task_evaluation_task
+
+_original_delay = run_task_evaluation_task.delay
+
+# Also patch _run_async: when running inside an existing event loop (our test),
+# asyncio.run() fails. Use nest_asyncio or run via the existing loop instead.
+_original_run_async = _tasks_module._run_async
+
+
+def _patched_run_async(coro):
+    """Run async coroutine, handling the case where a loop is already running."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        # We're inside an async context — create a task and run until complete
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
+
+
+_tasks_module._run_async = _patched_run_async
+
+
+def _sync_delay(*args, **kwargs):
+    """Run the Celery task synchronously instead of dispatching to a worker."""
+    run_task_evaluation_task.apply(args=args, kwargs=kwargs)
+
+
+run_task_evaluation_task.delay = _sync_delay
 
 # Polling configuration
 POLL_INTERVAL_SECONDS = 5
@@ -45,10 +141,12 @@ PROVIDER_CONFIGS = {
     "baseten": {
         "model_name": "deepseek-ai/DeepSeek-V3.2",
         "model_provider": "baseten",
+        "base_url": "https://api.baseten.co/v1",
     },
     "openai": {
-        "model_name": "gpt-4o-mini",
+        "model_name": "gpt-4.1-mini",
         "model_provider": "openai",
+        "base_url": "https://api.openai.com/v1",
     },
 }
 
@@ -166,8 +264,9 @@ def create_evaluation_request(
     dataset_name: str,
     n_samples: int = 5,
     n_fewshots: int = 0,
-    model_name: str = "deepseek-ai/DeepSeek-V3.2",
-    model_provider: str = "baseten",
+    model_name: str = "gpt-4.1-mini",
+    model_provider: str = "openai",
+    base_url: str = "https://api.openai.com/v1",
 ) -> TaskEvaluationRequest:
     """Create a TaskEvaluationRequest for testing a benchmark."""
     return TaskEvaluationRequest(
@@ -177,13 +276,21 @@ def create_evaluation_request(
             n_samples=n_samples,
             n_fewshots=n_fewshots,
         ),
-        model_completion_config=ModelConfig(
-            model_name=model_name,
-            model_id=model_name,
-            model_slug=model_name,
-            model_provider=model_provider,
-            model_provider_slug=model_provider,
-            model_provider_id=0,
+        model_completion_config=StandardEvaluationModelConfig(
+            api_source="standard",
+            model=ModelResponse(
+                id="0",
+                display_name=model_name,
+                developer="",
+                api_name=model_name,
+                providers=[],
+            ),
+            provider=ProviderResponse(
+                id="0",
+                name=model_provider,
+                slug=model_provider,
+                base_url=base_url,
+            ),
         ),
         judge_config=None,  # Use default metrics, no judge needed for lighteval tasks
     )
@@ -284,8 +391,9 @@ async def run_single_benchmark(
     benchmark: dict,
     user_id: str,
     n_samples: int = 5,
-    model_name: str = "deepseek-ai/DeepSeek-V3.2",
-    model_provider: str = "baseten",
+    model_name: str = "gpt-4.1-mini",
+    model_provider: str = "openai",
+    base_url: str = "https://api.openai.com/v1",
 ) -> BenchmarkResult:
     """Run a single benchmark and return the result."""
     dataset_name = benchmark.get("dataset_name", "unknown")
@@ -305,6 +413,7 @@ async def run_single_benchmark(
             n_samples=n_samples,
             model_name=model_name,
             model_provider=model_provider,
+            base_url=base_url,
         )
 
         # Step 1: Start the evaluation
@@ -424,8 +533,9 @@ async def run_all_benchmarks(
     user_id: str,
     limit: Optional[int] = None,
     n_samples: int = 5,
-    model_name: str = "deepseek-ai/DeepSeek-V3.2",
-    model_provider: str = "baseten",
+    model_name: str = "gpt-4.1-mini",
+    model_provider: str = "openai",
+    base_url: str = "https://api.openai.com/v1",
 ) -> TestReport:
     """Run all benchmarks and generate a report."""
     report = TestReport(
@@ -453,6 +563,7 @@ async def run_all_benchmarks(
             n_samples=n_samples,
             model_name=model_name,
             model_provider=model_provider,
+            base_url=base_url,
         )
 
         if result.status == "success":
@@ -727,8 +838,8 @@ async def main():
         "--provider",
         type=str,
         choices=["baseten", "openai"],
-        default="baseten",
-        help="Model provider to use for evaluations (default: baseten)",
+        default="openai",
+        help="Model provider to use for evaluations (default: openai)",
     )
     parser.add_argument(
         "--from-json",
@@ -759,6 +870,7 @@ async def main():
     provider_config = PROVIDER_CONFIGS[args.provider]
     model_name = provider_config["model_name"]
     model_provider = provider_config["model_provider"]
+    base_url = provider_config["base_url"]
 
     # Fetch benchmarks
     # Fetch benchmarks
@@ -808,6 +920,7 @@ async def main():
         n_samples=n_samples,
         model_name=model_name,
         model_provider=model_provider,
+        base_url=base_url,
     )
 
     # Generate report

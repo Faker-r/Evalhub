@@ -1,0 +1,316 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/cd.yml'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-2
+  ECR_REPOSITORY: evalhub-backend
+
+jobs:
+  build-and-push:
+    name: Build and Push to ECR
+    runs-on: ubuntu-latest
+    if: >-
+      ${{ (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[skip-cd]'))
+      && (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[only-')
+          || contains(github.event.head_commit.message, '[only-build-and-push]')) }}
+    outputs:
+      image-uri: ${{ steps.set-image-uri.outputs.image }}
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Extract metadata
+        id: meta
+        run: |
+          echo "tags=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }},${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
+          echo "build-date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build and push Docker image
+        id: build-image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-to: type=inline
+          build-args: |
+            GIT_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ steps.meta.outputs.build-date }}
+            VERSION=${{ github.ref_name }}
+      
+      - name: Set image URI output
+        id: set-image-uri
+        run: |
+          IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          echo "image=${IMAGE_URI}" >> $GITHUB_OUTPUT
+          echo "Image pushed to: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest"
+          echo "Image SHA tag: ${IMAGE_URI}"
+
+  deploy-apprunner:
+    name: Deploy to App Runner
+    needs: build-and-push
+    if: >-
+      ${{ always()
+      && !cancelled()
+      && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
+      && (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[skip-cd]'))
+      && (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[only-')
+          || contains(github.event.head_commit.message, '[only-deploy-apprunner]')) }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Wait for App Runner deployment to complete
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services --region ${{ env.AWS_REGION }} \
+            --query "ServiceSummaryList[?ServiceName=='evalhub-api-runner-github'].ServiceArn" \
+            --output text)
+          echo "Watching service: $SERVICE_ARN"
+          for i in {1..40}; do
+            STATUS=$(aws apprunner describe-service \
+              --service-arn "$SERVICE_ARN" \
+              --region ${{ env.AWS_REGION }} \
+              --query 'Service.Status' --output text)
+            echo "[$i/40] Status: $STATUS"
+            if [ "$STATUS" == "RUNNING" ]; then
+              echo "App Runner is healthy!"
+              exit 0
+            fi
+            if [ "$STATUS" == "CREATE_FAILED" ] || [ "$STATUS" == "DELETE_FAILED" ]; then
+              echo "App Runner deployment failed with status: $STATUS"
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for App Runner"
+          exit 1
+
+  deploy-ec2-celery:
+    name: Deploy Celery Workers to EC2
+    needs: build-and-push
+    if: >-
+      ${{ always()
+      && !cancelled()
+      && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
+      && (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[skip-cd]'))
+      && (github.event.head_commit == null
+          || !contains(github.event.head_commit.message, '[only-')
+          || contains(github.event.head_commit.message, '[only-deploy-ec2-celery]')) }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        if: needs.build-and-push.result == 'skipped'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve ECR image (celery-only deploy)
+        id: celery-image
+        if: needs.build-and-push.result == 'skipped'
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          echo "uri=${ACCOUNT}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:latest" >> "$GITHUB_OUTPUT"
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          ECR_IMAGE_URI: ${{ needs.build-and-push.outputs.image-uri || steps.celery-image.outputs.uri }}
+        run: |
+          ssh ec2-user@${{ secrets.EC2_HOST }} env \
+            ECR_IMAGE_URI="${{ needs.build-and-push.outputs.image-uri || steps.celery-image.outputs.uri }}" \
+            REPO_RAW="https://raw.githubusercontent.com/${{ github.repository }}/main" \
+            bash -s <<'REMOTE_SCRIPT'
+            set -e
+
+            echo "=== Step 0: Ensure swap exists (prevents OOM crashes) ==="
+            if ! swapon --show | grep -q swapfile; then
+              sudo fallocate -l 2G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              echo '/swapfile swap swap defaults 0 0' | sudo tee -a /etc/fstab
+              echo "Swap created"
+            else
+              echo "Swap already present"
+            fi
+
+            echo "=== Step 1: Stop and remove old workers ==="
+            for i in {1..4}; do
+              docker stop celery-worker-$i 2>/dev/null || true
+              docker rm celery-worker-$i 2>/dev/null || true
+            done
+
+            echo "Pruning unused Docker images to free disk..."
+            docker image prune -a -f || true
+
+            echo "=== Step 2: Authenticate with ECR ==="
+            aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 214863335048.dkr.ecr.us-east-2.amazonaws.com
+
+            echo "=== Step 3: Fetch secrets ==="
+            sudo mkdir -p /opt/evalhub
+            sudo chown ec2-user:ec2-user /opt/evalhub
+            cd /opt/evalhub
+
+            curl -fsSL -o fetch_secrets.sh "${REPO_RAW}/backend/deploy/fetch_secrets.sh"
+            chmod +x fetch_secrets.sh
+            curl -fsSL -o cleanup_ecr_repo_images.sh "${REPO_RAW}/backend/deploy/cleanup_ecr_repo_images.sh"
+            chmod +x cleanup_ecr_repo_images.sh
+
+            echo "Fetching secrets from AWS Secrets Manager..."
+            bash ./fetch_secrets.sh
+
+            # Extract runtime values written by fetch_secrets.sh.
+            REDIS_PASSWORD=$(grep '^REDIS_PASSWORD=' /opt/evalhub/.env | cut -d= -f2-)
+            REDIS_HOSTNAME=$(grep '^REDIS_HOSTNAME=' /opt/evalhub/.env | cut -d= -f2-)
+            CERTBOT_EMAIL=$(grep '^CERTBOT_EMAIL=' /opt/evalhub/.env | cut -d= -f2-)
+            # Password is alphanumeric-only (generated by Terraform random_password special=false),
+            # so no URL-encoding is needed.
+            INTERNAL_REDIS_URL="redis://:${REDIS_PASSWORD}@redis:6379/0"
+
+            echo "=== Step 3b: TLS certificate (Let's Encrypt HTTP-01) ==="
+            # Run certbot from its official Docker image — no host installation needed.
+            # --standalone binds port 80 inside the container (mapped to host :80).
+            # --keep-until-expiring skips re-issuance when the cert has >30 days left.
+            docker run --rm \
+              -p 80:80 \
+              -v /etc/letsencrypt:/etc/letsencrypt \
+              -v /var/lib/letsencrypt:/var/lib/letsencrypt \
+              certbot/certbot certonly \
+                --standalone \
+                -d "$REDIS_HOSTNAME" \
+                --agree-tos --non-interactive \
+                --email "$CERTBOT_EMAIL" \
+                --keep-until-expiring
+            # Combine into a single PEM file (HAProxy format: fullchain + private key).
+            sudo mkdir -p /opt/evalhub/certs
+            sudo bash -c "cat /etc/letsencrypt/live/${REDIS_HOSTNAME}/fullchain.pem \
+                               /etc/letsencrypt/live/${REDIS_HOSTNAME}/privkey.pem \
+                         > /opt/evalhub/certs/redis.pem"
+            sudo chmod 600 /opt/evalhub/certs/redis.pem
+            sudo chown ec2-user:ec2-user /opt/evalhub/certs/redis.pem
+
+            echo "=== Step 4: Pull new image ==="
+            echo "Pulling image ${ECR_IMAGE_URI}..."
+            docker pull "${ECR_IMAGE_URI}"
+
+            echo "=== Step 5: Redis (same Docker network as workers) ==="
+            docker network create evalhub 2>/dev/null || echo "Network evalhub already exists"
+            docker pull redis:7-alpine
+            # Always recreate Redis so requirepass is applied on every deploy.
+            docker rm -f redis 2>/dev/null || true
+            docker run -d \
+              --name redis \
+              --network evalhub \
+              --restart unless-stopped \
+              -p 127.0.0.1:6379:6379 \
+              -v evalhub-redis-data:/data \
+              redis:7-alpine \
+              redis-server --requirepass "$REDIS_PASSWORD"
+
+            echo "=== Step 5b: HAProxy TLS proxy for public Redis access ==="
+            curl -fsSL -o /opt/evalhub/haproxy-redis.cfg "${REPO_RAW}/backend/deploy/haproxy-redis.cfg"
+            docker pull haproxy:3.0-alpine
+            docker rm -f haproxy-redis 2>/dev/null || true
+              docker run -d \
+                --name haproxy-redis \
+                --network evalhub \
+                --restart unless-stopped \
+                --user root \
+                -p 0.0.0.0:6380:6380 \
+                -v /opt/evalhub/haproxy-redis.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro \
+                -v /opt/evalhub/certs/redis.pem:/etc/haproxy/certs/redis.pem:ro \
+                haproxy:3.0-alpine
+            echo "HAProxy started on :6380"
+
+            echo "=== Step 6: Start workers ==="
+            CELERY_WORKERS=4
+            for i in $(seq 1 $CELERY_WORKERS); do
+              echo "Starting worker $i..."
+              docker run -d \
+                --name celery-worker-$i \
+                --env-file /opt/evalhub/.env \
+                -e CELERY_BROKER_URL="${INTERNAL_REDIS_URL}" \
+                --network evalhub \
+                --restart unless-stopped \
+                --no-healthcheck \
+                --memory=768m \
+                --cpus=0.5 \
+                --log-driver json-file \
+                --log-opt max-size=10m \
+                --log-opt max-file=3 \
+                "${ECR_IMAGE_URI}" \
+                celery -A api.core.celery_app:celery_app worker --loglevel=info --pool=solo --concurrency=1
+            done
+
+            echo "Waiting for workers to start..."
+            sleep 15
+
+            echo "=== Verifying workers ==="
+            docker ps --filter "name=celery-worker" --format "table {{.Names}}\t{{.Status}}\t{{.State}}"
+
+            echo "Removing unused evalhub-backend images (keeps images still used by running containers)..."
+            bash /opt/evalhub/cleanup_ecr_repo_images.sh "${ECR_IMAGE_URI}"
+
+            echo "Deployment complete!"
+          REMOTE_SCRIPT
+      
+      - name: Verify deployment
+        run: |
+          ssh ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+            echo "Worker logs:"
+            for i in {1..4}; do
+              echo "=== Worker $i ==="
+              docker logs --tail=20 celery-worker-$i 2>&1 || echo "Worker $i not running"
+            done
+          EOF

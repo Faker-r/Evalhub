@@ -15,11 +15,12 @@ class GuidelineRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def create(self, guideline_data: GuidelineCreate) -> Guideline:
+    async def create(self, guideline_data: GuidelineCreate, user_id: str) -> Guideline:
         """Create a new guideline.
 
         Args:
             guideline_data: Guideline creation data
+            user_id: ID of the user creating the guideline
 
         Returns:
             Guideline: Created guideline
@@ -30,6 +31,8 @@ class GuidelineRepository:
             category=guideline_data.category,
             scoring_scale=guideline_data.scoring_scale.value,
             scoring_scale_config=guideline_data.scoring_scale_config.model_dump(),
+            visibility=guideline_data.visibility.value,
+            user_id=user_id,
         )
         self.session.add(guideline)
         await self.session.commit()
@@ -38,13 +41,24 @@ class GuidelineRepository:
         logger.info(f"Created guideline: {guideline.name} (id={guideline.id})")
         return guideline
 
-    async def get_all(self) -> list[Guideline]:
-        """Get all guidelines.
+    async def get_all(self, user_id: str | None = None) -> list[Guideline]:
+        """Get all guidelines visible to the user.
+
+        Args:
+            user_id: ID of the user requesting guidelines (None for unauthenticated)
 
         Returns:
-            list[Guideline]: List of all guidelines
+            list[Guideline]: List of visible guidelines
         """
         query = select(Guideline).order_by(Guideline.id.desc())
+
+        if user_id:
+            query = query.where(
+                (Guideline.visibility == "public") | (Guideline.user_id == user_id)
+            )
+        else:
+            query = query.where(Guideline.visibility == "public")
+
         result = await self.session.execute(query)
         return list(result.scalars().all())
 

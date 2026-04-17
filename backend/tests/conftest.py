@@ -8,10 +8,7 @@ This module provides:
 - Common test data factories
 """
 
-import asyncio
-import os
 from typing import AsyncGenerator, Generator
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -19,29 +16,36 @@ import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 load_dotenv()
 
-from api.core.database import get_session
+from slowapi import Limiter
+
+from api.core.config import settings
+from api.core.ratelimiter import rate_limit_key
 from api.core.security import CurrentUser, get_current_user
 from api.main import app
 
 # =============================================================================
-# Event Loop Configuration
-# =============================================================================
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an event loop for the test session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-# =============================================================================
 # Test Client Fixtures
 # =============================================================================
+
+
+@pytest.fixture(autouse=True)
+def _memory_rate_limit_storage():
+    """Avoid requiring Redis for rate limits during tests (SlowAPI uses app.state.limiter)."""
+    orig = app.state.limiter
+    app.state.limiter = Limiter(
+        key_func=rate_limit_key,
+        application_limits=["1000/second"],
+        default_limits=[],
+        storage_uri="memory://",
+        strategy=settings.RATE_LIMIT_STRATEGY,
+        swallow_errors=settings.RATE_LIMIT_FAIL_OPEN,
+    )
+    yield
+    app.state.limiter = orig
+
 
 @pytest.fixture
 def sync_client() -> Generator[TestClient, None, None]:
@@ -73,7 +77,9 @@ def mock_current_user() -> CurrentUser:
 
 
 @pytest.fixture
-def authenticated_client(sync_client: TestClient, mock_current_user: CurrentUser) -> TestClient:
+def authenticated_client(
+    sync_client: TestClient, mock_current_user: CurrentUser
+) -> TestClient:
     """Provide a test client with mocked authentication."""
     app.dependency_overrides[get_current_user] = lambda: mock_current_user
     yield sync_client
@@ -93,6 +99,7 @@ async def authenticated_async_client(
 # =============================================================================
 # Test Data Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def sample_benchmark_data() -> dict:
@@ -119,7 +126,7 @@ def sample_dataset_upload() -> dict:
             {"input": "What is 2+2?", "expected": "4"},
             {"input": "What is 3+3?", "expected": "6"},
             {"input": "What is 4+4?", "expected": "8"},
-        ]
+        ],
     }
 
 
@@ -131,10 +138,7 @@ def sample_guideline_data() -> dict:
         "prompt": "Evaluate if the response is helpful and accurate.",
         "category": "quality",
         "scoring_scale": "numeric",
-        "scoring_scale_config": {
-            "min_value": 1,
-            "max_value": 5
-        }
+        "scoring_scale_config": {"min_value": 1, "max_value": 5},
     }
 
 
@@ -147,21 +151,21 @@ def sample_evaluation_request() -> dict:
         "model_completion_config": {
             "api_source": "standard",
             "model_name": "gpt-4o-mini",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "gpt-4o-mini",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1
+            "model_provider_id": "1",
         },
         "judge_config": {
             "api_source": "standard",
             "model_name": "gpt-4o",
-            "model_id": 2,
+            "model_id": "2",
             "api_name": "gpt-4o",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1
-        }
+            "model_provider_id": "1",
+        },
     }
 
 
@@ -170,20 +174,16 @@ def sample_task_evaluation_request() -> dict:
     """Provide sample task evaluation request data."""
     return {
         "task_name": "gsm8k",
-        "dataset_config": {
-            "dataset_name": "gsm8k",
-            "n_samples": 5,
-            "n_fewshots": 0
-        },
+        "dataset_config": {"dataset_name": "gsm8k", "n_samples": 5, "n_fewshots": 0},
         "model_completion_config": {
             "api_source": "standard",
             "model_name": "gpt-4o-mini",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "gpt-4o-mini",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1
-        }
+            "model_provider_id": "1",
+        },
     }
 
 
@@ -199,12 +199,12 @@ def sample_flexible_evaluation_request() -> dict:
         "model_completion_config": {
             "api_source": "standard",
             "model_name": "gpt-4o-mini",
-            "model_id": 1,
+            "model_id": "1",
             "api_name": "gpt-4o-mini",
             "model_provider": "openai",
             "model_provider_slug": "openai",
-            "model_provider_id": 1
-        }
+            "model_provider_id": "1",
+        },
     }
 
 
@@ -212,15 +212,20 @@ def sample_flexible_evaluation_request() -> dict:
 # Validation Helpers
 # =============================================================================
 
+
 def assert_valid_json_response(response, expected_status: int = 200):
     """Assert that a response is valid JSON with expected status."""
-    assert response.status_code == expected_status, f"Expected {expected_status}, got {response.status_code}: {response.text}"
+    assert (
+        response.status_code == expected_status
+    ), f"Expected {expected_status}, got {response.status_code}: {response.text}"
     return response.json()
 
 
 def assert_error_response(response, expected_status: int, error_contains: str = None):
     """Assert that a response is an error with expected status."""
-    assert response.status_code == expected_status, f"Expected {expected_status}, got {response.status_code}"
+    assert (
+        response.status_code == expected_status
+    ), f"Expected {expected_status}, got {response.status_code}"
     if error_contains:
         data = response.json()
         assert "detail" in data
@@ -231,28 +236,39 @@ def assert_error_response(response, expected_status: int, error_contains: str = 
 # Test Evidence Collection
 # =============================================================================
 
+
 class TestEvidence:
     """Utility class for collecting test evidence for documentation."""
-    
+
     def __init__(self):
         self.evidence = []
-    
-    def record(self, test_name: str, endpoint: str, request_data: dict, 
-               response_status: int, response_data: dict, notes: str = ""):
+
+    def record(
+        self,
+        test_name: str,
+        endpoint: str,
+        request_data: dict,
+        response_status: int,
+        response_data: dict,
+        notes: str = "",
+    ):
         """Record test evidence."""
-        self.evidence.append({
-            "test_name": test_name,
-            "endpoint": endpoint,
-            "request": request_data,
-            "response_status": response_status,
-            "response": response_data,
-            "notes": notes
-        })
-    
+        self.evidence.append(
+            {
+                "test_name": test_name,
+                "endpoint": endpoint,
+                "request": request_data,
+                "response_status": response_status,
+                "response": response_data,
+                "notes": notes,
+            }
+        )
+
     def save(self, filepath: str):
         """Save evidence to a JSON file."""
         import json
-        with open(filepath, 'w') as f:
+
+        with open(filepath, "w") as f:
             json.dump(self.evidence, f, indent=2, default=str)
 
 

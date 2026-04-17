@@ -8,39 +8,61 @@ interface ApiError {
   detail: string | { msg: string }[];
 }
 
-type OpenRouterModel = {
-  id: string;
-  name: string;
-  description?: string;
-  pricing?: unknown;
-  context_length?: number;
-  canonical_slug?: string;
-  top_provider?: unknown;
-};
-
-type OpenRouterProvider = {
+export interface OpenRouterProviderSummary {
   name: string;
   slug: string;
+  model_count: number;
   privacy_policy_url?: string | null;
   terms_of_service_url?: string | null;
   status_page_url?: string | null;
-};
+}
 
-type OpenRouterModelsResponse = { data: OpenRouterModel[] };
-type OpenRouterProvidersResponse = { data: OpenRouterProvider[] };
-type OpenRouterModelEndpointsResponse = {
-  data: {
-    endpoints: {
-      provider_name?: string;
-    }[];
-  };
-};
+export interface OpenRouterModelSummary {
+  id: string;
+  name: string;
+  description?: string;
+  pricing?: Record<string, unknown>;
+  context_length?: number;
+  canonical_slug?: string;
+  architecture?: Record<string, unknown>;
+  top_provider?: Record<string, unknown>;
+  supported_parameters?: string[];
+  per_request_limits?: Record<string, unknown>;
+  provider_slugs?: string[];
+}
+
+export interface ProviderSnapshot {
+  id: string;
+  name: string;
+  slug: string | null;
+  base_url: string;
+}
+
+export interface ModelSnapshot {
+  id: string;
+  display_name: string;
+  developer: string;
+  api_name: string;
+  providers: ProviderSnapshot[];
+}
+
+export type EvaluationModelConfig =
+  | {
+      api_source: 'standard';
+      model: ModelSnapshot;
+      provider: ProviderSnapshot;
+    }
+  | {
+      api_source: 'openrouter';
+      model: OpenRouterModelSummary;
+      provider: {
+        name: string;
+        slug: string;
+      };
+    };
 
 class ApiClient {
   private token: string | null = null;
-  private openRouterHostedModelsByProviderSlugPromise: Promise<
-    Record<string, OpenRouterModel[]>
-  > | null = null;
 
   constructor() {
     // Load token from localStorage on initialization
@@ -102,70 +124,6 @@ class ApiClient {
     return response.json();
   }
 
-  private async getOpenRouterHostedModelsByProviderSlug(): Promise<Record<string, OpenRouterModel[]>> {
-    if (!this.openRouterHostedModelsByProviderSlugPromise) {
-      this.openRouterHostedModelsByProviderSlugPromise = (async () => {
-        const [providersResp, modelsResp] = await Promise.all([
-          fetch('https://openrouter.ai/api/v1/providers'),
-          fetch('https://openrouter.ai/api/v1/models'),
-        ]);
-        if (!providersResp.ok) throw new Error('Failed to fetch OpenRouter providers');
-        if (!modelsResp.ok) throw new Error('Failed to fetch OpenRouter models');
-
-        const providersJson = (await providersResp.json()) as OpenRouterProvidersResponse;
-        const modelsJson = (await modelsResp.json()) as OpenRouterModelsResponse;
-
-        const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
-
-        const slugByNormalizedName: Record<string, string> = {};
-        for (const p of providersJson.data) {
-          slugByNormalizedName[normalize(p.name)] = p.slug;
-          slugByNormalizedName[normalize(p.slug)] = p.slug;
-        }
-
-        const modelIdsByProviderSlug: Record<string, Set<string>> = {};
-
-        await Promise.all(
-          modelsJson.data.map(async (m) => {
-            const modelId = m.id;
-            const [author, slug] = modelId.split('/', 2);
-            if (!author || !slug) return;
-
-            const resp = await fetch(
-              `https://openrouter.ai/api/v1/models/${encodeURIComponent(
-                author
-              )}/${encodeURIComponent(slug)}/endpoints`
-            );
-            if (!resp.ok) return;
-
-            const json = (await resp.json()) as OpenRouterModelEndpointsResponse;
-            for (const endpoint of json.data.endpoints) {
-              const providerName = endpoint.provider_name;
-              if (!providerName) continue;
-              const providerSlug = slugByNormalizedName[normalize(providerName)];
-              if (!providerSlug) continue;
-              (modelIdsByProviderSlug[providerSlug] ||= new Set()).add(modelId);
-            }
-          })
-        );
-
-        const modelById: Record<string, OpenRouterModel> = {};
-        for (const m of modelsJson.data) modelById[m.id] = m;
-
-        const modelsByProviderSlug: Record<string, OpenRouterModel[]> = {};
-        for (const [providerSlug, ids] of Object.entries(modelIdsByProviderSlug)) {
-          modelsByProviderSlug[providerSlug] = Array.from(ids)
-            .map((id) => modelById[id])
-            .filter(Boolean);
-        }
-
-        return modelsByProviderSlug;
-      })();
-    }
-
-    return this.openRouterHostedModelsByProviderSlugPromise;
-  }
-
   // Auth endpoints
   async register(email: string, password: string) {
     return this.request<{ id: number; email: string }>('/auth/register', {
@@ -200,8 +158,8 @@ class ApiClient {
     return this.request<{ id: number; email: string }>('/users/me');
   }
 
-  async createApiKey(providerId: number, apiKey: string) {
-    return this.request<{ provider_id: number; provider_name: string }>(
+  async createApiKey(providerId: string, apiKey: string) {
+    return this.request<{ provider_id: string; provider_name: string }>(
       '/users/api-keys',
       {
         method: 'POST',
@@ -212,21 +170,22 @@ class ApiClient {
 
   async getApiKeys() {
     return this.request<{
-      api_key_providers: { provider_id: number; provider_name: string }[];
+      api_key_providers: { provider_id: string; provider_name: string }[];
     }>('/users/api-keys');
   }
 
-  async deleteApiKey(providerId: number) {
+  async deleteApiKey(providerId: string) {
     return this.request(`/users/api-keys/${providerId}`, {
       method: 'DELETE',
     });
   }
 
   // Dataset endpoints
-  async createDataset(name: string, category: string, file: File) {
+  async createDataset(name: string, category: string, file: File, visibility: string = 'public') {
     const formData = new FormData();
     formData.append('name', name);
     formData.append('category', category);
+    formData.append('visibility', visibility);
     formData.append('file', file);
 
     const headers: HeadersInit = {};
@@ -255,12 +214,14 @@ class ApiClient {
         name: string;
         category: string;
         sample_count: number;
+        visibility: string;
+        user_id: string | null;
       }[];
     }>('/datasets');
   }
 
   async getDatasetPreview(id: number) {
-    return this.request<{ samples: any[] }>(`/datasets/${id}/preview`);
+    return this.request<{ samples: Record<string, unknown>[] }>(`/datasets/${id}/preview`);
   }
 
   // Guideline endpoints
@@ -269,7 +230,8 @@ class ApiClient {
     prompt: string;
     category: string;
     scoring_scale: string;
-    scoring_scale_config: any;
+    scoring_scale_config: Record<string, unknown>;
+    visibility?: string;
   }) {
     return this.request<{
       id: number;
@@ -277,10 +239,15 @@ class ApiClient {
       prompt: string;
       category: string;
       scoring_scale: string;
-      scoring_scale_config: any;
+      scoring_scale_config: Record<string, unknown>;
+      visibility: string;
+      user_id: string | null;
     }>('/guidelines', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        visibility: data.visibility || 'public',
+      }),
     });
   }
 
@@ -292,7 +259,9 @@ class ApiClient {
         prompt: string;
         category: string;
         scoring_scale: string;
-        scoring_scale_config: any;
+        scoring_scale_config: Record<string, unknown>;
+        visibility: string;
+        user_id: string | null;
       }[];
     }>('/guidelines');
   }
@@ -301,24 +270,8 @@ class ApiClient {
   async createEvaluation(data: {
     dataset_name: string;
     guideline_names: string[];
-    model_completion_config: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: number;
-      api_base?: string;
-    };
-    judge_config: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: number;
-      api_base?: string;
-    };
+    model_completion_config: EvaluationModelConfig;
+    judge_config: EvaluationModelConfig;
   }) {
     return this.request('/evaluations', {
       method: 'POST',
@@ -333,24 +286,8 @@ class ApiClient {
       n_samples?: number;
       n_fewshots?: number;
     };
-    model_completion_config: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: number;
-      api_base?: string;
-    };
-    judge_config?: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: number;
-      api_base?: string;
-    };
+    model_completion_config: EvaluationModelConfig;
+    judge_config?: EvaluationModelConfig;
   }) {
     return this.request('/evaluations/tasks', {
       method: 'POST',
@@ -366,24 +303,8 @@ class ApiClient {
     mc_config?: { choices_field: string; gold_answer_field: string };
     judge_type: 'llm_as_judge' | 'f1_score' | 'exact_match';
     guideline_names?: string[];
-    model_completion_config: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: number;
-      api_base?: string;
-    };
-    judge_config?: {
-      model_name: string;
-      model_id: string;
-      api_name: string;
-      model_provider: string;
-      model_provider_slug: string;
-      model_provider_id: number;
-      api_base?: string;
-    };
+    model_completion_config: EvaluationModelConfig;
+    judge_config?: EvaluationModelConfig;
   }) {
     return this.request('/evaluations/flexible', {
       method: 'POST',
@@ -391,7 +312,11 @@ class ApiClient {
     });
   }
 
-  async getTraces() {
+  async getTraces(params?: { limit?: number; offset?: number }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit != null) searchParams.set('limit', String(params.limit));
+    if (params?.offset != null) searchParams.set('offset', String(params.offset));
+    const q = searchParams.toString();
     return this.request<{
       traces: {
         id: number;
@@ -403,10 +328,18 @@ class ApiClient {
         judge_model: string;
         judge_model_provider: string;
         status: string;
-        summary: any;
+        summary: Record<string, unknown> | null;
         created_at: string;
       }[];
-    }>('/evaluations/traces');
+      total: number;
+      status_counts: Record<string, number>;
+    }>(`/evaluations/traces${q ? '?' + q : ''}`);
+  }
+
+  async getMyModels() {
+    return this.request<{
+      models: { model: string; provider: string }[];
+    }>('/evaluations/my-models');
   }
 
   async getTrace(traceId: number) {
@@ -434,31 +367,59 @@ class ApiClient {
   }
 
   async getTraceSamples(traceId: number) {
-    return this.request<{ samples: any[] }>(`/evaluations/traces/${traceId}/samples`);
+    return this.request<{ samples: Record<string, unknown>[] }>(`/evaluations/traces/${traceId}/samples`);
+  }
+
+  async downloadTraceResults(traceId: number) {
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    const response = await fetch(`${API_BASE}/evaluations/traces/${traceId}/download`, { headers });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Download failed' }));
+      throw new Error(typeof error.detail === 'string' ? error.detail : 'Download failed');
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `eval_results_${traceId}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async getEvalProgress(traceId: number) {
+    return this.request<{ stage: string; percent: number | null; detail: string } | null>(
+      `/evaluations/traces/${traceId}/progress`
+    );
   }
 
   // Leaderboard endpoints
-  async getLeaderboard(datasetName: string) {
+  async getLeaderboard() {
     return this.request<{
-      dataset_name: string;
-      sample_count: number;
-      entries: {
-        trace_id: number;
-        completion_model: string;
-        model_provider: string;
-        judge_model: string;
-        scores: {
-          guideline_name: string;
-          mean: number;
-          max_score: number;
-          normalized: number;
-          failed: number;
+      datasets: {
+        dataset_name: string;
+        sample_count: number;
+        entries: {
+          trace_id: number;
+          dataset_name: string;
+          completion_model: string;
+          model_provider: string;
+          judge_model: string;
+          scores: {
+            metric_name: string;
+            mean: number;
+            std: number;
+            failed: number;
+          }[];
+          total_failures: number;
+          created_at: string;
         }[];
-        total_failures: number;
-        normalized_avg_score: number;
-        created_at: string;
       }[];
-    }>(`/leaderboard?dataset_name=${encodeURIComponent(datasetName)}`);
+    }>('/leaderboard');
   }
 
   // Benchmark endpoints
@@ -549,9 +510,17 @@ class ApiClient {
   async getTaskDetails(taskName: string) {
     const response = await this.request<{
       task_name: string;
-      task_details_nested_dict: Record<string, any> | null;
+      task_details_nested_dict: Record<string, unknown> | null;
     }>(`/benchmarks/task-details/${encodeURIComponent(taskName)}`);
     return response.task_details_nested_dict || {};
+  }
+
+  async getBenchmarkPreview(benchmarkId: number, numSamples: number = 10) {
+    return this.request<{
+      samples: Record<string, unknown>[];
+      hf_repo: string;
+      dataset_name: string;
+    }>(`/benchmarks/${benchmarkId}/preview?num_samples=${numSamples}`);
   }
 
   // Models and Providers endpoints
@@ -576,21 +545,21 @@ class ApiClient {
     }>(`/models-and-providers/providers${query ? '?' + query : ''}`);
   }
 
-  async getModels(params?: { page?: number; page_size?: number; provider_id?: number }) {
+  async getModels(params?: { page?: number; page_size?: number; provider_id?: string }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
-    if (params?.provider_id) queryParams.append('provider_id', params.provider_id.toString());
+    if (params?.provider_id) queryParams.append('provider_id', params.provider_id);
 
     const query = queryParams.toString();
     return this.request<{
       models: {
-        id: number;
+        id: string;
         display_name: string;
         developer: string;
         api_name: string;
         providers: {
-          id: number;
+          id: string;
           name: string;
           slug: string | null;
           base_url: string;
@@ -603,72 +572,50 @@ class ApiClient {
   }
 
   // OpenRouter endpoints
-  async getOpenRouterModels() {
-    const response = await fetch('https://openrouter.ai/api/v1/models');
-    if (!response.ok) throw new Error('Failed to fetch OpenRouter models');
-
-    const json = (await response.json()) as OpenRouterModelsResponse;
-    return {
-      models: json.data.map((m) => ({
-        id: m.id,
-        name: m.name,
-        description: m.description,
-        pricing: m.pricing,
-        context_length: m.context_length,
-      })),
-    };
+  async getOpenRouterModels(params?: {
+    limit?: number;
+    offset?: number;
+    provider_slug?: string;
+    search?: string;
+    sort?: string;
+  }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit != null) searchParams.set('limit', String(params.limit));
+    if (params?.offset != null) searchParams.set('offset', String(params.offset));
+    if (params?.provider_slug) searchParams.set('provider_slug', params.provider_slug);
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.sort) searchParams.set('sort', params.sort);
+    const q = searchParams.toString();
+    return this.request<{
+      models: OpenRouterModelSummary[];
+      total: number;
+    }>(`/models-and-providers/openrouter/models${q ? '?' + q : ''}`);
   }
 
-  async getOpenRouterProviders() {
-    const providersResp = await fetch('https://openrouter.ai/api/v1/providers');
-    if (!providersResp.ok) throw new Error('Failed to fetch OpenRouter providers');
-    const providersJson = (await providersResp.json()) as OpenRouterProvidersResponse;
-
-    const hostedModelsByProviderSlug = await this.getOpenRouterHostedModelsByProviderSlug();
-    const providers = providersJson.data
-      .map((p) => ({
-        name: p.name,
-        slug: p.slug,
-        model_count: hostedModelsByProviderSlug[p.slug]?.length || 0,
-      }))
-      .filter((p) => p.model_count > 0)
-      .sort((a, b) => b.model_count - a.model_count);
-    return {
-      providers,
-    };
+  async getOpenRouterProviders(params?: { limit?: number; offset?: number; search?: string; sort?: string }) {
+    const searchParams = new URLSearchParams();
+    if (params?.limit != null) searchParams.set('limit', String(params.limit));
+    if (params?.offset != null) searchParams.set('offset', String(params.offset));
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.sort) searchParams.set('sort', params.sort);
+    const q = searchParams.toString();
+    return this.request<{
+      providers: OpenRouterProviderSummary[];
+      total: number;
+    }>(`/models-and-providers/openrouter/providers${q ? '?' + q : ''}`);
   }
 
-  async getOpenRouterModelsByProvider(providerName: string) {
-    const hostedModelsByProviderSlug = await this.getOpenRouterHostedModelsByProviderSlug();
-    const models = (hostedModelsByProviderSlug[providerName] || []).map((m) => ({
-      id: m.id,
-      name: m.name,
-      description: m.description,
-      pricing: m.pricing,
-      context_length: m.context_length,
-    }));
-
-    return { models };
+  async getOpenRouterModelsByProvider(providerSlug: string) {
+    return this.request<{
+      models: OpenRouterModelSummary[];
+      total: number;
+    }>(`/models-and-providers/openrouter/providers/${encodeURIComponent(providerSlug)}/models`);
   }
 
   async getOpenRouterProvidersByModel(modelId: string) {
-    const [author, slug] = modelId.split('/', 2);
-    if (!author || !slug) return { model_id: modelId, providers: [] };
-
-    const response = await fetch(
-      `https://openrouter.ai/api/v1/models/${encodeURIComponent(author)}/${encodeURIComponent(
-        slug
-      )}/endpoints`
+    return this.request<{ model_id: string; providers: string[] }>(
+      `/models-and-providers/openrouter/models/${encodeURIComponent(modelId)}/providers`
     );
-    if (!response.ok) return { model_id: modelId, providers: [] };
-
-    const json = (await response.json()) as OpenRouterModelEndpointsResponse;
-    return {
-      model_id: modelId,
-      providers: json.data.endpoints
-        .map((e) => e.provider_name)
-        .filter((x): x is string => Boolean(x)),
-    };
   }
 
   async getOverlappingDatasets(modelProviderPairs: { model: string; provider: string }[]) {
@@ -707,4 +654,3 @@ class ApiClient {
 
 // Export singleton instance
 export const apiClient = new ApiClient();
-

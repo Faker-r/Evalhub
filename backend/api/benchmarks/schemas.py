@@ -66,3 +66,11 @@ class BenchmarkTasksListResponse(BaseModel):
     """Response schema for listing benchmark tasks."""
 
     tasks: list[BenchmarkTaskResponse]
+
+
+class BenchmarkPreviewResponse(BaseModel):
+    """Response schema for benchmark data preview."""
+
+    samples: list[dict]
+    hf_repo: str
+    dataset_name: str

@@ -3,13 +3,12 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 
-class GuidelineScore(BaseModel):
-    """Score for a single guideline."""
+class MetricScore(BaseModel):
+    """Score for a single metric."""
 
-    guideline_name: str
+    metric_name: str
     mean: float
-    max_score: int
-    normalized: float  # mean / max_score
+    std: float
     failed: int
 
 
@@ -19,18 +18,24 @@ class LeaderboardEntry(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     trace_id: int
+    dataset_name: str
     completion_model: str
     model_provider: str
     judge_model: str
-    scores: list[GuidelineScore]
+    scores: list[MetricScore]
     total_failures: int
-    normalized_avg_score: float  # Average of all normalized scores
     created_at: datetime
+
+
+class DatasetLeaderboard(BaseModel):
+    """Leaderboard for a single dataset."""
+
+    dataset_name: str
+    sample_count: int
+    entries: list[LeaderboardEntry]
 
 
 class LeaderboardResponse(BaseModel):
     """Response schema for the leaderboard endpoint."""
 
-    dataset_name: str
-    sample_count: int
-    entries: list[LeaderboardEntry]
+    datasets: list[DatasetLeaderboard]

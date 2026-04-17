@@ -1,7 +1,7 @@
 """Initial Supabase-compatible migration
 
 Revision ID: 001_initial_supabase
-Revises: 
+Revises:
 Create Date: 2025-12-04
 
 This migration creates all tables for the evalhub application.
@@ -54,7 +54,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.String(), nullable=False),  # Supabase UUID
         sa.Column("dataset_name", sa.String(), nullable=False),
-        sa.Column("guideline_names", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "guideline_names", postgresql.JSONB(astext_type=sa.Text()), nullable=False
+        ),
         sa.Column("completion_model", sa.String(), nullable=False),
         sa.Column("model_provider", sa.String(), nullable=False),
         sa.Column("judge_model", sa.String(), nullable=False),
@@ -96,4 +98,3 @@ def downgrade() -> None:
 
     op.drop_index("ix_datasets_name", table_name="datasets")
     op.drop_table("datasets")
-

@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.exceptions import NotFoundException
 from api.core.logging import get_logger
+from api.core.redis_client import clear_eval_progress
 from api.evaluations.models import Trace, TraceEvent
 
 logger = get_logger(__name__)
@@ -25,6 +26,7 @@ class EvaluationRepository:
         guideline_names: list[str],
         completion_model_config: dict,
         judge_model_config: dict,
+        count_on_leaderboard: bool = False,
     ) -> Trace:
         """Create a new trace for an evaluation run."""
         trace = Trace(
@@ -34,6 +36,7 @@ class EvaluationRepository:
             completion_model_config=completion_model_config,
             judge_model_config=judge_model_config,
             status="running",
+            count_on_leaderboard=count_on_leaderboard,
             created_at=datetime.utcnow(),
         )
         self.session.add(trace)
@@ -68,11 +71,73 @@ class EvaluationRepository:
 
         return trace
 
-    async def get_traces_by_user(self, user_id: str) -> list[Trace]:
-        """Get all traces for a user."""
-        query = select(Trace).where(Trace.user_id == user_id).order_by(Trace.id.desc())
+    async def mark_stale_traces_failed(
+        self, user_id: str, timeout_seconds: int = 4200
+    ) -> None:
+        """Mark traces stuck in 'running' beyond timeout as failed.
+
+        Celery hard time limit is 3900s (65 min). Default timeout of 4200s
+        (70 min) provides a buffer above that.
+        """
+        cutoff = datetime.utcnow() - timedelta(seconds=timeout_seconds)
+        query = select(Trace).where(
+            Trace.user_id == user_id,
+            Trace.status == "running",
+            Trace.created_at < cutoff,
+        )
         result = await self.session.execute(query)
-        return list(result.scalars().all())
+        stale_traces = list(result.scalars().all())
+
+        for trace in stale_traces:
+            trace.status = "failed"
+            trace.summary = {"error": "Evaluation timed out — worker lost"}
+            clear_eval_progress(trace.id)
+            logger.info(f"Marked stale trace {trace.id} as failed")
+
+        if stale_traces:
+            await self.session.commit()
+
+    async def get_traces_by_user(
+        self, user_id: str, limit: int = 20, offset: int = 0
+    ) -> tuple[list[Trace], int, dict[str, int]]:
+        """Get paginated traces for a user, including total status counts."""
+        base = select(Trace).where(Trace.user_id == user_id)
+        count_result = await self.session.execute(
+            select(func.count()).select_from(base.subquery())
+        )
+        total = count_result.scalar_one()
+
+        status_query = (
+            select(Trace.status, func.count())
+            .where(Trace.user_id == user_id)
+            .group_by(Trace.status)
+        )
+        status_result = await self.session.execute(status_query)
+        status_counts = {row[0]: row[1] for row in status_result.all()}
+
+        query = base.order_by(Trace.id.desc()).limit(limit).offset(offset)
+        result = await self.session.execute(query)
+        return list(result.scalars().all()), total, status_counts
+
+    async def get_distinct_models_by_user(self, user_id: str) -> list[dict]:
+        """Get distinct completion_model + model_provider pairs for a user's completed traces."""
+        query = (
+            select(Trace.completion_model_config)
+            .where(Trace.user_id == user_id, Trace.status == "completed")
+            .distinct()
+        )
+        result = await self.session.execute(query)
+        seen = set()
+        models = []
+        for (config,) in result.all():
+            trace = Trace(completion_model_config=config)
+            key = (trace.completion_model, trace.model_provider)
+            if key not in seen and key[0]:
+                seen.add(key)
+                models.append(
+                    {"model": trace.completion_model, "provider": trace.model_provider}
+                )
+        return models
 
     # ==================== TraceEvent Methods ====================
 

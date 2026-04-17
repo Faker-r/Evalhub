@@ -1,8 +1,15 @@
 from datetime import datetime
 from enum import Enum
-from typing import Literal, Optional
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from api.models_and_providers.schemas import (
+    ModelResponse,
+    OpenRouterModelBase,
+    OpenRouterProviderBase,
+    ProviderResponse,
+)
 
 
 class OutputType(str, Enum):
@@ -41,23 +48,6 @@ class NumericScoreDistribution(BaseModel):
     failed: int = 0
 
 
-class EvaluationResponse(BaseModel):
-    """Response schema for an evaluation run."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    trace_id: int
-    status: str
-    dataset_name: str
-    sample_count: int
-    guideline_names: list[str]
-    completion_model: str
-    model_provider: str
-    judge_model: str
-    scores: dict[str, CategoricalScoreDistribution | NumericScoreDistribution]
-    created_at: datetime
-
-
 class TraceResponse(BaseModel):
     """Response schema for a trace."""
 
@@ -75,11 +65,19 @@ class TraceResponse(BaseModel):
     summary: dict | None
     created_at: datetime
 
+    @model_validator(mode="after")
+    def strip_traceback_from_summary(self) -> "TraceResponse":
+        if self.summary and "traceback" in self.summary:
+            self.summary = {k: v for k, v in self.summary.items() if k != "traceback"}
+        return self
+
 
 class TraceListResponse(BaseModel):
     """Response schema for listing traces."""
 
     traces: list[TraceResponse]
+    total: int
+    status_counts: dict[str, int] = {}
 
 
 class TraceDetailsResponse(BaseModel):
@@ -114,33 +112,26 @@ class DatasetConfig(BaseModel):
     n_fewshots: int | None = None
 
 
-class ModelConfig(BaseModel):
-    """Request schema for running a task evaluation."""
+class StandardEvaluationModelConfig(BaseModel):
+    """Evaluation model config for standard providers."""
 
-    api_source: Literal["standard", "openrouter"]
-    model_name: str
-    model_id: int
-    api_name: str
-    model_provider: str
-    model_provider_slug: str
-    model_provider_id: int
+    api_source: Literal["standard"]
+    model: ModelResponse
+    provider: ProviderResponse
 
 
-class ModelConfigStored(BaseModel):
-    """Config shape stored on Trace (completion_model_config / judge_model_config)."""
+class OpenRouterEvaluationModelConfig(BaseModel):
+    """Evaluation model config for OpenRouter providers."""
 
-    api_source: Literal["standard", "openrouter"]
-    api_name: str
-    provider_slug: str
+    api_source: Literal["openrouter"]
+    model: OpenRouterModelBase
+    provider: OpenRouterProviderBase
 
 
-class EvaluationRequest(BaseModel):
-    """Request schema for running an evaluation."""
-
-    dataset_name: str
-    guideline_names: list[str]
-    model_completion_config: ModelConfig
-    judge_config: ModelConfig
+EvaluationModelConfig = Annotated[
+    StandardEvaluationModelConfig | OpenRouterEvaluationModelConfig,
+    Field(discriminator="api_source"),
+]
 
 
 class TaskEvaluationRequest(BaseModel):
@@ -148,8 +139,9 @@ class TaskEvaluationRequest(BaseModel):
 
     task_name: str
     dataset_config: DatasetConfig
-    model_completion_config: ModelConfig
-    judge_config: ModelConfig | None = None
+    model_completion_config: EvaluationModelConfig
+    judge_config: EvaluationModelConfig | None = None
+    count_on_leaderboard: bool = False
 
 
 class TaskEvaluationResponse(BaseModel):
@@ -176,8 +168,9 @@ class FlexibleEvaluationRequest(BaseModel):
     mc_config: MultipleChoiceConfig | None = None
     judge_type: JudgeType
     guideline_names: list[str] | None = None
-    model_completion_config: ModelConfig
-    judge_config: ModelConfig | None = None
+    model_completion_config: EvaluationModelConfig
+    judge_config: EvaluationModelConfig | None = None
+    count_on_leaderboard: bool = False
 
 
 class TraceSamplesRequest(BaseModel):

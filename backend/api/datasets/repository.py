@@ -15,7 +15,7 @@ class DatasetRepository:
         self.session = session
 
     async def create_from_file(
-        self, name: str, category: str, sample_count: int
+        self, name: str, category: str, sample_count: int, visibility: str, user_id: str
     ) -> Dataset:
         """Create a new dataset record.
 
@@ -23,6 +23,8 @@ class DatasetRepository:
             name: Dataset name
             category: Dataset category
             sample_count: Number of samples in the dataset
+            visibility: Dataset visibility (public/private)
+            user_id: ID of the user creating the dataset
 
         Returns:
             Dataset: Created dataset
@@ -31,6 +33,8 @@ class DatasetRepository:
             name=name,
             category=category,
             sample_count=sample_count,
+            visibility=visibility,
+            user_id=user_id,
         )
         self.session.add(dataset)
         await self.session.commit()
@@ -39,13 +43,24 @@ class DatasetRepository:
         logger.info(f"Created dataset: {dataset.name} (id={dataset.id})")
         return dataset
 
-    async def get_all(self) -> list[Dataset]:
-        """Get all datasets.
+    async def get_all(self, user_id: str | None = None) -> list[Dataset]:
+        """Get all datasets visible to the user.
+
+        Args:
+            user_id: ID of the user requesting datasets (None for unauthenticated)
 
         Returns:
-            list[Dataset]: List of all datasets
+            list[Dataset]: List of visible datasets
         """
         query = select(Dataset).order_by(Dataset.id.desc())
+
+        if user_id:
+            query = query.where(
+                (Dataset.visibility == "public") | (Dataset.user_id == user_id)
+            )
+        else:
+            query = query.where(Dataset.visibility == "public")
+
         result = await self.session.execute(query)
         return list(result.scalars().all())
 

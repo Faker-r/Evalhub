@@ -337,3 +337,33 @@ class S3Storage:
         except ClientError as e:
             logger.error(f"Failed to download file from S3: {e}")
             raise
+
+    def get_file_stream(self, key: str):
+        """Get a streaming body for a file in S3.
+
+        Returns:
+            The StreamingBody from boto3's get_object response.
+
+        Raises:
+            FileNotFoundError: If the key doesn't exist.
+        """
+        try:
+            response = self.client.get_object(Bucket=self.bucket, Key=key)
+            return response["Body"]
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                raise FileNotFoundError(f"File not found in S3: {key}")
+            logger.error(f"Failed to get file stream from S3: {e}")
+            raise
+
+    def eval_results_exist(self, trace_id: int) -> bool:
+        """Check if evaluation results exist in S3 for a given trace."""
+        prefix = f"{EVAL_RESULTS_PREFIX}/{trace_id}/"
+        try:
+            response = self.client.list_objects_v2(
+                Bucket=self.bucket, Prefix=prefix, MaxKeys=1
+            )
+            return response.get("KeyCount", 0) > 0
+        except ClientError as e:
+            logger.error(f"Failed to check eval results existence: {e}")
+            return False

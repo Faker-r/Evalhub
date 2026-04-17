@@ -12,17 +12,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Hexagon, Menu, X, Settings, LogOut } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { LoginModal } from "@/components/login-modal";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
 
   const navItems = [
     { label: "Leaderboard", href: "/" },
+    { label: "Models", href: "/models" },
+    { label: "Providers", href: "/providers" },
     { label: "Benchmarks", href: "/benchmarks" },
     { label: "Datasets", href: "/datasets" },
     { label: "Guidelines", href: "/guidelines" },
@@ -112,19 +112,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </>
             ) : (
               <>
-                <Button
-                  variant="ghost"
-                  className="font-medium"
-                  onClick={() => setIsLoginOpen(true)}
-                >
-                  Log In
-                </Button>
-                <Button
-                  className="bg-black hover:bg-zinc-800 text-white font-medium rounded-md px-6"
-                  onClick={() => setIsLoginOpen(true)}
-                >
-                  Get Started
-                </Button>
+                <Link href="/auth">
+                  <Button variant="ghost" className="font-medium">
+                    Log In
+                  </Button>
+                </Link>
+                <Link href="/auth">
+                  <Button className="bg-black hover:bg-zinc-800 text-white font-medium rounded-md px-6">
+                    Get Started
+                  </Button>
+                </Link>
               </>
             )}
           </div>
@@ -191,22 +188,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </>
               ) : (
                 <>
-                  <Button
-                    variant="ghost"
-                    className="justify-start"
-                    onClick={() => setIsLoginOpen(true)}
-                  >
-                    Log In
-                  </Button>
-                  <Button
-                    className="bg-black text-white justify-start w-full"
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      setIsLoginOpen(true);
-                    }}
-                  >
-                    Get Started
-                  </Button>
+                  <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="justify-start w-full">
+                      Log In
+                    </Button>
+                  </Link>
+                  <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button className="bg-black text-white justify-start w-full">
+                      Get Started
+                    </Button>
+                  </Link>
                 </>
               )}
             </div>
@@ -221,7 +212,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Footer */}
       <footer className="border-t border-border bg-white py-12">
-        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="container mx-auto px-4">
           <div>
             <div className="flex items-center gap-2 mb-4">
               <div className="flex items-center justify-center w-6 h-6 bg-black rounded text-white">
@@ -233,37 +224,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               The modern standard for LLM evaluation and benchmarking.
             </p>
           </div>
-          
-          <div>
-            <h4 className="font-bold mb-4 text-sm">Platform</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-black">Leaderboard</a></li>
-              <li><a href="#" className="hover:text-black">Datasets</a></li>
-              <li><a href="#" className="hover:text-black">API</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold mb-4 text-sm">Company</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-black">About</a></li>
-              <li><a href="#" className="hover:text-black">Blog</a></li>
-              <li><a href="#" className="hover:text-black">Careers</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold mb-4 text-sm">Connect</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-black">Twitter</a></li>
-              <li><a href="#" className="hover:text-black">GitHub</a></li>
-              <li><a href="#" className="hover:text-black">Discord</a></li>
-            </ul>
-          </div>
         </div>
       </footer>
-
-      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
     </div>
   );
 }

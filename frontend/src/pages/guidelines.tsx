@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Scale, Plus, BookOpen, X, Eye } from "lucide-react";
+import { Scale, Plus, BookOpen, X, Eye, Lock, Globe } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -31,14 +31,14 @@ export default function Guidelines() {
     category: "",
     categories: [] as string[],
     scoring_scale: "numeric" as "boolean" | "custom_category" | "numeric" | "percentage",
-    scoring_scale_config: { min_value: 0, max_value: 10 } as any,
+    scoring_scale_config: { min_value: 0, max_value: 10 } as Record<string, unknown>,
+    visibility: "public" as "public" | "private",
   });
 
   // Fetch guidelines
   const { data: guidelinesData, isLoading } = useQuery({
     queryKey: ['guidelines'],
     queryFn: () => apiClient.getGuidelines(),
-    enabled: isAuthenticated,
   });
 
   const guidelines = guidelinesData?.guidelines || [];
@@ -55,7 +55,8 @@ export default function Guidelines() {
         category: "",
         categories: [], 
         scoring_scale: "numeric", 
-        scoring_scale_config: { min_value: 0, max_value: 10 } 
+        scoring_scale_config: { min_value: 0, max_value: 10 },
+        visibility: "public"
       });
       setNewCategoryInput("");
       toast({
@@ -111,7 +112,7 @@ export default function Guidelines() {
 
   const handleScoringScaleChange = (value: string) => {
     const scale = value as "boolean" | "custom_category" | "numeric" | "percentage";
-    let config: any = {};
+    let config: Record<string, unknown> = {};
     
     if (scale === "boolean") {
       config = {};
@@ -137,18 +138,6 @@ export default function Guidelines() {
   // Get unique categories
   const categories = Array.from(new Set(guidelines.map((g) => g.category)));
 
-  if (!isAuthenticated) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <Scale className="w-16 h-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Please login to view guidelines</h2>
-          <p className="text-muted-foreground">You need to be authenticated to access this page.</p>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -161,13 +150,14 @@ export default function Guidelines() {
                 Create and manage evaluation criteria for LLM outputs
               </p>
             </div>
-            <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Create Guideline
-                </Button>
-              </DialogTrigger>
+            {isAuthenticated && (
+              <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Create Guideline
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>Create New Guideline</DialogTitle>
@@ -203,6 +193,33 @@ export default function Guidelines() {
                       }
                       rows={6}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="visibility">Visibility</Label>
+                    <Select 
+                      value={createData.visibility} 
+                      onValueChange={(value: "public" | "private") => 
+                        setCreateData({ ...createData, visibility: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public">
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4" />
+                            <span>Public - Visible to everyone</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="private">
+                          <div className="flex items-center gap-2">
+                            <Lock className="w-4 h-4" />
+                            <span>Private - Only visible to you</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="scoring_scale">Scoring Scale</Label>
@@ -402,6 +419,7 @@ export default function Guidelines() {
                 </div>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </div>
 
@@ -493,6 +511,7 @@ export default function Guidelines() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Visibility</TableHead>
                     <TableHead>Scoring Scale</TableHead>
                     <TableHead>Scale Config</TableHead>
                     <TableHead>Prompt Preview</TableHead>
@@ -505,6 +524,15 @@ export default function Guidelines() {
                       <TableCell className="font-medium">{guideline.name}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{guideline.category}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={guideline.visibility === "public" ? "default" : "outline"}>
+                          {guideline.visibility === "public" ? (
+                            <><Globe className="w-3 h-3 mr-1" /> Public</>
+                          ) : (
+                            <><Lock className="w-3 h-3 mr-1" /> Private</>
+                          )}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">

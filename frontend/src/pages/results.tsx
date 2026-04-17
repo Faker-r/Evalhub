@@ -3,28 +3,79 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye, Info } from "lucide-react";
+import { RefreshCw, Clock, CheckCircle, XCircle, Loader2, Eye, Info, AlertTriangle, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+const STAGE_LABELS: Record<string, string> = {
+  starting: "Starting...",
+  model_inference: "Running inference...",
+  computing_metrics: "Computing metrics...",
+  aggregating: "Aggregating results...",
+  uploading: "Uploading results...",
+  finalizing: "Finalizing...",
+  evaluating: "Evaluating...",
+};
+
+function EvalProgressCell({ traceId }: { traceId: number }) {
+  const { data: progress } = useQuery({
+    queryKey: ["evalProgress", traceId],
+    queryFn: () => apiClient.getEvalProgress(traceId),
+    refetchInterval: 2000,
+  });
+
+  if (!progress) {
+    return (
+      <span className="text-sm text-muted-foreground">
+        Processing...
+      </span>
+    );
+  }
+
+  const label = STAGE_LABELS[progress.stage] || progress.detail || progress.stage;
+  const percent = progress.percent ?? 0;
+
+  return (
+    <div className="w-40 space-y-1">
+      <Progress value={percent} className="h-2" />
+      <p className="text-xs text-muted-foreground">{percent}% — {label}</p>
+    </div>
+  );
+}
+
+const PAGE_SIZE = 20;
+
 export default function Results() {
   const { isAuthenticated } = useAuth();
+  const [page, setPage] = useState(1);
+
+  const offset = (page - 1) * PAGE_SIZE;
 
   // Fetch traces/evaluations
-  const { data: tracesData, isLoading, refetch } = useQuery({
-    queryKey: ["traces"],
-    queryFn: () => apiClient.getTraces(),
+  const { data: tracesData, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ["traces", page],
+    queryFn: () => apiClient.getTraces({ limit: PAGE_SIZE, offset }),
     enabled: isAuthenticated,
     refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
   const traces = tracesData?.traces || [];
+  const total = tracesData?.total ?? 0;
+  const statusCounts = tracesData?.status_counts ?? {};
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const [selectedTrace, setSelectedTrace] = useState<any>(null);
+  interface SelectedTrace {
+    id: number;
+    status: string;
+    [key: string]: unknown;
+  }
+
+  const [selectedTrace, setSelectedTrace] = useState<SelectedTrace | null>(null);
 
   const { data: traceDetails, isLoading: isLoadingDetails } = useQuery({
     queryKey: ["traceDetails", selectedTrace?.id],
@@ -39,6 +90,19 @@ export default function Results() {
   });
 
   const traceSamples = traceSamplesData?.samples || [];
+
+  const [downloadingTraceId, setDownloadingTraceId] = useState<number | null>(null);
+
+  const handleDownload = async (traceId: number) => {
+    setDownloadingTraceId(traceId);
+    try {
+      await apiClient.downloadTraceResults(traceId);
+    } catch (err) {
+      console.error('Download failed:', err);
+    } finally {
+      setDownloadingTraceId(null);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -78,11 +142,25 @@ export default function Results() {
     return date.toLocaleString();
   };
 
-  const renderScores = (scores: any, metricDocs: any) => {
+  const formatModelProvider = (provider: string) => {
+    if (!provider) return "—";
+    if (provider.toLowerCase() === "openrouter") return "OpenRouter (routing)";
+    return provider;
+  };
+
+  const formatCost = (cost: number | undefined | null): string => {
+    if (cost == null || cost === 0) return "$0.00";
+    if (cost < 0.01) return `$${cost.toFixed(4)}`;
+    return `$${cost.toFixed(2)}`;
+  };
+
+  const renderScores = (scores: Record<string, unknown>, metricDocs: Record<string, unknown>) => {
     if (!scores) return null;
 
     const scoreEntries = Object.entries(scores);
-    const hasCategoricalScores = scoreEntries.some(([, scoreData]: [string, any]) => 'distribution' in scoreData);
+    const hasCategoricalScores = scoreEntries.some(([, scoreData]) =>
+      typeof scoreData === 'object' && scoreData !== null && 'distribution' in scoreData
+    );
 
     return (
       <Table>
@@ -95,9 +173,10 @@ export default function Results() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {scoreEntries.map(([guidelineName, scoreData]: [string, any]) => {
-            const isNumeric = 'mean' in scoreData;
-            const isCategorical = 'distribution' in scoreData;
+          {scoreEntries.map(([guidelineName, scoreData]) => {
+            const scoreDataObj = scoreData as Record<string, unknown>;
+            const isNumeric = 'mean' in scoreDataObj;
+            const isCategorical = 'distribution' in scoreDataObj;
             const hasMetricDoc = metricDocs && metricDocs[guidelineName];
 
             return (
@@ -113,7 +192,7 @@ export default function Results() {
                           </TooltipTrigger>
                           <TooltipContent className="max-w-md">
                             <div className="space-y-2 text-sm">
-                              {metricDocs[guidelineName].map((desc: any, idx: number) => (
+                              {(metricDocs[guidelineName] as Array<{ measure: string; sample_level: string; corpus_level: string }>).map((desc, idx: number) => (
                                 <div key={idx} className="space-y-1">
                                   <p><span className="font-semibold">Measure:</span> {desc.measure}</p>
                                   <p><span className="font-semibold">Sample:</span> {desc.sample_level}</p>
@@ -130,18 +209,18 @@ export default function Results() {
                 <TableCell>
                   {isNumeric && (
                     <span className="font-mono">
-                      {scoreData.mean.toFixed(2)} ± {scoreData.std.toFixed(2)}
+                      {(scoreDataObj.mean as number).toFixed(2)} ± {(scoreDataObj.std as number).toFixed(2)}
                     </span>
                   )}
                   {isCategorical && (
-                    <span className="font-medium">{scoreData.mode || 'N/A'}</span>
+                    <span className="font-medium">{(scoreDataObj.mode as string) || 'N/A'}</span>
                   )}
                 </TableCell>
                 {hasCategoricalScores && (
                   <TableCell>
                     {isCategorical && (
                       <div className="flex flex-wrap gap-1">
-                        {Object.entries(scoreData.distribution).map(([category, count]: [string, any]) => (
+                        {Object.entries(scoreDataObj.distribution as Record<string, number>).map(([category, count]) => (
                           <Badge key={category} variant="outline" className="text-xs">
                             {category}: {count}
                           </Badge>
@@ -241,9 +320,9 @@ export default function Results() {
             variant="outline"
             className="gap-2"
             onClick={() => refetch()}
-            disabled={isLoading}
+            disabled={isFetching}
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
@@ -255,7 +334,7 @@ export default function Results() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Evaluations</p>
-                  <p className="text-3xl font-bold">{traces.length}</p>
+                  <p className="text-3xl font-bold">{total}</p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-muted-foreground" />
               </div>
@@ -267,7 +346,7 @@ export default function Results() {
                 <div>
                   <p className="text-sm text-muted-foreground">Completed</p>
                   <p className="text-3xl font-bold text-green-600">
-                    {traces.filter((t) => t.status === "completed").length}
+                    {statusCounts.completed ?? 0}
                   </p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-600" />
@@ -280,7 +359,7 @@ export default function Results() {
                 <div>
                   <p className="text-sm text-muted-foreground">Running</p>
                   <p className="text-3xl font-bold text-blue-600">
-                    {traces.filter((t) => t.status === "running").length}
+                    {statusCounts.running ?? 0}
                   </p>
                 </div>
                 <Loader2 className="w-8 h-8 text-blue-600" />
@@ -293,7 +372,7 @@ export default function Results() {
                 <div>
                   <p className="text-sm text-muted-foreground">Failed</p>
                   <p className="text-3xl font-bold text-red-600">
-                    {traces.filter((t) => t.status === "failed").length}
+                    {statusCounts.failed ?? 0}
                   </p>
                 </div>
                 <XCircle className="w-8 h-8 text-red-600" />
@@ -348,8 +427,8 @@ export default function Results() {
                       <TableCell>
                         <div className="text-sm">
                           <div className="font-medium">{trace.completion_model}</div>
-                          <div className="text-muted-foreground text-xs">
-                            {trace.model_provider}
+                          <div className="text-muted-foreground text-xs" title="Model provider (host)">
+                            {formatModelProvider(trace.model_provider)}
                           </div>
                         </div>
                       </TableCell>
@@ -362,6 +441,7 @@ export default function Results() {
                       </TableCell>
                       <TableCell>
                         {trace.status === "completed" && trace.summary && (
+                          <div className="flex items-center gap-1">
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button
@@ -403,8 +483,8 @@ export default function Results() {
                                               <p className="font-medium">{traceDetails.spec.completion_model ?? selectedTrace.completion_model}</p>
                                             </div>
                                             <div>
-                                              <span className="text-sm text-muted-foreground">Provider:</span>
-                                              <p className="font-medium">{traceDetails.spec.model_provider ?? selectedTrace.model_provider}</p>
+                                              <span className="text-sm text-muted-foreground">Model provider:</span>
+                                              <p className="font-medium">{formatModelProvider(traceDetails.spec.model_provider ?? selectedTrace.model_provider)}</p>
                                             </div>
                                           </div>
                                           {traceDetails.spec.judge_model ? (
@@ -414,8 +494,8 @@ export default function Results() {
                                                 <p className="font-medium">{traceDetails.spec.judge_model}</p>
                                               </div>
                                               <div>
-                                                <span className="text-sm text-muted-foreground">Judge Provider:</span>
-                                                <p className="font-medium">{traceDetails.judge_model_provider}</p>
+                                                <span className="text-sm text-muted-foreground">Judge model provider:</span>
+                                                <p className="font-medium">{formatModelProvider(traceDetails.judge_model_provider)}</p>
                                               </div>
                                             </div>
                                           ) : null}
@@ -439,6 +519,15 @@ export default function Results() {
                                             <span className="text-sm text-muted-foreground">Created:</span>
                                             <p className="font-medium">{formatDate(traceDetails.created_at)}</p>
                                           </div>
+                                          {selectedTrace.summary?.cost && (
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Cost:</span>
+                                              <p className="font-medium">{formatCost(selectedTrace.summary.cost.total_cost)}</p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {selectedTrace.summary.cost.prompt_tokens?.toLocaleString()} prompt + {selectedTrace.summary.cost.completion_tokens?.toLocaleString()} completion tokens
+                                              </p>
+                                            </div>
+                                          )}
                                         </>
                                       ) : (
                                         <>
@@ -452,8 +541,8 @@ export default function Results() {
                                               <p className="font-medium">{selectedTrace.completion_model}</p>
                                             </div>
                                             <div>
-                                              <span className="text-sm text-muted-foreground">Provider:</span>
-                                              <p className="font-medium">{selectedTrace.model_provider}</p>
+                                              <span className="text-sm text-muted-foreground">Model provider:</span>
+                                              <p className="font-medium">{formatModelProvider(selectedTrace.model_provider)}</p>
                                             </div>
                                           </div>
                                           {selectedTrace.judge_model ? (
@@ -463,8 +552,8 @@ export default function Results() {
                                                 <p className="font-medium">{selectedTrace.judge_model}</p>
                                               </div>
                                               <div>
-                                                <span className="text-sm text-muted-foreground">Judge Provider:</span>
-                                                <p className="font-medium">{selectedTrace.judge_model_provider ?? ""}</p>
+                                                <span className="text-sm text-muted-foreground">Judge model provider:</span>
+                                                <p className="font-medium">{formatModelProvider(selectedTrace.judge_model_provider ?? "")}</p>
                                               </div>
                                             </div>
                                           ) : null}
@@ -488,6 +577,15 @@ export default function Results() {
                                             <span className="text-sm text-muted-foreground">Created:</span>
                                             <p className="font-medium">{formatDate(selectedTrace.created_at)}</p>
                                           </div>
+                                          {selectedTrace.summary?.cost && (
+                                            <div>
+                                              <span className="text-sm text-muted-foreground">Cost:</span>
+                                              <p className="font-medium">{formatCost(selectedTrace.summary.cost.total_cost)}</p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {selectedTrace.summary.cost.prompt_tokens?.toLocaleString()} prompt + {selectedTrace.summary.cost.completion_tokens?.toLocaleString()} completion tokens
+                                              </p>
+                                            </div>
+                                          )}
                                         </>
                                       )}
                                     </CardContent>
@@ -510,7 +608,7 @@ export default function Results() {
                                         </div>
                                       ) : traceSamples.length > 0 ? (
                                         <div className="space-y-6">
-                                          {traceSamples.map((sample: any, idx: number) => (
+                                          {traceSamples.map((sample: Record<string, unknown>, idx: number) => (
                                             <Card key={idx}>
                                               <CardHeader className="pb-3">
                                                 <CardTitle className="text-base font-medium">Sample {idx + 1}</CardTitle>
@@ -566,17 +664,106 @@ export default function Results() {
                               )}
                             </DialogContent>
                           </Dialog>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => handleDownload(trace.id)}
+                            disabled={downloadingTraceId === trace.id}
+                          >
+                            {downloadingTraceId === trace.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Download className="w-4 h-4" />
+                            )}
+                            Download
+                          </Button>
+                          </div>
+                        )}
+                        {trace.status === "failed" && trace.summary?.error && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-2 text-red-600 hover:text-red-700"
+                              >
+                                <AlertTriangle className="w-4 h-4" />
+                                View Error
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>Evaluation Error #{trace.id}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <Card>
+                                  <CardContent className="grid grid-cols-2 gap-4 pt-6">
+                                    <div>
+                                      <span className="text-sm text-muted-foreground">Dataset:</span>
+                                      <p className="font-medium">{trace.dataset_name}</p>
+                                    </div>
+                                    <div className="flex gap-4">
+                                      <div>
+                                        <span className="text-sm text-muted-foreground">Model:</span>
+                                        <p className="font-medium">{trace.completion_model}</p>
+                                      </div>
+                                      <div>
+                                        <span className="text-sm text-muted-foreground">Provider:</span>
+                                        <p className="font-medium">{trace.model_provider}</p>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <span className="text-sm text-muted-foreground">Created:</span>
+                                      <p className="font-medium">{formatDate(trace.created_at)}</p>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                                <div>
+                                  <h4 className="text-sm font-semibold text-red-700 mb-2">Error Message</h4>
+                                  <pre className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-md text-sm whitespace-pre-wrap font-mono overflow-x-auto max-h-60 overflow-y-auto">
+                                    {trace.summary.error}
+                                  </pre>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         )}
                         {trace.status === "running" && (
-                          <span className="text-sm text-muted-foreground">
-                            In progress...
-                          </span>
+                          <EvalProgressCell traceId={trace.id} />
                         )}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+            )}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-4 border-t">
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

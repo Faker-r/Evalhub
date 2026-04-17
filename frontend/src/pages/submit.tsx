@@ -3,22 +3,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
-import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server, ChevronDown, Eye, Search } from "lucide-react";
-import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useState, useEffect, useRef } from "react";
+import { Check, ChevronRight, ChevronLeft, Database, FileText, Play, Server, ChevronDown, Eye, Search, HelpCircle, BookOpen } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
+import { apiClient, type EvaluationModelConfig } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
 import { ModelSelection } from "@/components/model-selection";
+import type { ModelConfig } from "@/types/model-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface ExpandableCellProps {
-  value: any;
+  value: unknown;
 }
 
 const ExpandableCell = ({ value }: ExpandableCellProps) => {
@@ -55,22 +56,6 @@ const ExpandableCell = ({ value }: ExpandableCellProps) => {
   );
 };
   
-interface ModelConfig {
-  // For standard providers
-  provider_id?: number;
-  provider_name?: string;
-  provider_slug?: string;
-  model_id?: number; // Database ID as integer
-  model_name?: string;
-  api_name?: string;
-
-  // For OpenRouter
-  is_openrouter?: boolean;
-  openrouter_model_id?: string;
-  openrouter_model_name?: string;
-  openrouter_provider_slug?: string;
-}
-
 const STEPS = [
   { id: 1, title: "Select Source", icon: Database },
   { id: 2, title: "Dataset Configuration", icon: FileText },
@@ -80,27 +65,420 @@ const STEPS = [
 
 type SelectionType = "dataset" | "benchmark" | null;
 
+// Field help tooltip component
+interface FieldHelpProps {
+  title: string;
+  description: string;
+  examples: string[];
+  tip?: string;
+}
+
+const FieldHelp = ({ title, description, examples, tip }: FieldHelpProps) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help inline-block ml-1 align-text-bottom" />
+    </TooltipTrigger>
+    <TooltipContent className="max-w-sm" side="right">
+      <div className="space-y-2">
+        <p className="font-semibold">{title}</p>
+        <p className="text-sm">{description}</p>
+        <div className="text-sm">
+          <p className="font-medium">Examples:</p>
+          <ul className="list-disc ml-4">
+            {examples.map((ex, i) => (
+              <li key={i} className="font-mono text-xs">{ex}</li>
+            ))}
+          </ul>
+        </div>
+        {tip && (
+          <p className="text-xs text-muted-foreground italic">{tip}</p>
+        )}
+      </div>
+    </TooltipContent>
+  </Tooltip>
+);
+
+// Help content for form fields
+const FIELD_HELP = {
+  inputField: {
+    title: "Input Field",
+    description: "The column name in your dataset that contains the text you want the model to respond to (the prompt or question).",
+    examples: ["question", "prompt", "input", "query", "text"],
+    tip: "Click the eye icon on a dataset to preview its fields.",
+  },
+  choicesField: {
+    title: "Choices Field",
+    description: "The column name containing the list of possible answers. This should be an array/list of options.",
+    examples: ["choices", "options", "answers", "alternatives"],
+    tip: "The field should contain an array like [\"A\", \"B\", \"C\", \"D\"] or [\"Yes\", \"No\"].",
+  },
+  goldAnswerField: {
+    title: "Gold Answer Field",
+    description: "The column name containing the correct/expected answer. For multiple choice, this can be the answer text or index.",
+    examples: ["answer", "correct_answer", "gold", "label", "target"],
+    tip: "For multiple choice: can be the answer text (e.g., 'Paris') or index (e.g., 0, 1, 2).",
+  },
+  goldAnswerFieldText: {
+    title: "Gold Answer Field (Optional)",
+    description: "The column name containing the expected/correct answer for comparison. Leave empty if your dataset doesn't have reference answers.",
+    examples: ["answer", "expected_output", "reference", "gold"],
+    tip: "Used by Exact Match and F1 Score judges to compare model output.",
+  },
+};
+
+// Visual diagram component for ASCII art
+const DiagramBlock = ({ content }: { content: string }) => (
+  <pre className="font-mono text-xs bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto whitespace-pre leading-relaxed">
+    {content}
+  </pre>
+);
+
+// Sample JSON data display component
+const SampleDataBlock = ({ json }: { json: string }) => (
+  <div className="bg-muted rounded-lg p-3 font-mono text-xs overflow-x-auto">
+    <pre className="whitespace-pre text-foreground">{json}</pre>
+  </div>
+);
+
+// Guide content for each field with visual examples
+const FIELD_GUIDES = {
+  inputField: {
+    title: "Input Field",
+    description: "The column in your dataset containing the prompt or question for the model.",
+    sample: `{
+  "question": "What is the capital of France?",  ← Enter "question"
+  "answer": "Paris",
+  "context": "France is a country in Europe..."
+}`,
+    diagram: `┌─────────────────────────────────────────────────┐
+│              YOUR DATASET                       │
+├───────────────────┬───────────┬─────────────────┤
+│  question         │  answer   │  context        │
+├───────────────────┼───────────┼─────────────────┤
+│  "What is 2+2?"   │  "4"      │  "Math quiz"    │
+│  "Capital of US?" │  "DC"     │  "Geography"    │
+└─────────▲─────────┴───────────┴─────────────────┘
+          │
+ Enter this column name: "question"`,
+    tip: "This is the text that will be sent to the model as the prompt.",
+  },
+  outputTypeText: {
+    title: "Text Output",
+    description: "The model generates free-form text responses.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│  PROMPT                     MODEL RESPONSE      │
+├─────────────────────────────────────────────────┤
+│  "Explain photosynthesis"   "Photosynthesis     │
+│                        →     is the process..." │
+│                                                 │
+│  "Write a haiku"            "Autumn moonlight   │
+│                        →     a worm digs..."    │
+└─────────────────────────────────────────────────┘
+
+Use for: Essays, summaries, explanations, creative writing`,
+  },
+  outputTypeMC: {
+    title: "Multiple Choice",
+    description: "The model selects from predefined options.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│  PROMPT                      MODEL RESPONSE     │
+├─────────────────────────────────────────────────┤
+│  "What is 2+2?"                                 │
+│  Choices: [A] 3  [B] 4  [C] 5    →    [B] 4    │
+│                                                 │
+│  "Capital of France?"                           │
+│  Choices: [A] London [B] Paris   →    [B] Paris│
+└─────────────────────────────────────────────────┘
+
+Use for: Quizzes, fact-checking, classification`,
+  },
+  choicesField: {
+    title: "Choices Field",
+    description: "The column containing the list of answer options.",
+    sample: `{
+  "question": "What is 2+2?",
+  "choices": ["3", "4", "5", "6"],  ← Enter "choices"
+  "answer": "4"
+}`,
+    diagram: `           choices field
+                 │
+                 ▼
+      ┌──────────────────┐
+      │ ["3","4","5","6"] │  ← Must be an array/list
+      └──────────────────┘
+                 │
+                 ▼
+  Model sees:  0: 3
+               1: 4  ← correct
+               2: 5
+               3: 6`,
+    tip: "The field must contain an array like [\"A\", \"B\", \"C\"] or [\"Yes\", \"No\"]",
+  },
+  goldAnswerField: {
+    title: "Gold Answer Field",
+    description: "The column containing the correct/expected answer.",
+    sample: `{
+  "question": "What is 2+2?",
+  "choices": ["3", "4", "5", "6"],
+  "answer": "4"  ← Enter "answer" (can be text or index)
+}`,
+    diagram: `Gold answer can be specified two ways:
+
+  Option A: The answer text      Option B: The index
+  ─────────────────────────      ───────────────────
+  "answer": "Paris"              "answer": 1
+       │                              │
+       ▼                              ▼
+  Matches choice text            Points to choices[1]
+  ["London","Paris"]             ["London","Paris"]
+           ▲                              ▲
+           └── "Paris"                    └── index 1 = "Paris"`,
+    tip: "For text output: this is compared against the model's response",
+  },
+  goldAnswerFieldText: {
+    title: "Gold Answer Field (Optional)",
+    description: "The expected answer to compare against the model's output.",
+    sample: `{
+  "question": "Explain gravity briefly.",
+  "reference": "Gravity is the force of attraction..."  ← Enter "reference"
+}`,
+    diagram: `Without gold answer:
+  Model output → (no comparison, judge evaluates quality)
+
+With gold answer:
+  Model output: "Gravity pulls objects together"
+  Gold answer:  "Gravity is the force of attraction"
+        │
+        ▼
+  Exact Match: 0.0 (different text)
+  F1 Score:    0.5 (some word overlap)`,
+    tip: "Leave empty if you only want quality evaluation without a reference answer.",
+  },
+  judgeLLM: {
+    title: "LLM as Judge",
+    description: "Uses another LLM to evaluate response quality based on guidelines.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│           HOW LLM AS JUDGE WORKS                │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│   Question ──► Model ──► Response               │
+│                              │                  │
+│                              ▼                  │
+│                    ┌─────────────────┐          │
+│   Guidelines ────► │  JUDGE MODEL    │          │
+│                    │  (evaluates)    │          │
+│                    └────────┬────────┘          │
+│                             │                   │
+│                             ▼                   │
+│                    Score: 8/10                  │
+│                    "Good but could be clearer"  │
+└─────────────────────────────────────────────────┘
+
+Best for: Subjective quality, writing style, helpfulness`,
+  },
+  judgeExact: {
+    title: "Exact Match",
+    description: "Checks if the model output exactly matches the gold answer.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│           HOW EXACT MATCH WORKS                 │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│   Model Response: "Paris"                       │
+│   Gold Answer:    "Paris"                       │
+│                      │                          │
+│                      ▼                          │
+│              "Paris" == "Paris"                 │
+│                      │                          │
+│                      ▼                          │
+│                  ✓ MATCH (Score: 1.0)           │
+│                                                 │
+│   Model Response: "paris"                       │
+│   Gold Answer:    "Paris"                       │
+│                      │                          │
+│                      ▼                          │
+│              "paris" != "Paris"                 │
+│                      │                          │
+│                      ▼                          │
+│                  ✗ NO MATCH (Score: 0.0)        │
+└─────────────────────────────────────────────────┘
+
+Best for: Factual Q&A, multiple choice, classification`,
+  },
+  judgeF1: {
+    title: "F1 Score",
+    description: "Measures token-level overlap between response and gold answer.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│           HOW F1 SCORE WORKS                    │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│   Model Response: "The capital is Paris"        │
+│   Gold Answer:    "Paris is the capital"        │
+│                          │                      │
+│                          ▼                      │
+│              Tokenize both strings:             │
+│   Response: [The, capital, is, Paris]           │
+│   Gold:     [Paris, is, the, capital]           │
+│                          │                      │
+│                          ▼                      │
+│              Calculate token overlap:           │
+│   Shared: {capital, is, Paris} = 3 tokens       │
+│                          │                      │
+│                          ▼                      │
+│              F1 = 2 × (P × R) / (P + R)         │
+│                  ≈ 0.86 (partial match!)        │
+└─────────────────────────────────────────────────┘
+
+Best for: Extractive Q&A, summaries, paraphrasing`,
+  },
+  // Benchmark-specific guides
+  numSamples: {
+    title: "Number of Samples",
+    description: "How many examples from the benchmark to evaluate.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│           BENCHMARK DATASET                      │
+├─────────────────────────────────────────────────┤
+│  Sample 1: "What is 2+2?"          ✓ Evaluated  │
+│  Sample 2: "Capital of France?"    ✓ Evaluated  │
+│  Sample 3: "Who wrote Hamlet?"     ✓ Evaluated  │
+│  Sample 4: "Largest planet?"       ✗ Skipped    │
+│  Sample 5: "Speed of light?"       ✗ Skipped    │
+│  ... (1000 more samples)           ✗ Skipped    │
+└─────────────────────────────────────────────────┘
+         ▲
+         │
+  numSamples = 3  (only first 3 evaluated)
+
+Leave empty to evaluate ALL samples in the benchmark.`,
+    tip: "Use a smaller number (e.g., 10-50) for quick testing, then run the full benchmark.",
+  },
+  numFewShots: {
+    title: "Few-Shot Examples",
+    description: "Examples included in the prompt to help the model understand the task format.",
+    diagram: `┌─────────────────────────────────────────────────┐
+│           PROMPT SENT TO MODEL                   │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│  ┌─────────────────────────────────────────┐    │
+│  │ FEW-SHOT EXAMPLES (numFewShots = 2):    │    │
+│  │                                          │    │
+│  │ Example 1:                               │    │
+│  │ Q: What is the capital of Spain?         │    │
+│  │ A: Madrid                                │    │
+│  │                                          │    │
+│  │ Example 2:                               │    │
+│  │ Q: What is the capital of Italy?         │    │
+│  │ A: Rome                                  │    │
+│  └─────────────────────────────────────────┘    │
+│                                                  │
+│  ┌─────────────────────────────────────────┐    │
+│  │ ACTUAL QUESTION:                        │    │
+│  │ Q: What is the capital of France?       │    │
+│  │ A: ???  ← Model generates this          │    │
+│  └─────────────────────────────────────────┘    │
+│                                                  │
+└─────────────────────────────────────────────────┘
+
+0 = Zero-shot (no examples, just the question)
+5 = Five examples shown before each question`,
+    tip: "Few-shot learning often improves accuracy. Start with 0 or 5 to compare.",
+  },
+};
+
+// Collapsible guide section component
+interface GuideExampleProps {
+  sample?: string;
+  diagram?: string;
+  tip?: string;
+}
+
+const GuideExample = ({ sample, diagram, tip }: GuideExampleProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-2"
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>{isOpen ? "Hide example" : "Show example"}</span>
+          <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", isOpen && "rotate-180")} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-3 space-y-3">
+        {sample && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Example dataset row:</p>
+            <SampleDataBlock json={sample} />
+          </div>
+        )}
+        {diagram && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">How it works:</p>
+            <DiagramBlock content={diagram} />
+          </div>
+        )}
+        {tip && (
+          <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2">
+            💡 {tip}
+          </p>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
+
 // Helper function to convert ModelConfig to API format
-function convertModelConfigToAPI(config: ModelConfig) {
+function convertModelConfigToAPI(config: ModelConfig): EvaluationModelConfig {
   if (config.is_openrouter) {
     return {
       api_source: "openrouter",
-      model_name: config.openrouter_model_name || config.openrouter_model_id || '',
-      model_id: '-1', // OpenRouter models don't have a database ID
-      api_name: config.openrouter_model_id || '',
-      model_provider: 'openrouter',
-      model_provider_slug: config.openrouter_provider_slug || 'openrouter',
-      model_provider_id: 0,
+      model: {
+        id: config.openrouter_model_id || "",
+        name: config.openrouter_model_name || config.openrouter_model_id || "",
+        description: config.openrouter_model_description,
+        pricing: config.openrouter_model_pricing,
+        context_length: config.openrouter_model_context_length,
+        canonical_slug: config.openrouter_model_canonical_slug,
+        architecture: config.openrouter_model_architecture,
+        top_provider: config.openrouter_model_top_provider,
+        supported_parameters: config.openrouter_model_supported_parameters,
+        per_request_limits: config.openrouter_model_per_request_limits,
+        provider_slugs: config.openrouter_model_provider_slugs,
+      },
+      provider: {
+        name:
+          config.openrouter_provider_name ||
+          config.openrouter_provider_slug ||
+          "openrouter",
+        slug: config.openrouter_provider_slug || "openrouter",
+      },
     };
   } else {
+    const provider = {
+      id: config.provider_id || "",
+      name: config.provider_name || "",
+      slug: config.provider_slug || null,
+      base_url: config.api_base || "",
+    };
     return {
       api_source: "standard",
-      model_name: config.model_name || '',
-      model_id: String(config.model_id ?? 0), // Convert integer database ID to string for API
-      api_name: config.api_name || config.model_name || '',
-      model_provider: config.provider_name || '',
-      model_provider_slug: config.provider_slug || config.provider_name || '',
-      model_provider_id: config.provider_id || 0,
+      model: {
+        id: config.model_id || "",
+        display_name: config.model_name || "",
+        developer: config.model_developer || "",
+        api_name: config.api_name || "",
+        providers: config.model_providers?.length
+          ? config.model_providers.map((p) => ({
+              id: p.id,
+              name: p.name,
+              slug: p.slug || null,
+              base_url: p.base_url,
+            }))
+          : [provider],
+      },
+      provider,
     };
   }
 }
@@ -110,6 +488,10 @@ export default function Submit() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentStep]);
 
   // Selection type
   const [selectionType, setSelectionType] = useState<SelectionType>(null);
@@ -126,12 +508,12 @@ export default function Submit() {
   const [judgeType, setJudgeType] = useState<"llm_as_judge" | "f1_score" | "exact_match" | null>(null);
 
   // Benchmark-specific state
-  const [selectedBenchmark, setSelectedBenchmark] = useState<any>(null);
+  const [selectedBenchmark, setSelectedBenchmark] = useState<Record<string, unknown> | null>(null);
   const [selectedTask, setSelectedTask] = useState("");
   const [numFewShots, setNumFewShots] = useState(0);
   const [numSamples, setNumSamples] = useState<number | undefined>(undefined);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [taskDetails, setTaskDetails] = useState<Record<string, any>>({});
+  const [taskDetails, setTaskDetails] = useState<Record<string, Record<string, unknown>>>({});
   const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set());
 
   // Search state
@@ -145,6 +527,10 @@ export default function Submit() {
   // Model configuration
   const [completionModelConfig, setCompletionModelConfig] = useState<ModelConfig>({});
   const [judgeModelConfig, setJudgeModelConfig] = useState<ModelConfig>({});
+  const judgeSectionRef = useRef<HTMLDivElement | null>(null);
+  const wasCompletionConfiguredRef = useRef(false);
+  const [initialModelTab, setInitialModelTab] = useState<"by-provider" | "by-model">("by-provider");
+  const preselectionApplied = useRef(false);
 
   // Fetch datasets
   const { data: datasetsData } = useQuery({
@@ -185,6 +571,39 @@ export default function Submit() {
   const guidelines = guidelinesData?.guidelines || [];
   const apiKeys = apiKeysData?.api_key_providers || [];
 
+  // Get the selected dataset's ID for inline preview in Step 2
+  const selectedDatasetId = datasets.find((ds) => (ds as { name: string; id: number }).name === selectedDataset)?.id;
+
+  // Fetch preview for the selected dataset (for inline display in Step 2)
+  const { data: inlinePreviewData, isLoading: isInlinePreviewLoading } = useQuery({
+    queryKey: ['dataset-preview-inline', selectedDatasetId],
+    queryFn: () => selectedDatasetId ? apiClient.getDatasetPreview(selectedDatasetId) : null,
+    enabled: !!selectedDatasetId && currentStep === 2 && selectionType === "dataset",
+  });
+
+  // State for benchmark preview modal
+  const [benchmarkPreviewOpen, setBenchmarkPreviewOpen] = useState(false);
+
+  // Fetch preview for the selected benchmark (for modal display)
+  const { data: benchmarkPreviewData, isLoading: isBenchmarkPreviewLoading } = useQuery({
+    queryKey: ['benchmark-preview', selectedBenchmark?.id],
+    queryFn: () => selectedBenchmark?.id ? apiClient.getBenchmarkPreview(selectedBenchmark.id) : null,
+    enabled: !!selectedBenchmark?.id && benchmarkPreviewOpen,
+  });
+
+  const isOpenRouterSelectionComplete = (config: ModelConfig) =>
+    Boolean(config.openrouter_provider_slug && config.openrouter_model_id);
+
+  const isStandardSelectionComplete = (config: ModelConfig) =>
+    Boolean(config.provider_id && config.model_id);
+
+  const isModelConfigComplete = (config: ModelConfig) =>
+    config.is_openrouter
+      ? isOpenRouterSelectionComplete(config)
+      : isStandardSelectionComplete(config);
+
+  const isCompletionConfigured = isOpenRouterSelectionComplete(completionModelConfig);
+
   // Handle pre-selection from URL params (from benchmarks page)
   const searchString = useSearch();
   useEffect(() => {
@@ -195,7 +614,7 @@ export default function Submit() {
     const taskName = params.get('task');
 
     if (benchmarkId && taskName) {
-      const benchmark = benchmarks.find((b: any) => b.id === parseInt(benchmarkId));
+      const benchmark = benchmarks.find((b) => (b as { id: number }).id === parseInt(benchmarkId));
       if (benchmark) {
         setSelectedBenchmark(benchmark);
         setSelectionType("benchmark");
@@ -206,13 +625,85 @@ export default function Submit() {
     }
   }, [benchmarks, searchString]);
 
+  // Handle model/provider pre-selection from URL params (from Models/Providers pages)
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const modelId = params.get('modelId');
+    const providerSlug = params.get('providerSlug');
+    if (preselectionApplied.current) return;
+    if (!modelId && !providerSlug) return;
+
+    if (modelId) {
+      setInitialModelTab("by-model");
+      const fetchModel = providerSlug
+        ? apiClient.getOpenRouterModelsByProvider(providerSlug)
+        : apiClient.getOpenRouterModels({ search: modelId, limit: 500 });
+      const fetchProvider = providerSlug
+        ? apiClient.getOpenRouterProviders({ search: providerSlug, limit: 10 })
+        : Promise.resolve(null);
+      Promise.all([fetchModel, fetchProvider]).then(([modelData, providerData]) => {
+        const model = modelData.models.find((m) => m.id === modelId);
+        if (!model) return;
+        const config: ModelConfig = {
+          is_openrouter: true,
+          openrouter_model_id: model.id,
+          openrouter_model_name: model.name || model.id,
+          openrouter_model_description: model.description,
+          openrouter_model_pricing: model.pricing,
+          openrouter_model_context_length: model.context_length,
+          openrouter_model_canonical_slug: model.canonical_slug,
+          openrouter_model_architecture: model.architecture,
+          openrouter_model_top_provider: model.top_provider,
+          openrouter_model_supported_parameters: model.supported_parameters,
+          openrouter_model_per_request_limits: model.per_request_limits,
+          openrouter_model_provider_slugs: model.provider_slugs,
+        };
+        if (providerSlug) {
+          config.openrouter_provider_slug = providerSlug;
+          const provider = providerData?.providers.find((p) => p.slug === providerSlug);
+          config.openrouter_provider_name = provider?.name ?? providerSlug;
+        }
+        setCompletionModelConfig(config);
+        preselectionApplied.current = true;
+        setLocation('/submit', { replace: true });
+      });
+    } else if (providerSlug) {
+      setInitialModelTab("by-provider");
+      apiClient.getOpenRouterProviders({ search: providerSlug, limit: 50 }).then((data) => {
+        const provider = data.providers.find((p) => p.slug === providerSlug);
+        if (!provider) return;
+        setCompletionModelConfig({
+          is_openrouter: true,
+          openrouter_provider_slug: provider.slug,
+          openrouter_provider_name: provider.name,
+        });
+        preselectionApplied.current = true;
+        setLocation('/submit', { replace: true });
+      });
+    }
+  }, [searchString]);
+
+  useEffect(() => {
+    if (judgeType !== "llm_as_judge") {
+      wasCompletionConfiguredRef.current = false;
+      return;
+    }
+
+    if (!wasCompletionConfiguredRef.current && isCompletionConfigured) {
+      setTimeout(() => {
+        judgeSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+    }
+    wasCompletionConfiguredRef.current = isCompletionConfigured;
+  }, [isCompletionConfigured, judgeType, judgeSectionRef, wasCompletionConfiguredRef]);
+
   // Filter datasets and benchmarks
-  const filteredDatasets = datasets.filter((ds: any) =>
+  const filteredDatasets = datasets.filter((ds: Record<string, unknown>) =>
     (ds.name && ds.name.toLowerCase().includes(datasetSearch.toLowerCase())) ||
     (ds.category && ds.category.toLowerCase().includes(datasetSearch.toLowerCase()))
   );
 
-  const filteredBenchmarks = benchmarks.filter((bm: any) =>
+  const filteredBenchmarks = benchmarks.filter((bm: Record<string, unknown>) =>
     (bm.dataset_name && bm.dataset_name.toLowerCase().includes(benchmarkSearch.toLowerCase())) ||
     (bm.description && bm.description.toLowerCase().includes(benchmarkSearch.toLowerCase()))
   );
@@ -336,11 +827,70 @@ export default function Submit() {
         return;
       }
     }
+    if (currentStep === 3) {
+      if (!isModelConfigComplete(completionModelConfig)) {
+        toast({
+          title: "Error",
+          description: "Please select a provider and model for completion",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (judgeType === "llm_as_judge" && !isModelConfigComplete(judgeModelConfig)) {
+        toast({
+          title: "Error",
+          description: "Please select a provider and model for the judge",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     if (currentStep < STEPS.length) setCurrentStep(currentStep + 1);
   };
 
+  const resetDatasetStepState = () => {
+    setInputField("");
+    setOutputType(null);
+    setGoldAnswerField("");
+    setChoicesField("");
+    setJudgeType(null);
+    setSelectedGuidelines([]);
+  };
+
+  const resetBenchmarkStepState = () => {
+    setSelectedTask("");
+    setNumFewShots(0);
+    setNumSamples(undefined);
+    setExpandedTasks(new Set());
+    setTaskDetails({});
+    setLoadingTasks(new Set());
+  };
+
+  const resetModelStepState = () => {
+    if (!preselectionApplied.current) setCompletionModelConfig({});
+    setJudgeModelConfig({});
+  };
+
+  const resetDownstreamState = (targetStep: number) => {
+    // Returning to step 1 invalidates step 2+ state.
+    if (targetStep <= 1) {
+      resetDatasetStepState();
+      resetBenchmarkStepState();
+      resetModelStepState();
+      return;
+    }
+
+    // Returning to step 2 invalidates step 3+ state.
+    if (targetStep <= 2) {
+      resetModelStepState();
+    }
+  };
+
   const handleBack = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
+    if (currentStep <= 1) return;
+    const targetStep = currentStep - 1;
+    resetDownstreamState(targetStep);
+    setCurrentStep(targetStep);
   };
 
   const handleSubmit = () => {
@@ -374,25 +924,18 @@ export default function Submit() {
     }
   };
 
-  const handleSelectDataset = (ds: any) => {
+  const handleSelectDataset = (ds: Record<string, unknown>) => {
+    resetDownstreamState(1);
     setSelectedDataset(ds.name);
     setSelectionType("dataset");
     setSelectedBenchmark(null);
-    setSelectedTask("");
-    // Reset flexible evaluation state
-    setInputField("");
-    setOutputType(null);
-    setGoldAnswerField("");
-    setChoicesField("");
-    setJudgeType(null);
-    setSelectedGuidelines([]);
   };
 
-  const handleSelectBenchmark = (benchmark: any) => {
+  const handleSelectBenchmark = (benchmark: Record<string, unknown>) => {
+    resetDownstreamState(1);
     setSelectedBenchmark(benchmark);
     setSelectionType("benchmark");
     setSelectedDataset("");
-    setSelectedGuidelines([]);
   };
 
   const toggleTask = async (taskName: string) => {
@@ -422,7 +965,7 @@ export default function Submit() {
     }
   };
 
-  const NestedValue = ({ value, depth = 0 }: { value: any; depth?: number }) => {
+  const NestedValue = ({ value, depth = 0 }: { value: unknown; depth?: number }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     if (value === null || value === undefined) {
@@ -578,7 +1121,7 @@ export default function Submit() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                          {filteredDatasets.map((ds: any) => (
+                          {filteredDatasets.map((ds: Record<string, unknown>) => (
                             <div
                               key={ds.id}
                               onClick={() => handleSelectDataset(ds)}
@@ -636,7 +1179,7 @@ export default function Submit() {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                          {filteredBenchmarks.map((benchmark: any) => (
+                          {filteredBenchmarks.map((benchmark: Record<string, unknown>) => (
                             <div
                               key={benchmark.id}
                               onClick={() => handleSelectBenchmark(benchmark)}
@@ -666,9 +1209,99 @@ export default function Submit() {
 
                 {currentStep === 2 && selectionType === "dataset" && (
                   <div className="space-y-6">
+                    {/* Dataset Preview Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-base font-semibold">Your Dataset: {selectedDataset}</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Reference your data below to find the correct field names
+                          </p>
+                        </div>
+                      </div>
+
+                      {isInlinePreviewLoading ? (
+                        <div className="flex justify-center p-6 border rounded-lg bg-muted/30">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        </div>
+                      ) : inlinePreviewData?.samples && inlinePreviewData.samples.length > 0 ? (
+                        <Collapsible defaultOpen>
+                          <CollapsibleTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex items-center justify-between w-full p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-2 text-sm">
+                                <Database className="w-4 h-4 text-muted-foreground" />
+                                <span className="font-medium">Dataset Preview</span>
+                                <span className="text-muted-foreground">
+                                  ({inlinePreviewData.samples.length} samples)
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">
+                                  Fields: {Array.from(new Set(inlinePreviewData.samples.flatMap((s: Record<string, unknown>) => Object.keys(s)))).join(", ")}
+                                </span>
+                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="mt-2 border rounded-lg overflow-hidden">
+                              <div className="max-h-64 overflow-auto">
+                                <Table>
+                                  <TableHeader className="sticky top-0 bg-background z-10">
+                                    <TableRow>
+                                      <TableHead className="w-12 text-xs">#</TableHead>
+                                      {Array.from(
+                                        new Set(inlinePreviewData.samples.flatMap((s: Record<string, unknown>) => Object.keys(s)))
+                                      ).map((key) => (
+                                        <TableHead key={key as string} className="text-xs font-mono">
+                                          {key as string}
+                                        </TableHead>
+                                      ))}
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {inlinePreviewData.samples.slice(0, 5).map((sample: Record<string, unknown>, idx: number) => (
+                                      <TableRow key={idx}>
+                                        <TableCell className="text-muted-foreground text-xs">{idx + 1}</TableCell>
+                                        {Array.from(
+                                          new Set(inlinePreviewData.samples.flatMap((s: Record<string, unknown>) => Object.keys(s)))
+                                        ).map((key) => (
+                                          <TableCell key={key as string} className="max-w-xs align-top">
+                                            <ExpandableCell value={sample[key as string]} />
+                                          </TableCell>
+                                        ))}
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                              {inlinePreviewData.samples.length > 5 && (
+                                <div className="text-xs text-center text-muted-foreground py-2 border-t bg-muted/20">
+                                  Showing 5 of {inlinePreviewData.samples.length} samples
+                                </div>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      ) : (
+                        <div className="text-center py-6 text-muted-foreground border rounded-lg bg-muted/30">
+                          No preview data available
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Separator */}
+                    <div className="border-t" />
+
                     {/* 1. Input Field */}
                     <div className="space-y-2">
-                      <Label className="text-base font-semibold">Input Field</Label>
+                      <Label className="text-base font-semibold">
+                        Input Field
+                        <FieldHelp {...FIELD_HELP.inputField} />
+                      </Label>
                       <p className="text-sm text-muted-foreground">
                         The field name in your dataset that contains the input/prompt
                       </p>
@@ -676,6 +1309,11 @@ export default function Submit() {
                         value={inputField}
                         onChange={(e) => setInputField(e.target.value)}
                         placeholder="e.g., question, input, prompt"
+                      />
+                      <GuideExample
+                        sample={FIELD_GUIDES.inputField.sample}
+                        diagram={FIELD_GUIDES.inputField.diagram}
+                        tip={FIELD_GUIDES.inputField.tip}
                       />
                     </div>
 
@@ -704,6 +1342,9 @@ export default function Submit() {
                           >
                             <div className="font-medium">Text</div>
                             <div className="text-sm text-muted-foreground">Free-form text response</div>
+                            {outputType === "text" && (
+                              <GuideExample diagram={FIELD_GUIDES.outputTypeText.diagram} />
+                            )}
                           </div>
                           <div
                             onClick={() => {
@@ -721,6 +1362,9 @@ export default function Submit() {
                           >
                             <div className="font-medium">Multiple Choice</div>
                             <div className="text-sm text-muted-foreground">Select from options</div>
+                            {outputType === "multiple_choice" && (
+                              <GuideExample diagram={FIELD_GUIDES.outputTypeMC.diagram} />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -729,7 +1373,10 @@ export default function Submit() {
                     {/* 2.1 Text config - gold answer field (optional) */}
                     {outputType === "text" && (
                       <div className="space-y-2">
-                        <Label className="text-base font-semibold">Gold Answer Field (Optional)</Label>
+                        <Label className="text-base font-semibold">
+                          Gold Answer Field (Optional)
+                          <FieldHelp {...FIELD_HELP.goldAnswerFieldText} />
+                        </Label>
                         <p className="text-sm text-muted-foreground">
                           The field name containing the expected/correct answer for comparison
                         </p>
@@ -738,6 +1385,11 @@ export default function Submit() {
                           onChange={(e) => setGoldAnswerField(e.target.value)}
                           placeholder="e.g., answer, expected_output"
                         />
+                        <GuideExample
+                          sample={FIELD_GUIDES.goldAnswerFieldText.sample}
+                          diagram={FIELD_GUIDES.goldAnswerFieldText.diagram}
+                          tip={FIELD_GUIDES.goldAnswerFieldText.tip}
+                        />
                       </div>
                     )}
 
@@ -745,7 +1397,10 @@ export default function Submit() {
                     {outputType === "multiple_choice" && (
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label className="text-base font-semibold">Choices Field</Label>
+                          <Label className="text-base font-semibold">
+                            Choices Field
+                            <FieldHelp {...FIELD_HELP.choicesField} />
+                          </Label>
                           <p className="text-sm text-muted-foreground">
                             The field name containing the list of choices
                           </p>
@@ -754,9 +1409,17 @@ export default function Submit() {
                             onChange={(e) => setChoicesField(e.target.value)}
                             placeholder="e.g., choices, options"
                           />
+                          <GuideExample
+                            sample={FIELD_GUIDES.choicesField.sample}
+                            diagram={FIELD_GUIDES.choicesField.diagram}
+                            tip={FIELD_GUIDES.choicesField.tip}
+                          />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-base font-semibold">Gold Answer Field</Label>
+                          <Label className="text-base font-semibold">
+                            Gold Answer Field
+                            <FieldHelp {...FIELD_HELP.goldAnswerField} />
+                          </Label>
                           <p className="text-sm text-muted-foreground">
                             The field name containing the correct answer
                           </p>
@@ -764,6 +1427,11 @@ export default function Submit() {
                             value={goldAnswerField}
                             onChange={(e) => setGoldAnswerField(e.target.value)}
                             placeholder="e.g., answer, correct_choice"
+                          />
+                          <GuideExample
+                            sample={FIELD_GUIDES.goldAnswerField.sample}
+                            diagram={FIELD_GUIDES.goldAnswerField.diagram}
+                            tip={FIELD_GUIDES.goldAnswerField.tip}
                           />
                         </div>
                       </div>
@@ -788,6 +1456,9 @@ export default function Submit() {
                           >
                             <div className="font-medium">LLM as Judge</div>
                             <div className="text-sm text-muted-foreground">Use an LLM to evaluate responses with guidelines</div>
+                            {judgeType === "llm_as_judge" && (
+                              <GuideExample diagram={FIELD_GUIDES.judgeLLM.diagram} />
+                            )}
                           </div>
                           <div
                             onClick={() => {
@@ -803,6 +1474,9 @@ export default function Submit() {
                           >
                             <div className="font-medium">Exact Match</div>
                             <div className="text-sm text-muted-foreground">Compare output exactly to gold answer</div>
+                            {judgeType === "exact_match" && (
+                              <GuideExample diagram={FIELD_GUIDES.judgeExact.diagram} />
+                            )}
                           </div>
                           <div
                             onClick={() => {
@@ -818,6 +1492,9 @@ export default function Submit() {
                           >
                             <div className="font-medium">F1 Score</div>
                             <div className="text-sm text-muted-foreground">Token-level F1 comparison</div>
+                            {judgeType === "f1_score" && (
+                              <GuideExample diagram={FIELD_GUIDES.judgeF1.diagram} />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -870,7 +1547,44 @@ export default function Submit() {
                 )}
 
                 {currentStep === 2 && selectionType === "benchmark" && (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
+                    {/* Benchmark Info Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-base font-semibold">Benchmark: {selectedBenchmark?.dataset_name}</Label>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedBenchmark?.description || "Configure your benchmark evaluation"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Benchmark source info - clickable to preview */}
+                      <button
+                        type="button"
+                        onClick={() => setBenchmarkPreviewOpen(true)}
+                        className="w-full p-3 border rounded-lg bg-muted/30 text-left transition-colors hover:bg-muted/50 hover:border-mint-300 cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Database className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">Source Dataset</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-mint-600">
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Preview</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          This benchmark uses the <code className="font-mono bg-muted px-1 rounded">{selectedBenchmark?.hf_repo || selectedBenchmark?.dataset_name}</code> dataset
+                          from HuggingFace with {selectedBenchmark?.tasks?.length || 0} predefined tasks.
+                        </p>
+                      </button>
+                    </div>
+
+                    {/* Separator */}
+                    <div className="border-t" />
+
                     <div>
                       <Label className="text-base font-semibold">Select Task</Label>
                       <p className="text-sm text-muted-foreground mb-3">
@@ -935,9 +1649,20 @@ export default function Submit() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    {/* Separator */}
+                    <div className="border-t" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label>Number of Samples</Label>
+                        <Label className="text-base font-semibold">
+                          Number of Samples
+                          <FieldHelp
+                            title="Number of Samples"
+                            description="How many examples from the benchmark to evaluate"
+                            examples={["10 (quick test)", "100 (moderate)", "empty (all samples)"]}
+                            tip="Leave empty to evaluate all samples in the benchmark"
+                          />
+                        </Label>
                         <Input
                           type="number"
                           min="1"
@@ -945,13 +1670,22 @@ export default function Submit() {
                           onChange={(e) => setNumSamples(e.target.value ? parseInt(e.target.value) : undefined)}
                           placeholder="All samples"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Number of samples to evaluate (leave empty for all)
-                        </p>
+                        <GuideExample
+                          diagram={FIELD_GUIDES.numSamples.diagram}
+                          tip={FIELD_GUIDES.numSamples.tip}
+                        />
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Number of Few-Shot Examples</Label>
+                        <Label className="text-base font-semibold">
+                          Number of Few-Shot Examples
+                          <FieldHelp
+                            title="Few-Shot Examples"
+                            description="Examples included in each prompt to help the model understand the task"
+                            examples={["0 (zero-shot)", "3 (few-shot)", "5 (recommended)"]}
+                            tip="More examples often improve accuracy but increase cost"
+                          />
+                        </Label>
                         <Input
                           type="number"
                           min="0"
@@ -959,31 +1693,46 @@ export default function Submit() {
                           onChange={(e) => setNumFewShots(parseInt(e.target.value) || 0)}
                           placeholder="e.g., 0, 5, 10"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Examples to include in the prompt for few-shot learning
-                        </p>
+                        <GuideExample
+                          diagram={FIELD_GUIDES.numFewShots.diagram}
+                          tip={FIELD_GUIDES.numFewShots.tip}
+                        />
                       </div>
                     </div>
                   </div>
                 )}
 
                 {currentStep === 3 && (
-                  <div className={cn(
-                    "grid gap-6",
-                    judgeType === "llm_as_judge" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
-                  )}>
-                    <ModelSelection
-                      value={completionModelConfig}
-                      onChange={setCompletionModelConfig}
-                      label="Completion Model"
-                    />
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Step 3.1
+                      </p>
+                      <ModelSelection
+                        value={completionModelConfig}
+                        onChange={setCompletionModelConfig}
+                        label="Completion Model"
+                        initialOpenRouterTab={initialModelTab}
+                      />
+                    </div>
 
                     {judgeType === "llm_as_judge" && (
-                      <ModelSelection
-                        value={judgeModelConfig}
-                        onChange={setJudgeModelConfig}
-                        label="Judge Model"
-                      />
+                      <div ref={judgeSectionRef} className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Step 3.2
+                        </p>
+                        {isCompletionConfigured ? (
+                          <ModelSelection
+                            value={judgeModelConfig}
+                            onChange={setJudgeModelConfig}
+                            label="Judge Model"
+                          />
+                        ) : (
+                          <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                            Configure the completion model first, then select the judge model.
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -1054,7 +1803,7 @@ export default function Submit() {
                                   <span className="text-muted-foreground">Judge Provider:</span>
                                   <span className="font-medium">
                                     {judgeModelConfig.is_openrouter
-                                      ? (judgeModelConfig.openrouter_provider_slug || 'OpenRouter')
+                                      ? (judgeModelConfig.openrouter_provider_name || judgeModelConfig.openrouter_provider_slug || 'OpenRouter')
                                       : judgeModelConfig.provider_name}
                                   </span>
                                 </div>
@@ -1094,7 +1843,7 @@ export default function Submit() {
                           <span className="text-muted-foreground">Completion Provider:</span>
                           <span className="font-medium">
                             {completionModelConfig.is_openrouter
-                              ? (completionModelConfig.openrouter_provider_slug || 'OpenRouter')
+                              ? (completionModelConfig.openrouter_provider_name || completionModelConfig.openrouter_provider_slug || 'OpenRouter')
                               : completionModelConfig.provider_name}
                           </span>
                         </div>
@@ -1102,10 +1851,7 @@ export default function Submit() {
                       {apiKeys.length === 0 && (
                         <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                           <p className="text-sm text-yellow-800">
-                            Warning: No API keys configured. Please add your{" "}
-                            {completionModelConfig.is_openrouter
-                              ? (completionModelConfig.openrouter_provider_slug || 'OpenRouter')
-                              : completionModelConfig.provider_name} API key in your profile settings.
+                            No API keys, please add OpenRouter API key in your profile settings.
                           </p>
                         </div>
                       )}
@@ -1154,6 +1900,16 @@ export default function Submit() {
             <DialogTitle>Dataset Content</DialogTitle>
             <DialogDescription>
               Showing all samples from the selected dataset.
+              {previewData?.samples && previewData.samples.length > 0 && (
+                <span className="block mt-2">
+                  <span className="font-medium">Available fields: </span>
+                  <span className="font-mono text-xs">
+                    {Array.from(
+                      new Set(previewData.samples.flatMap((s: Record<string, unknown>) => Object.keys(s)))
+                    ).join(", ")}
+                  </span>
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -1168,7 +1924,7 @@ export default function Submit() {
                   // Get all unique keys from all samples
                   const allKeys = Array.from(
                     new Set(
-                      previewData.samples.flatMap((sample: any) => Object.keys(sample))
+                      previewData.samples.flatMap((sample: Record<string, unknown>) => Object.keys(sample))
                     )
                   );
 
@@ -1184,7 +1940,7 @@ export default function Submit() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {previewData.samples.map((sample: any, idx: number) => (
+                          {previewData.samples.map((sample: Record<string, unknown>, idx: number) => (
                             <TableRow key={idx}>
                               <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
                               {allKeys.map((key) => (
@@ -1203,6 +1959,80 @@ export default function Submit() {
             ) : (
                 <div className="text-center text-muted-foreground p-4">
                     No preview available
+                </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Benchmark Preview Dialog */}
+      <Dialog open={benchmarkPreviewOpen} onOpenChange={setBenchmarkPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Benchmark Data Preview</DialogTitle>
+            <DialogDescription>
+              Showing sample data from <code className="font-mono bg-muted px-1 rounded">{benchmarkPreviewData?.hf_repo || selectedBenchmark?.hf_repo}</code> on HuggingFace.
+              {benchmarkPreviewData?.samples && benchmarkPreviewData.samples.length > 0 && (
+                <span className="block mt-2">
+                  <span className="font-medium">Available fields: </span>
+                  <span className="font-mono text-xs">
+                    {Array.from(
+                      new Set(benchmarkPreviewData.samples.flatMap((s: Record<string, unknown>) => Object.keys(s)))
+                    ).join(", ")}
+                  </span>
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto min-h-0 py-4">
+            {isBenchmarkPreviewLoading ? (
+               <div className="flex flex-col items-center justify-center p-8 gap-3">
+                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                 <p className="text-sm text-muted-foreground">Loading from HuggingFace...</p>
+               </div>
+            ) : benchmarkPreviewData?.samples && benchmarkPreviewData.samples.length > 0 ? (
+              <div className="overflow-x-auto">
+                {(() => {
+                  // Get all unique keys from all samples
+                  const allKeys = Array.from(
+                    new Set(
+                      benchmarkPreviewData.samples.flatMap((sample: Record<string, unknown>) => Object.keys(sample))
+                    )
+                  );
+
+                  return (
+                    <div className="border rounded-md">
+                      <Table>
+                        <TableHeader className="sticky top-0 bg-background z-10">
+                          <TableRow>
+                            <TableHead className="w-12">#</TableHead>
+                            {allKeys.map((key) => (
+                              <TableHead key={key}>{key}</TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {benchmarkPreviewData.samples.map((sample: Record<string, unknown>, idx: number) => (
+                            <TableRow key={idx}>
+                              <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
+                              {allKeys.map((key) => (
+                                <TableCell key={key} className="max-w-md align-top">
+                                  <ExpandableCell value={sample[key]} />
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+                <div className="text-center text-muted-foreground p-4">
+                    <p>No preview available</p>
+                    <p className="text-xs mt-2">The benchmark data could not be loaded from HuggingFace.</p>
                 </div>
             )}
           </div>

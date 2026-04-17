@@ -17,4 +17,6 @@ class Guideline(Base):
     category = Column(String, nullable=False)
     scoring_scale = Column(String, nullable=False)
     scoring_scale_config = Column(JSON, nullable=False)
+    visibility = Column(String, nullable=False, default="public")
+    user_id = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

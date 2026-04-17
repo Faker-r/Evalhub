@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { User, Key, Plus, Trash2, Eye, EyeOff } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
@@ -44,11 +44,13 @@ export default function Profile() {
     enabled: isAuthenticated,
   });
 
-  const providers = providersData?.providers || [];
+  const providers = useMemo(() => providersData?.providers || [], [providersData?.providers]);
 
   useEffect(() => {
     if (!newKey.providerId && providers.length > 0) {
-      setNewKey((prev) => ({ ...prev, providerId: providers[0].id.toString() }));
+      Promise.resolve().then(() => {
+        setNewKey((prev) => ({ ...prev, providerId: String(providers[0].id) }));
+      });
     }
   }, [newKey.providerId, providers]);
 
@@ -64,7 +66,7 @@ export default function Profile() {
   // Add API key mutation
   const addKeyMutation = useMutation({
     mutationFn: (data: { providerId: string; apiKey: string }) =>
-      apiClient.createApiKey(Number(data.providerId), data.apiKey),
+      apiClient.createApiKey(data.providerId, data.apiKey),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       setAddKeyModalOpen(false);
@@ -85,7 +87,7 @@ export default function Profile() {
 
   // Delete API key mutation
   const deleteKeyMutation = useMutation({
-    mutationFn: (providerId: number) => apiClient.deleteApiKey(providerId),
+    mutationFn: (providerId: string) => apiClient.deleteApiKey(providerId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       toast({

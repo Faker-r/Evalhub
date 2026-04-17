@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "skills": {
+    "aws-ami-builder": {
+      "source": "hashicorp/agent-skills",
+      "sourceType": "github",
+      "computedHash": "e62206907650a92c7a138f167cb3539ec4763c76c2bae95b58bae5e86906a7bc"
+    },
+    "frontend-design": {
+      "source": "anthropics/claude-code",
+      "sourceType": "github",
+      "computedHash": "e8118284a6365753790d44bb2758a6032b3af27fa84696428d9233f2be0f4e78"
+    },
+    "new-terraform-provider": {
+      "source": "hashicorp/agent-skills",
+      "sourceType": "github",
+      "computedHash": "2f12647edea2705451301a24a864d71af4aa7758e8a8e977a1f95f83a297dc4a"
+    },
+    "provider-actions": {
+      "source": "hashicorp/agent-skills",
+      "sourceType": "github",
+      "computedHash": "e3852e6583ab4c2199a26793583a3463ce80d31b4b972f7855585c8885d0c0e4"
+    },
+    "provider-docs": {
+      "source": "hashicorp/agent-skills",
+      "sourceType": "github",
+      "computedHash": "043b68564b9c72fce9c88294c5259e4850db5772c173bb0d6397fe77261df41e"
+    },
+    "provider-resources": {
+      "source": "hashicorp/agent-skills",
+      "sourceType": "github",
+      "computedHash": "97edcbb115a59d93da5ec28cb445d883307c66143b6fbc1f6f61bd4b2cfd7def"
+    },
+    "push-to-registry": {
+      "source": "hashicorp/agent-skills",
+      "sourceType": "github",
+      "computedHash": "11eaa6387c0066d992096f630221c5f51d3cfdcd045797658b494abe60eac9ce"
+    },
+    "terraform-search-import": {
+      "source": "hashicorp/agent-skills",
+      "sourceType": "github",
+      "computedHash": "46ecb62cab3224263a6d8fb5a264a65bdb3085c762cc91eab1797d650bae6ce8"
+    }
+  }
+}

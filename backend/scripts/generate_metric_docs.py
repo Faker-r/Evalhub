@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import json
-import re
 import types
 from dataclasses import dataclass
 from typing import Any
@@ -59,7 +58,6 @@ from lighteval.metrics.utils.extractive_match_utils import (
     IndicesExtractionConfig,
     LatexExtractionConfig,
 )
-from lighteval.metrics.utils.metric_utils import MetricGrouping
 from lighteval.tasks.registry import Registry
 
 

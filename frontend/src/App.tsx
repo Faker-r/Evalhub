@@ -13,6 +13,9 @@ import Datasets from "@/pages/datasets";
 import Guidelines from "@/pages/guidelines";
 import Profile from "@/pages/profile";
 import Benchmarks from "@/pages/benchmarks";
+import ModelsPage from "@/pages/models";
+import ProvidersPage from "@/pages/providers";
+import AuthPage from "@/pages/auth";
 
 function Router() {
   return (
@@ -24,7 +27,10 @@ function Router() {
       <Route path="/datasets" component={Datasets} />
       <Route path="/guidelines" component={Guidelines} />
       <Route path="/benchmarks" component={Benchmarks} />
+      <Route path="/models" component={ModelsPage} />
+      <Route path="/providers" component={ProvidersPage} />
       <Route path="/profile" component={Profile} />
+      <Route path="/auth" component={AuthPage} />
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>

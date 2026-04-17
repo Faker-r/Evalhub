@@ -9,15 +9,8 @@ import tempfile
 import pytest
 from dotenv import load_dotenv
 from lighteval.logging.evaluation_tracker import EvaluationTracker
-from lighteval.tasks.registry import Registry
-
 from lighteval.models.endpoints.litellm_model import LiteLLMClient, LiteLLMModelConfig
-
-try:
-    import litellm  # noqa: F401
-    _has_litellm = True
-except ImportError:
-    _has_litellm = False
+from lighteval.tasks.registry import Registry
 
 from api.evaluations.eval_pipeline.dataset_task import DatasetTask
 from api.evaluations.eval_pipeline.eval_pipeline import (
@@ -48,9 +41,18 @@ guideline = {
 }
 
 
-@pytest.mark.skipif(not _has_litellm, reason="litellm[caching] not installed")
-def test_lighteval_integration():
+@pytest.mark.skipif(
+    not os.getenv("OPENAI_API_KEY"),
+    reason="OPENAI_API_KEY not set",
+)
+def test_lighteval_integration(tmp_path, monkeypatch):
     """Test the lighteval integration."""
+    hf_home = tmp_path / "hf"
+    hf_home.mkdir()
+    (hf_home / "datasets").mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("HF_HOME", str(hf_home))
+    monkeypatch.setenv("HF_DATASETS_CACHE", str(hf_home / "datasets"))
+
     print("Starting lighteval integration test...")
 
     # Step 1: Create judge metric

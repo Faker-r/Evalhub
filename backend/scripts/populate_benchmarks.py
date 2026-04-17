@@ -19,7 +19,6 @@ Usage:
 
 import argparse
 import asyncio
-import re
 from collections import defaultdict
 from datetime import datetime
 from typing import Optional
@@ -28,7 +27,6 @@ from huggingface_hub import HfApi
 from huggingface_hub.utils import HfHubHTTPError
 from lighteval.tasks.registry import Registry
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from transformers import AutoTokenizer
 
 from api.benchmarks.repository import BenchmarkRepository
 from api.core.config import settings
@@ -564,6 +562,14 @@ async def populate_benchmarks(
             # Create a new session for each repo to avoid rollback cascade
             async with async_session() as session:
                 repository = BenchmarkRepository(session)
+
+                # Check if benchmark exists and is hidden — skip if so
+                existing = await repository.get_by_dataset_name(dataset_name)
+                if existing and existing.hide:
+                    logger.info(f"Skipping hidden benchmark: {dataset_name}")
+                    success_count += 1
+                    continue
+
                 # Use dataset name for upsert
                 benchmark = await repository.upsert(dataset_name, benchmark_data)
 

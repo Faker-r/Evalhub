@@ -25,7 +25,7 @@ class DatasetService:
         self.s3 = S3Storage()
 
     async def create_dataset(
-        self, name: str, category: str, file: UploadFile
+        self, name: str, category: str, file: UploadFile, visibility: str, user_id: str
     ) -> Dataset:
         """Create a new dataset from an uploaded JSONL file.
 
@@ -33,6 +33,8 @@ class DatasetService:
             name: Dataset name
             category: Dataset category
             file: Uploaded JSONL file
+            visibility: Dataset visibility (public/private)
+            user_id: ID of the user creating the dataset
 
         Returns:
             Dataset: Created dataset
@@ -52,7 +54,9 @@ class DatasetService:
         sample_count = self._validate_and_count(content)
 
         # Create dataset in database
-        dataset = await self.repository.create_from_file(name, category, sample_count)
+        dataset = await self.repository.create_from_file(
+            name, category, sample_count, visibility, user_id
+        )
 
         # Upload to S3
         self.s3.upload_dataset_file(dataset.name, BytesIO(content))
@@ -123,13 +127,30 @@ class DatasetService:
 
         return sample_count
 
-    async def get_all_datasets(self) -> list[Dataset]:
-        """Get all datasets.
+    def _check_access(self, dataset: Dataset, user_id: str | None) -> bool:
+        """Check if user has access to the dataset.
+
+        Args:
+            dataset: Dataset to check access for
+            user_id: ID of the user requesting access (None for unauthenticated)
 
         Returns:
-            list[Dataset]: List of all datasets
+            bool: True if user has access, False otherwise
         """
-        return await self.repository.get_all()
+        if dataset.visibility == "public":
+            return True
+        return user_id is not None and dataset.user_id == user_id
+
+    async def get_all_datasets(self, user_id: str | None = None) -> list[Dataset]:
+        """Get all datasets visible to the user.
+
+        Args:
+            user_id: ID of the user requesting datasets (None for unauthenticated)
+
+        Returns:
+            list[Dataset]: List of visible datasets
+        """
+        return await self.repository.get_all(user_id)
 
     async def get_dataset(self, dataset_id: int) -> Dataset:
         """Get dataset by ID.
@@ -178,16 +199,29 @@ class DatasetService:
         except FileNotFoundError:
             raise NotFoundException(f"Dataset file not found: {dataset.name}")
 
-    async def get_dataset_preview(self, dataset_id: int) -> list[dict]:
+    async def get_dataset_preview(
+        self, dataset_id: int, user_id: str | None = None
+    ) -> list[dict]:
         """Get a preview of the dataset content.
 
         Args:
             dataset_id: Dataset ID
+            user_id: ID of the user requesting preview (None for unauthenticated)
 
         Returns:
             list[dict]: List of sample JSON objects
+
+        Raises:
+            NotFoundException: If dataset not found
+            HTTPException: If user doesn't have access or preview fails
         """
         dataset = await self.repository.get_by_id(dataset_id)
+
+        if not self._check_access(dataset, user_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have access to this dataset",
+            )
 
         try:
             content = self.s3.download_dataset(dataset.name)

@@ -11,6 +11,33 @@ from api.core.security import CurrentUser, get_current_user
 from api.main import app
 
 
+def _std_eval_model_config() -> dict:
+    """Minimal valid EvaluationModelConfig (standard) payload for route tests."""
+    return {
+        "api_source": "standard",
+        "model": {
+            "id": "m-1",
+            "display_name": "GPT-4o",
+            "developer": "OpenAI",
+            "api_name": "gpt-4o",
+            "providers": [
+                {
+                    "id": "p-1",
+                    "name": "openai",
+                    "slug": "openai",
+                    "base_url": "https://api.openai.com/v1",
+                }
+            ],
+        },
+        "provider": {
+            "id": "p-1",
+            "name": "openai",
+            "slug": "openai",
+            "base_url": "https://api.openai.com/v1",
+        },
+    }
+
+
 @pytest.fixture
 def mock_session():
     return AsyncMock()
@@ -297,33 +324,6 @@ class TestModelsAndProvidersRoutes:
 
 class TestEvaluationsRoutes:
     @patch("api.evaluations.routes.EvaluationService")
-    def test_run_evaluation(self, MockService, client):
-        from api.evaluations.schemas import EvaluationResponse
-        mock_svc = MockService.return_value
-        mock_svc.run_evaluation = AsyncMock(return_value=EvaluationResponse(
-            trace_id=1, status="running", dataset_name="ds",
-            sample_count=0, guideline_names=["g1"],
-            completion_model="gpt-4o", model_provider="openai",
-            judge_model="gpt-4o", scores={}, created_at=datetime(2025, 1, 1)
-        ))
-        resp = client.post("/api/evaluations", json={
-            "dataset_name": "ds", "guideline_names": ["g1"],
-            "model_completion_config": {
-                "api_source": "standard", "model_name": "gpt-4o",
-                "model_id": 1, "api_name": "gpt-4o",
-                "model_provider": "openai", "model_provider_slug": "openai",
-                "model_provider_id": 1,
-            },
-            "judge_config": {
-                "api_source": "standard", "model_name": "gpt-4o",
-                "model_id": 1, "api_name": "gpt-4o",
-                "model_provider": "openai", "model_provider_slug": "openai",
-                "model_provider_id": 1,
-            }
-        })
-        assert resp.status_code == 201
-
-    @patch("api.evaluations.routes.EvaluationService")
     def test_run_task_evaluation(self, MockService, client):
         from api.evaluations.schemas import TaskEvaluationResponse
         mock_svc = MockService.return_value
@@ -336,12 +336,7 @@ class TestEvaluationsRoutes:
         resp = client.post("/api/evaluations/tasks", json={
             "task_name": "gsm8k",
             "dataset_config": {"dataset_name": "gsm8k", "n_samples": 5},
-            "model_completion_config": {
-                "api_source": "standard", "model_name": "gpt-4o",
-                "model_id": 1, "api_name": "gpt-4o",
-                "model_provider": "openai", "model_provider_slug": "openai",
-                "model_provider_id": 1,
-            }
+            "model_completion_config": _std_eval_model_config(),
         })
         assert resp.status_code == 201
 
@@ -358,19 +353,14 @@ class TestEvaluationsRoutes:
         resp = client.post("/api/evaluations/flexible", json={
             "dataset_name": "ds", "input_field": "question",
             "output_type": "text", "judge_type": "exact_match",
-            "model_completion_config": {
-                "api_source": "standard", "model_name": "gpt-4o",
-                "model_id": 1, "api_name": "gpt-4o",
-                "model_provider": "openai", "model_provider_slug": "openai",
-                "model_provider_id": 1,
-            }
+            "model_completion_config": _std_eval_model_config(),
         })
         assert resp.status_code == 201
 
     @patch("api.evaluations.routes.EvaluationService")
     def test_get_traces(self, MockService, client):
         mock_svc = MockService.return_value
-        mock_svc.get_traces = AsyncMock(return_value=[])
+        mock_svc.get_traces = AsyncMock(return_value=([], 0, {}))
         resp = client.get("/api/evaluations/traces")
         assert resp.status_code == 200
 
@@ -466,10 +456,8 @@ class TestLeaderboardRoutes:
     def test_get_leaderboard(self, MockService, client):
         from api.leaderboard.schemas import LeaderboardResponse
         mock_svc = MockService.return_value
-        mock_svc.get_leaderboard = AsyncMock(return_value=LeaderboardResponse(
-            entries=[], dataset_name="ds", sample_count=10
-        ))
-        resp = client.get("/api/leaderboard?dataset_name=ds")
+        mock_svc.get_leaderboard = AsyncMock(return_value=LeaderboardResponse(datasets=[]))
+        resp = client.get("/api/leaderboard")
         assert resp.status_code == 200
 
 

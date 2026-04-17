@@ -1,6 +1,5 @@
 """
 Test script to verify the flexible evaluation service works end-to-end.
-Requires a live database and API keys — skipped in CI / offline environments.
 """
 
 import os
@@ -12,27 +11,54 @@ load_dotenv()
 
 import asyncio
 
+pytestmark = pytest.mark.skipif(
+    not os.getenv("RUN_INTEGRATION_TESTS"),
+    reason="Manual integration — set RUN_INTEGRATION_TESTS=1",
+)
+
 from api.core.database import get_session
 from api.evaluations.schemas import (
     FlexibleEvaluationRequest,
     JudgeType,
-    ModelConfig,
     MultipleChoiceConfig,
     OutputType,
+    StandardEvaluationModelConfig,
     TextOutputConfig,
 )
 from api.evaluations.service import EvaluationService
+from api.models_and_providers.schemas import ModelResponse, ProviderResponse
 
 # Test user ID - replace with your own
 USER_ID = "e01da140-64b2-4ab9-b379-4f55dcaf0b22"
 
-_requires_live_db = pytest.mark.skipif(
-    not os.getenv("RUN_INTEGRATION_TESTS"),
-    reason="Manual integration test — set RUN_INTEGRATION_TESTS=1 to run",
-)
+
+def _std_model_config(
+    *,
+    model_id: str,
+    display_name: str,
+    api_name: str,
+    provider_name: str = "openai",
+) -> StandardEvaluationModelConfig:
+    prov = ProviderResponse(
+        id=f"p-{provider_name}",
+        name=provider_name,
+        slug=provider_name,
+        base_url="https://api.openai.com/v1",
+    )
+    model = ModelResponse(
+        id=model_id,
+        display_name=display_name,
+        developer=provider_name,
+        api_name=api_name,
+        providers=[prov],
+    )
+    return StandardEvaluationModelConfig(
+        api_source="standard",
+        model=model,
+        provider=prov,
+    )
 
 
-@_requires_live_db
 async def test_text_exact_match():
     """Test text output with exact match scoring."""
     print("\n" + "=" * 60)
@@ -47,21 +73,16 @@ async def test_text_exact_match():
             choices_field="choices", gold_answer_field="answer"
         ),
         judge_type=JudgeType.EXACT_MATCH,
-        model_completion_config=ModelConfig(
-            api_source="standard",
-            model_name="gpt-5.1",
-            model_id=1,
+        model_completion_config=_std_model_config(
+            model_id="gpt-5.1",
+            display_name="gpt-5.1",
             api_name="gpt-5.1",
-            model_provider="openai",
-            model_provider_slug="openai",
-            model_provider_id=0,
         ),
     )
 
     await run_evaluation(request, "Text + Exact Match")
 
 
-@_requires_live_db
 async def test_text_f1_score():
     """Test text output with F1 score."""
     print("\n" + "=" * 60)
@@ -74,21 +95,16 @@ async def test_text_f1_score():
         output_type=OutputType.TEXT,
         text_config=TextOutputConfig(gold_answer_field="answer"),
         judge_type=JudgeType.F1_SCORE,
-        model_completion_config=ModelConfig(
-            api_source="standard",
-            model_name="gpt-5.1",
-            model_id=1,
+        model_completion_config=_std_model_config(
+            model_id="gpt-5.1",
+            display_name="gpt-5.1",
             api_name="gpt-5.1",
-            model_provider="openai",
-            model_provider_slug="openai",
-            model_provider_id=0,
         ),
     )
 
     await run_evaluation(request, "Text + F1 Score")
 
 
-@_requires_live_db
 async def test_text_llm_judge():
     """Test text output with LLM as judge."""
     print("\n" + "=" * 60)
@@ -102,23 +118,15 @@ async def test_text_llm_judge():
         text_config=TextOutputConfig(gold_answer_field=None),
         judge_type=JudgeType.LLM_AS_JUDGE,
         guideline_names=["humor"],
-        model_completion_config=ModelConfig(
-            api_source="standard",
-            model_name="gpt-4o-mini",
-            model_id=2,
+        model_completion_config=_std_model_config(
+            model_id="gpt-4o-mini",
+            display_name="gpt-4o-mini",
             api_name="gpt-4o-mini",
-            model_provider="openai",
-            model_provider_slug="openai",
-            model_provider_id=0,
         ),
-        judge_config=ModelConfig(
-            api_source="standard",
-            model_name="gpt-4o",
-            model_id=3,
+        judge_config=_std_model_config(
+            model_id="gpt-4o",
+            display_name="gpt-4o",
             api_name="gpt-4o",
-            model_provider="openai",
-            model_provider_slug="openai",
-            model_provider_id=0,
         ),
     )
 

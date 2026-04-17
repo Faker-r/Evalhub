@@ -89,7 +89,7 @@ class BenchmarkRepository:
         Returns:
             tuple[list[Benchmark], int]: List of benchmarks and total count
         """
-        query = select(Benchmark)
+        query = select(Benchmark).where(Benchmark.hide == False)
 
         # Apply filters
         if tag_filter:
@@ -118,7 +118,7 @@ class BenchmarkRepository:
             )
 
         # Build count query with same filters for efficiency
-        count_query = select(func.count(Benchmark.id))
+        count_query = select(func.count(Benchmark.id)).where(Benchmark.hide == False)
 
         # Apply same filters as main query
         if tag_filter:
@@ -184,7 +184,9 @@ class BenchmarkRepository:
         Raises:
             NotFoundException: If benchmark not found
         """
-        query = select(Benchmark).where(Benchmark.id == benchmark_id)
+        query = select(Benchmark).where(
+            Benchmark.id == benchmark_id, Benchmark.hide == False
+        )
         result = await self.session.execute(query)
         benchmark = result.scalar_one_or_none()
 

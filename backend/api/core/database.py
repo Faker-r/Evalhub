@@ -1,3 +1,4 @@
+from sqlalchemy import exc as sqlalchemy_exc
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
 
@@ -39,4 +40,7 @@ async def get_session() -> AsyncSession:
         try:
             yield session
         finally:
-            await session.close()
+            try:
+                await session.close()
+            except sqlalchemy_exc.InterfaceError:
+                pass
