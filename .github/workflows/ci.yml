@@ -72,6 +72,10 @@ jobs:
         SUPABASE_JWT_SECRET: "test_jwt_secret"
         AWS_ACCESS_KEY_ID: "test_aws_key"
         AWS_SECRET_ACCESS_KEY: "test_aws_secret"
+        AWS_REGION: "us-east-2"
+        S3_BUCKET_NAME: "test-bucket"
+        REDIS_URL: "redis://localhost:6379/0"
+        CELERY_BROKER_URL: "redis://localhost:6379/1"
 
     services:
       postgres:

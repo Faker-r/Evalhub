@@ -3,8 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.core.exceptions import BadRequestException, NotFoundException
 from api.core.logging import get_logger
-from api.core.trace_context import trace_id_var
 from api.core.s3 import EVAL_RESULTS_PREFIX, S3Storage
+from api.core.trace_context import trace_id_var
 from api.evaluations.models import Trace
 from api.evaluations.repository import EvaluationRepository
 from api.evaluations.schemas import (
@@ -425,7 +425,9 @@ class EvaluationService:
         trace = await self.get_trace(trace_id)
 
         if trace.status != "completed":
-            raise BadRequestException("Evaluation results are only available for completed runs")
+            raise BadRequestException(
+                "Evaluation results are only available for completed runs"
+            )
 
         prefix = f"{EVAL_RESULTS_PREFIX}/{trace_id}"
         files = self.s3.list_files(prefix)

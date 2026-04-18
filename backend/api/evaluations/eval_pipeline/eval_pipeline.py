@@ -66,9 +66,15 @@ class CustomTaskEvaluationPipeline:
     def _accumulate_usage(self, responses: list[ModelResponse]) -> None:
         for resp in responses:
             if resp.token_usage:
-                self._total_token_usage["prompt_tokens"] += resp.token_usage.get("prompt_tokens", 0)
-                self._total_token_usage["completion_tokens"] += resp.token_usage.get("completion_tokens", 0)
-                self._total_token_usage["total_tokens"] += resp.token_usage.get("total_tokens", 0)
+                self._total_token_usage["prompt_tokens"] += resp.token_usage.get(
+                    "prompt_tokens", 0
+                )
+                self._total_token_usage["completion_tokens"] += resp.token_usage.get(
+                    "completion_tokens", 0
+                )
+                self._total_token_usage["total_tokens"] += resp.token_usage.get(
+                    "total_tokens", 0
+                )
 
     def _run_model(self, docs: list[Doc]) -> list[ModelResponse]:
         """Run model on documents.

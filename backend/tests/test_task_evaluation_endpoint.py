@@ -3,8 +3,15 @@ Test script to verify the task evaluation service works end-to-end.
 """
 
 import asyncio
+import os
 
+import pytest
 from dotenv import load_dotenv
+
+pytestmark = pytest.mark.skipif(
+    not os.getenv("RUN_INTEGRATION_TESTS"),
+    reason="Manual integration — set RUN_INTEGRATION_TESTS=1",
+)
 
 from api.core.database import get_session
 from api.evaluations.schemas import (
