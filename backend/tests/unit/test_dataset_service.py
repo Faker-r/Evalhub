@@ -1,12 +1,12 @@
 """Unit tests for DatasetService, focusing on _validate_and_count logic."""
 
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
-from unittest.mock import AsyncMock, MagicMock, patch
 
-from api.datasets.service import DatasetService, VALIDATION_SAMPLE_SIZE
+from api.datasets.service import VALIDATION_SAMPLE_SIZE, DatasetService
 
 
 @pytest.fixture
@@ -127,11 +127,10 @@ class TestGetDatasetPreview:
     async def test_returns_preview(self, service):
         mock_dataset = MagicMock()
         mock_dataset.name = "test_ds"
+        mock_dataset.visibility = "public"
         service.repository = AsyncMock()
         service.repository.get_by_id.return_value = mock_dataset
-        service.s3.download_dataset.return_value = (
-            '{"input": "q1"}\n{"input": "q2"}\n'
-        )
+        service.s3.download_dataset.return_value = '{"input": "q1"}\n{"input": "q2"}\n'
 
         result = await service.get_dataset_preview(1)
         assert len(result) == 2
@@ -140,6 +139,7 @@ class TestGetDatasetPreview:
     async def test_skips_invalid_json_lines(self, service):
         mock_dataset = MagicMock()
         mock_dataset.name = "test_ds"
+        mock_dataset.visibility = "public"
         service.repository = AsyncMock()
         service.repository.get_by_id.return_value = mock_dataset
         service.s3.download_dataset.return_value = (
@@ -152,6 +152,7 @@ class TestGetDatasetPreview:
     async def test_error_raises_500(self, service):
         mock_dataset = MagicMock()
         mock_dataset.name = "test_ds"
+        mock_dataset.visibility = "public"
         service.repository = AsyncMock()
         service.repository.get_by_id.return_value = mock_dataset
         service.s3.download_dataset.side_effect = RuntimeError("S3 down")

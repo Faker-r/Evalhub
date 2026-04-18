@@ -20,8 +20,8 @@ from lighteval.tasks.registry import Registry
 
 from api.core.celery_app import celery_app
 from api.core.logging import get_logger
-from api.core.trace_context import trace_id_var
 from api.core.redis_client import clear_eval_progress, set_eval_progress
+from api.core.trace_context import trace_id_var
 from api.evaluations.eval_pipeline.eval_pipeline import (
     CustomTaskEvaluationPipeline,
     CustomTaskEvaluationPipelineParameters,
@@ -36,7 +36,9 @@ logger = get_logger(__name__)
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
 
 
-def _extract_token_usage_from_details(evaluation_tracker: EvaluationTracker) -> dict[str, int]:
+def _extract_token_usage_from_details(
+    evaluation_tracker: EvaluationTracker,
+) -> dict[str, int]:
     """Sum token usage across all ModelResponse objects in the evaluation tracker."""
     total = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     for task_name, details in evaluation_tracker.details_logger.details.items():
@@ -49,7 +51,9 @@ def _extract_token_usage_from_details(evaluation_tracker: EvaluationTracker) -> 
     return total
 
 
-def _compute_cost(token_usage: dict[str, int] | None, pricing: dict[str, str] | None) -> dict | None:
+def _compute_cost(
+    token_usage: dict[str, int] | None, pricing: dict[str, str] | None
+) -> dict | None:
     """Compute cost from token usage and per-token pricing."""
     if not token_usage or not pricing:
         return None
@@ -69,6 +73,8 @@ def _compute_cost(token_usage: dict[str, int] | None, pricing: dict[str, str] | 
         "completion_cost": round(completion_cost, 6),
         "total_cost": round(total_cost, 6),
     }
+
+
 API_CACHE_DIR = str(Path(__file__).parent.parent.parent / ".api_cache")
 
 
@@ -782,7 +788,10 @@ def run_flexible_evaluation_task(
             results_s3_path=results_s3_path,
             report_scores=pipeline_output["summary"],
             summary=summary,
-            summary_extra={"errors": pipeline_output.get("errors", {}), "cost": cost_data},
+            summary_extra={
+                "errors": pipeline_output.get("errors", {}),
+                "cost": cost_data,
+            },
         )
 
         # Upload JSONL

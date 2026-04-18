@@ -18,6 +18,7 @@ from api.evaluations.eval_pipeline.metric_doc_generator import (
 class TestDescribeSampleLevelFnExtended:
     def test_normalized_multi_choice_probability(self):
         from lighteval.metrics.metrics_sample import NormalizedMultiChoiceProbability
+
         sample_fn = NormalizedMultiChoiceProbability()
         result = _describe_sample_level_fn(sample_fn, "nmc_prob")
         assert result.source == "NormalizedMultiChoiceProbability"
@@ -25,12 +26,14 @@ class TestDescribeSampleLevelFnExtended:
 
     def test_probability(self):
         from lighteval.metrics.metrics_sample import Probability
+
         sample_fn = Probability()
         result = _describe_sample_level_fn(sample_fn, "prob")
         assert result.source == "Probability"
 
     def test_bleu(self):
         from lighteval.metrics.metrics_sample import BLEU
+
         sample_fn = BLEU(n_gram=4)
         result = _describe_sample_level_fn(sample_fn, "bleu4")
         assert result.source == "BLEU"
@@ -38,6 +41,7 @@ class TestDescribeSampleLevelFnExtended:
 
     def test_rouge(self):
         from lighteval.metrics.metrics_sample import ROUGE
+
         sample_fn = ROUGE(methods="rougeL")
         result = _describe_sample_level_fn(sample_fn, "rougeL")
         assert result.source == "ROUGE"
@@ -45,30 +49,35 @@ class TestDescribeSampleLevelFnExtended:
 
     def test_rouge_lsum(self):
         from lighteval.metrics.metrics_sample import ROUGE
+
         sample_fn = ROUGE(methods="rougeLsum")
         result = _describe_sample_level_fn(sample_fn, "rougeLsum")
         assert "Lsum" in result.measure
 
     def test_string_distance_edit(self):
         from lighteval.metrics.metrics_sample import StringDistance
+
         sample_fn = StringDistance(metric_types="edit_distance")
         result = _describe_sample_level_fn(sample_fn, "edit_distance")
         assert "edit" in result.measure.lower()
 
     def test_string_distance_lcp(self):
         from lighteval.metrics.metrics_sample import StringDistance
+
         sample_fn = StringDistance(metric_types="longest_common_prefix_length")
         result = _describe_sample_level_fn(sample_fn, "longest_common_prefix_length")
         assert "prefix" in result.measure.lower()
 
     def test_string_distance_normalized(self):
         from lighteval.metrics.metrics_sample import StringDistance
+
         sample_fn = StringDistance(metric_types="edit_similarity")
         result = _describe_sample_level_fn(sample_fn, "normalized_edit_similarity")
         assert "similarity" in result.measure.lower()
 
     def test_sampling_metric_with_type_exact_match(self):
         from lighteval.metrics.metrics_sample import SamplingMetric
+
         sample_fn = SamplingMetric(
             strip_strings=True,
             normalize=None,
@@ -79,6 +88,7 @@ class TestDescribeSampleLevelFnExtended:
 
     def test_sampling_metric_full_exact_match(self):
         from lighteval.metrics.metrics_sample import SamplingMetric
+
         sample_fn = SamplingMetric(
             strip_strings=True,
             normalize=None,
@@ -89,6 +99,7 @@ class TestDescribeSampleLevelFnExtended:
 
     def test_sampling_normalization_with_strip_and_normalize(self):
         from lighteval.metrics.metrics_sample import SamplingMetric
+
         sample_fn = SamplingMetric(
             strip_strings=True,
             normalize=MagicMock(__name__="helm_normalizer"),
@@ -99,6 +110,7 @@ class TestDescribeSampleLevelFnExtended:
 
     def test_sampling_normalization_empty(self):
         from lighteval.metrics.metrics_sample import SamplingMetric
+
         sample_fn = SamplingMetric(
             strip_strings=False,
             normalize=None,
@@ -236,6 +248,7 @@ class TestDescribeMetricNameMappings:
 
     def test_f1_name_with_corpus_f1(self):
         from lighteval.metrics.metrics_corpus import CorpusLevelF1Score
+
         corpus_fn = CorpusLevelF1Score(average="micro", num_classes=2)
         result = self._make_metric_and_describe("f1", corpus_fn)
         assert "Classification F1" in result.measure
@@ -254,6 +267,7 @@ class TestDescribeSampleLevelFnMocked:
 
     def test_bert_score_f1(self):
         from lighteval.metrics.metrics_sample import BertScore
+
         sample_fn = MagicMock(spec=BertScore)
         result = _describe_sample_level_fn(sample_fn, "bertscore-F")
         assert result.source == "BertScore"
@@ -261,48 +275,56 @@ class TestDescribeSampleLevelFnMocked:
 
     def test_bert_score_precision(self):
         from lighteval.metrics.metrics_sample import BertScore
+
         sample_fn = MagicMock(spec=BertScore)
         result = _describe_sample_level_fn(sample_fn, "bertscore-P")
         assert "precision" in result.measure.lower()
 
     def test_bert_score_recall(self):
         from lighteval.metrics.metrics_sample import BertScore
+
         sample_fn = MagicMock(spec=BertScore)
         result = _describe_sample_level_fn(sample_fn, "bertscore-R")
         assert "recall" in result.measure.lower()
 
     def test_extractiveness_coverage(self):
         from lighteval.metrics.metrics_sample import Extractiveness
+
         sample_fn = MagicMock(spec=Extractiveness)
         result = _describe_sample_level_fn(sample_fn, "summarization_coverage")
         assert "coverage" in result.measure.lower()
 
     def test_extractiveness_density(self):
         from lighteval.metrics.metrics_sample import Extractiveness
+
         sample_fn = MagicMock(spec=Extractiveness)
         result = _describe_sample_level_fn(sample_fn, "summarization_density")
         assert "density" in result.measure.lower()
 
     def test_extractiveness_compression(self):
         from lighteval.metrics.metrics_sample import Extractiveness
+
         sample_fn = MagicMock(spec=Extractiveness)
         result = _describe_sample_level_fn(sample_fn, "compression")
         assert "Compression" in result.measure
 
     def test_faithfulness(self):
         from lighteval.metrics.metrics_sample import Faithfulness
+
         sample_fn = MagicMock(spec=Faithfulness)
         result = _describe_sample_level_fn(sample_fn, "summac")
         assert result.source == "Faithfulness"
 
     def test_bleurt(self):
         from lighteval.metrics.metrics_sample import BLEURT
+
         sample_fn = MagicMock(spec=BLEURT)
         result = _describe_sample_level_fn(sample_fn, "bleurt")
         assert result.source == "BLEURT"
 
     def test_drop_metrics_em(self):
         from lighteval.metrics.harness_compatibility.drop import DropMetrics
+
         sample_fn = MagicMock(spec=DropMetrics)
         result = _describe_sample_level_fn(sample_fn, "em")
         assert result.source == "DropMetrics"
@@ -310,50 +332,63 @@ class TestDescribeSampleLevelFnMocked:
 
     def test_drop_metrics_f1(self):
         from lighteval.metrics.harness_compatibility.drop import DropMetrics
+
         sample_fn = MagicMock(spec=DropMetrics)
         result = _describe_sample_level_fn(sample_fn, "f1")
         assert "F1" in result.measure
 
     def test_truthfulqa_mc1(self):
-        from lighteval.metrics.harness_compatibility.truthful_qa import TruthfulqaMCMetrics
+        from lighteval.metrics.harness_compatibility.truthful_qa import (
+            TruthfulqaMCMetrics,
+        )
+
         sample_fn = MagicMock(spec=TruthfulqaMCMetrics)
         result = _describe_sample_level_fn(sample_fn, "truthfulqa_mc1")
         assert "MC1" in result.measure
 
     def test_truthfulqa_mc2(self):
-        from lighteval.metrics.harness_compatibility.truthful_qa import TruthfulqaMCMetrics
+        from lighteval.metrics.harness_compatibility.truthful_qa import (
+            TruthfulqaMCMetrics,
+        )
+
         sample_fn = MagicMock(spec=TruthfulqaMCMetrics)
         result = _describe_sample_level_fn(sample_fn, "truthfulqa_mc2")
         assert "MC2" in result.measure
 
     def test_multilingual_extractive_match(self):
         from lighteval.metrics.dynamic_metrics import MultilingualExtractiveMatchMetric
+
         sample_fn = MagicMock(spec=MultilingualExtractiveMatchMetric)
         from lighteval.metrics.utils.extractive_match_utils import ExprExtractionConfig
+
         sample_fn.pred_extraction_target = [ExprExtractionConfig()]
         result = _describe_sample_level_fn(sample_fn, "extractive_match")
         assert result.source == "MultilingualExtractiveMatchMetric"
 
     def test_judge_llm_simpleqa(self):
         from lighteval.metrics.metrics_sample import JudgeLLMSimpleQA
+
         sample_fn = MagicMock(spec=JudgeLLMSimpleQA)
         result = _describe_sample_level_fn(sample_fn, "simpleqa")
         assert result.source == "JudgeLLMSimpleQA"
 
     def test_judge_llm_mtbench(self):
         from lighteval.metrics.metrics_sample import JudgeLLMMTBench
+
         sample_fn = MagicMock(spec=JudgeLLMMTBench)
         result = _describe_sample_level_fn(sample_fn, "mtbench")
         assert result.source == "JudgeLLMMTBench"
 
     def test_judge_llm_mixeval(self):
         from lighteval.metrics.metrics_sample import JudgeLLMMixEval
+
         sample_fn = MagicMock(spec=JudgeLLMMixEval)
         result = _describe_sample_level_fn(sample_fn, "mixeval")
         assert result.source == "JudgeLLMMixEval"
 
     def test_judge_llm_generic(self):
         from lighteval.metrics.metrics_sample import JudgeLLM
+
         sample_fn = MagicMock(spec=JudgeLLM)
         result = _describe_sample_level_fn(sample_fn, "judge")
         assert result.source == "JudgeLLM"
@@ -402,6 +437,7 @@ class TestDescribeSampleLevelFnMocked:
 
     def test_sampling_metric_suffix_match(self):
         from lighteval.metrics.metrics_sample import SamplingMetric
+
         sample_fn = SamplingMetric(strip_strings=False, normalize=None)
         sample_fn.type_exact_match = "suffix"
         result = _describe_sampling_score_fn(sample_fn)
@@ -409,6 +445,7 @@ class TestDescribeSampleLevelFnMocked:
 
     def test_sampling_metric_custom_score_fn(self):
         from lighteval.metrics.metrics_sample import SamplingMetric
+
         sample_fn = SamplingMetric(strip_strings=False, normalize=None)
         sample_fn.type_exact_match = None
         result = _describe_sampling_score_fn(sample_fn)
@@ -418,30 +455,35 @@ class TestDescribeSampleLevelFnMocked:
 class TestDescribeCorpusFnExtended:
     def test_corpus_level_perplexity_weighted(self):
         from lighteval.metrics.metrics_corpus import CorpusLevelPerplexityMetric
+
         corpus_fn = CorpusLevelPerplexityMetric(metric_type="weighted_perplexity")
         result = _describe_corpus_fn(corpus_fn, "weighted_ppl")
         assert "weighted" in result.lower()
 
     def test_corpus_level_perplexity_bits(self):
         from lighteval.metrics.metrics_corpus import CorpusLevelPerplexityMetric
+
         corpus_fn = CorpusLevelPerplexityMetric(metric_type="bits_per_byte")
         result = _describe_corpus_fn(corpus_fn, "bpb")
         assert "bits per byte" in result.lower()
 
     def test_corpus_level_perplexity_standard(self):
         from lighteval.metrics.metrics_corpus import CorpusLevelPerplexityMetric
+
         corpus_fn = CorpusLevelPerplexityMetric(metric_type="perplexity")
         result = _describe_corpus_fn(corpus_fn, "ppl")
         assert "logprob" in result.lower()
 
     def test_matthews_corr(self):
         from lighteval.metrics.metrics_corpus import MatthewsCorrCoef
+
         corpus_fn = MatthewsCorrCoef()
         result = _describe_corpus_fn(corpus_fn, "mcc")
         assert "Matthews" in result
 
     def test_generic_corpus_level_computation(self):
         from lighteval.metrics.metrics_corpus import CorpusLevelComputation
+
         corpus_fn = MagicMock(spec=CorpusLevelComputation)
         result = _describe_corpus_fn(corpus_fn, "x")
         assert "corpus" in result.lower()

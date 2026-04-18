@@ -48,7 +48,7 @@ class TestCreate:
             scoring_scale_config=BooleanScaleConfig(),
         )
 
-        guideline = await repo.create(data)
+        guideline = await repo.create(data, user_id="user-uuid")
         session.add.assert_called_once()
         session.commit.assert_called_once()
         assert guideline.name == "test_g"

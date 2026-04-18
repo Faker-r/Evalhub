@@ -8,16 +8,16 @@ import pytest
 from pydantic import BaseModel
 
 from api.evaluations.eval_pipeline.guideline_judge import (
+    BooleanGuidelineScoringScale,
+    BooleanScoreResponse,
+    CustomCategoryGuidelineScoringScale,
     GuidelineJudgeMetric,
+    NumericGuidelineScoringScale,
+    PercentageGuidelineScoringScale,
+    PercentageScoreResponse,
     WrappedJudgeLM,
     generate_get_judge_prompt_function,
     process_judge_response,
-    BooleanGuidelineScoringScale,
-    PercentageGuidelineScoringScale,
-    NumericGuidelineScoringScale,
-    CustomCategoryGuidelineScoringScale,
-    BooleanScoreResponse,
-    PercentageScoreResponse,
 )
 from api.guidelines.schemas import GuidelineScoringScale
 
@@ -49,7 +49,11 @@ class TestGenerateGetJudgePromptFunction:
         scale = BooleanGuidelineScoringScale()
         fn = generate_get_judge_prompt_function(guideline, scale)
 
-        result = fn(question="What is AI?", answer="It is artificial intelligence", gold="correct answer")
+        result = fn(
+            question="What is AI?",
+            answer="It is artificial intelligence",
+            gold="correct answer",
+        )
         assert len(result) == 1
         assert "gold answer" in result[0]["content"].lower()
         assert "Rate quality" in result[0]["content"]
@@ -79,9 +83,13 @@ class TestWrappedJudgeLM:
         )
         wrapped.client = None
 
-        with patch("api.evaluations.eval_pipeline.guideline_judge.OpenAI") as MockOpenAI:
+        with patch(
+            "api.evaluations.eval_pipeline.guideline_judge.OpenAI"
+        ) as MockOpenAI:
             result = wrapped._lazy_load_client()
-            MockOpenAI.assert_called_once_with(api_key="sk-key", base_url="https://api.openai.com/v1")
+            MockOpenAI.assert_called_once_with(
+                api_key="sk-key", base_url="https://api.openai.com/v1"
+            )
             assert result == wrapped._call_api_parallel
 
     def test_evaluate_answer(self):

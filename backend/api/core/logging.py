@@ -8,15 +8,17 @@ from api.core.trace_context import trace_id_var
 
 class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        return json.dumps({
-            "timestamp": self.formatTime(record),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-            "trace_id": trace_id_var.get(""),
-            "module": record.module,
-            "func": record.funcName,
-        })
+        return json.dumps(
+            {
+                "timestamp": self.formatTime(record),
+                "level": record.levelname,
+                "logger": record.name,
+                "message": record.getMessage(),
+                "trace_id": trace_id_var.get(""),
+                "module": record.module,
+                "func": record.funcName,
+            }
+        )
 
 
 def setup_logging() -> None:
@@ -28,7 +30,13 @@ def setup_logging() -> None:
         handler.setFormatter(JSONFormatter())
         root.addHandler(handler)
 
-    for name in ("uvicorn", "uvicorn.access", "uvicorn.error", "celery", "celery.worker"):
+    for name in (
+        "uvicorn",
+        "uvicorn.access",
+        "uvicorn.error",
+        "celery",
+        "celery.worker",
+    ):
         logging.getLogger(name).setLevel(logging.WARNING)
 
 

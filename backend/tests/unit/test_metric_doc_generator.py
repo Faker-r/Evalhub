@@ -19,7 +19,6 @@ from api.evaluations.eval_pipeline.metric_doc_generator import (
     get_metric_names,
 )
 
-
 # ==================== _describe_normalizer ====================
 
 
@@ -77,6 +76,7 @@ class TestDescribeLogprobNormalization:
 
     def test_char_norm_ignore_space(self):
         from lighteval.metrics.normalizations import LogProbCharNorm
+
         norm = LogProbCharNorm(ignore_first_space=True)
         result = _describe_logprob_normalization(norm)
         assert "character length" in result
@@ -84,6 +84,7 @@ class TestDescribeLogprobNormalization:
 
     def test_char_norm_no_ignore(self):
         from lighteval.metrics.normalizations import LogProbCharNorm
+
         norm = LogProbCharNorm(ignore_first_space=False)
         result = _describe_logprob_normalization(norm)
         assert "character length" in result
@@ -91,17 +92,20 @@ class TestDescribeLogprobNormalization:
 
     def test_token_norm(self):
         from lighteval.metrics.normalizations import LogProbTokenNorm
+
         norm = LogProbTokenNorm()
         assert "token length" in _describe_logprob_normalization(norm)
 
     def test_pmi_norm(self):
         from lighteval.metrics.normalizations import LogProbPMINorm
+
         norm = LogProbPMINorm()
         assert "PMI" in _describe_logprob_normalization(norm)
 
     def test_custom_normalization(self):
         class MyNorm:
             pass
+
         norm = MyNorm()
         result = _describe_logprob_normalization(norm)
         assert "custom" in result.lower()
@@ -118,18 +122,23 @@ class TestDescribeExtractionTargets:
 
     def test_expr_config(self):
         from lighteval.metrics.utils.extractive_match_utils import ExprExtractionConfig
+
         target = ExprExtractionConfig()
         result = _describe_extraction_targets([target])
         assert "numbers" in result or "math" in result
 
     def test_latex_config(self):
         from lighteval.metrics.utils.extractive_match_utils import LatexExtractionConfig
+
         target = LatexExtractionConfig()
         result = _describe_extraction_targets([target])
         assert "LaTeX" in result
 
     def test_indices_config(self):
-        from lighteval.metrics.utils.extractive_match_utils import IndicesExtractionConfig
+        from lighteval.metrics.utils.extractive_match_utils import (
+            IndicesExtractionConfig,
+        )
+
         target = IndicesExtractionConfig(prefix_for_extraction="Letters")
         result = _describe_extraction_targets([target])
         assert "indices" in result
@@ -139,7 +148,10 @@ class TestDescribeExtractionTargets:
             ExprExtractionConfig,
             LatexExtractionConfig,
         )
-        result = _describe_extraction_targets([ExprExtractionConfig(), LatexExtractionConfig()])
+
+        result = _describe_extraction_targets(
+            [ExprExtractionConfig(), LatexExtractionConfig()]
+        )
         assert "," in result
 
 
@@ -166,6 +178,7 @@ class TestDescribeCorpusFn:
     def test_named_callable(self):
         def my_agg(x):
             return x
+
         result = _describe_corpus_fn(my_agg, "metric")
         assert "my_agg" in result
 
@@ -185,6 +198,7 @@ class TestDescribeCorpusFn:
         class CorpusObj:
             def compute_corpus(self):
                 pass
+
         obj = CorpusObj()
         result = _describe_corpus_fn(obj, "metric")
         assert "corpus" in result.lower()
@@ -253,6 +267,7 @@ class TestMetricDescription:
 class TestDescribeSampleLevelFn:
     def test_exact_matches(self):
         from lighteval.metrics.metrics_sample import ExactMatches
+
         sample_fn = ExactMatches()
         result = _describe_sample_level_fn(sample_fn, "exact_match")
         assert result.source == "ExactMatches"
@@ -260,6 +275,7 @@ class TestDescribeSampleLevelFn:
 
     def test_f1_score(self):
         from lighteval.metrics.metrics_sample import F1_score
+
         sample_fn = F1_score()
         result = _describe_sample_level_fn(sample_fn, "f1")
         assert result.source == "F1_score"
@@ -267,24 +283,28 @@ class TestDescribeSampleLevelFn:
 
     def test_loglikelihood_acc(self):
         from lighteval.metrics.metrics_sample import LoglikelihoodAcc
+
         sample_fn = LoglikelihoodAcc()
         result = _describe_sample_level_fn(sample_fn, "acc")
         assert result.source == "LoglikelihoodAcc"
 
     def test_recall(self):
         from lighteval.metrics.metrics_sample import Recall
+
         sample_fn = Recall(k=5)
         result = _describe_sample_level_fn(sample_fn, "recall@5")
         assert result.source == "Recall"
 
     def test_mrr(self):
         from lighteval.metrics.metrics_sample import MRR
+
         sample_fn = MRR()
         result = _describe_sample_level_fn(sample_fn, "mrr")
         assert "reciprocal rank" in result.measure.lower()
 
     def test_acc_gold_likelihood(self):
         from lighteval.metrics.metrics_sample import AccGoldLikelihood
+
         sample_fn = AccGoldLikelihood()
         result = _describe_sample_level_fn(sample_fn, "acc")
         assert result.source == "AccGoldLikelihood"
@@ -292,30 +312,35 @@ class TestDescribeSampleLevelFn:
     def test_fallback(self):
         class UnknownSampleFn:
             pass
+
         result = _describe_sample_level_fn(UnknownSampleFn(), "custom")
         assert result.source == "UnknownSampleFn"
         assert "Custom" in result.measure
 
     def test_generative_preparator(self):
         from lighteval.metrics.sample_preparator import GenerativePreparator
+
         sample_fn = GenerativePreparator()
         result = _describe_sample_level_fn(sample_fn, "gen")
         assert result.source == "GenerativePreparator"
 
     def test_loglikelihood_preparator(self):
         from lighteval.metrics.sample_preparator import LoglikelihoodPreparator
+
         sample_fn = LoglikelihoodPreparator()
         result = _describe_sample_level_fn(sample_fn, "ll")
         assert result.source == "LoglikelihoodPreparator"
 
     def test_perplexity_preparator(self):
         from lighteval.metrics.sample_preparator import PerplexityPreparator
+
         sample_fn = PerplexityPreparator(units_type="words")
         result = _describe_sample_level_fn(sample_fn, "ppl")
         assert result.source == "PerplexityPreparator"
 
     def test_target_perplexity_preparator(self):
         from lighteval.metrics.sample_preparator import TargetPerplexityPreparator
+
         sample_fn = TargetPerplexityPreparator(units_type="words")
         result = _describe_sample_level_fn(sample_fn, "tppl")
         assert result.source == "TargetPerplexityPreparator"

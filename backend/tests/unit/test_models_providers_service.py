@@ -13,8 +13,15 @@ from api.models_and_providers.schemas import (
 )
 from api.models_and_providers.service import ModelsAndProvidersService
 
+PID1 = "11111111-1111-1111-1111-111111111111"
+PID2 = "22222222-2222-2222-2222-222222222222"
+MID1 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+PID_MISSING = "99999999-9999-9999-9999-999999999999"
 
-def _mock_provider(pid=1, name="OpenAI", slug="openai", base_url="https://api.openai.com"):
+
+def _mock_provider(
+    pid=PID1, name="OpenAI", slug="openai", base_url="https://api.openai.com"
+):
     p = MagicMock()
     p.id = pid
     p.name = name
@@ -23,7 +30,13 @@ def _mock_provider(pid=1, name="OpenAI", slug="openai", base_url="https://api.op
     return p
 
 
-def _mock_model(mid=1, display_name="GPT-4o", developer="OpenAI", api_name="gpt-4o", providers=None):
+def _mock_model(
+    mid=MID1,
+    display_name="GPT-4o",
+    developer="OpenAI",
+    api_name="gpt-4o",
+    providers=None,
+):
     m = MagicMock()
     m.id = mid
     m.display_name = display_name
@@ -60,15 +73,17 @@ class TestCreateProvider:
         session.add = MagicMock()
 
         async def fake_refresh(obj, *args, **kwargs):
-            obj.id = 1
+            obj.id = PID1
 
         session.refresh = fake_refresh
 
-        data = ProviderCreate(name="OpenAI", slug="openai", base_url="https://api.openai.com")
+        data = ProviderCreate(
+            name="OpenAI", slug="openai", base_url="https://api.openai.com"
+        )
 
         result = await service.create_provider(data)
         assert result.name == "OpenAI"
-        assert result.id == 1
+        assert result.id == PID1
         session.add.assert_called_once()
         session.commit.assert_called_once()
 
@@ -76,7 +91,9 @@ class TestCreateProvider:
         existing = _mock_provider()
         session.execute.return_value = _mock_execute_result(scalar_value=existing)
 
-        data = ProviderCreate(name="OpenAI", slug="openai", base_url="https://api.openai.com")
+        data = ProviderCreate(
+            name="OpenAI", slug="openai", base_url="https://api.openai.com"
+        )
 
         with pytest.raises(AlreadyExistsException, match="already exists"):
             await service.create_provider(data)
@@ -87,14 +104,14 @@ class TestGetProvider:
         provider = _mock_provider()
         session.execute.return_value = _mock_execute_result(scalar_value=provider)
 
-        result = await service.get_provider(1)
+        result = await service.get_provider(PID1)
         assert result.name == "OpenAI"
 
     async def test_not_found(self, service, session):
         session.execute.return_value = _mock_execute_result(scalar_value=None)
 
         with pytest.raises(NotFoundException):
-            await service.get_provider(999)
+            await service.get_provider(PID_MISSING)
 
 
 class TestGetProviderByName:
@@ -114,7 +131,7 @@ class TestGetProviderByName:
 
 class TestListProviders:
     async def test_returns_paginated(self, service, session):
-        providers = [_mock_provider(1, "OpenAI"), _mock_provider(2, "Anthropic")]
+        providers = [_mock_provider(PID1, "OpenAI"), _mock_provider(PID2, "Anthropic")]
         session.execute.side_effect = [
             _mock_execute_result(scalars_list=providers),
             _mock_execute_result(scalars_list=providers),
@@ -132,18 +149,18 @@ class TestUpdateProvider:
         session.refresh = AsyncMock()
 
         data = ProviderUpdate(base_url="https://new-url.com")
-        result = await service.update_provider(1, data)
+        result = await service.update_provider(PID1, data)
         session.commit.assert_called_once()
 
     async def test_not_found(self, service, session):
         session.execute.return_value = _mock_execute_result(scalar_value=None)
 
         with pytest.raises(NotFoundException):
-            await service.update_provider(999, ProviderUpdate())
+            await service.update_provider(PID_MISSING, ProviderUpdate())
 
     async def test_name_conflict(self, service, session):
-        provider = _mock_provider(1, "OpenAI")
-        existing = _mock_provider(2, "NewName")
+        provider = _mock_provider(PID1, "OpenAI")
+        existing = _mock_provider(PID2, "NewName")
 
         session.execute.side_effect = [
             _mock_execute_result(scalar_value=provider),
@@ -151,7 +168,7 @@ class TestUpdateProvider:
         ]
 
         with pytest.raises(AlreadyExistsException):
-            await service.update_provider(1, ProviderUpdate(name="NewName"))
+            await service.update_provider(PID1, ProviderUpdate(name="NewName"))
 
 
 class TestDeleteProvider:
@@ -159,7 +176,7 @@ class TestDeleteProvider:
         provider = _mock_provider()
         session.execute.return_value = _mock_execute_result(scalar_value=provider)
 
-        await service.delete_provider(1)
+        await service.delete_provider(PID1)
         session.delete.assert_called_once_with(provider)
         session.commit.assert_called_once()
 
@@ -167,7 +184,7 @@ class TestDeleteProvider:
         session.execute.return_value = _mock_execute_result(scalar_value=None)
 
         with pytest.raises(NotFoundException):
-            await service.delete_provider(999)
+            await service.delete_provider(PID_MISSING)
 
 
 # ==================== Model Tests ====================
@@ -180,8 +197,8 @@ class TestCreateModel:
         session.add = MagicMock()
 
         async def fake_refresh(obj, *args, **kwargs):
-            obj.id = 1
-            if not hasattr(obj, 'providers') or not isinstance(obj.providers, list):
+            obj.id = MID1
+            if not hasattr(obj, "providers") or not isinstance(obj.providers, list):
                 obj.providers = [provider]
 
         session.refresh = fake_refresh
@@ -190,7 +207,7 @@ class TestCreateModel:
             display_name="GPT-4o",
             developer="OpenAI",
             api_name="gpt-4o",
-            provider_ids=[1],
+            provider_ids=[PID1],
         )
 
         result = await service.create_model(data)
@@ -204,7 +221,7 @@ class TestCreateModel:
             display_name="GPT-4o",
             developer="OpenAI",
             api_name="gpt-4o",
-            provider_ids=[999],
+            provider_ids=[PID_MISSING],
         )
 
         with pytest.raises(NotFoundException, match="Provider"):
@@ -216,19 +233,19 @@ class TestGetModel:
         model = _mock_model(providers=[_mock_provider()])
         session.execute.return_value = _mock_execute_result(scalar_value=model)
 
-        result = await service.get_model(1)
+        result = await service.get_model(MID1)
         assert result.display_name == "GPT-4o"
 
     async def test_not_found(self, service, session):
         session.execute.return_value = _mock_execute_result(scalar_value=None)
 
         with pytest.raises(NotFoundException):
-            await service.get_model(999)
+            await service.get_model(PID_MISSING)
 
 
 class TestListModels:
     async def test_returns_paginated(self, service, session):
-        models = [_mock_model(1, providers=[_mock_provider()])]
+        models = [_mock_model(MID1, providers=[_mock_provider()])]
         session.execute.side_effect = [
             _mock_execute_result(scalars_list=models),
             _mock_execute_result(scalars_list=models),
@@ -239,13 +256,13 @@ class TestListModels:
         assert result.page == 1
 
     async def test_filter_by_provider(self, service, session):
-        models = [_mock_model(1, providers=[_mock_provider()])]
+        models = [_mock_model(MID1, providers=[_mock_provider()])]
         session.execute.side_effect = [
             _mock_execute_result(scalars_list=models),
             _mock_execute_result(scalars_list=models),
         ]
 
-        result = await service.list_models(provider_id=1)
+        result = await service.list_models(provider_id=PID1)
         assert result.total == 1
 
 
@@ -256,18 +273,18 @@ class TestUpdateModel:
         session.refresh = AsyncMock()
 
         data = ModelUpdate(display_name="GPT-4o-Updated")
-        result = await service.update_model(1, data)
+        result = await service.update_model(MID1, data)
         session.commit.assert_called_once()
 
     async def test_not_found(self, service, session):
         session.execute.return_value = _mock_execute_result(scalar_value=None)
 
         with pytest.raises(NotFoundException):
-            await service.update_model(999, ModelUpdate())
+            await service.update_model(PID_MISSING, ModelUpdate())
 
     async def test_update_providers(self, service, session):
         model = _mock_model(providers=[_mock_provider()])
-        new_provider = _mock_provider(2, "Anthropic")
+        new_provider = _mock_provider(PID2, "Anthropic")
 
         session.execute.side_effect = [
             _mock_execute_result(scalar_value=model),
@@ -275,8 +292,8 @@ class TestUpdateModel:
         ]
         session.refresh = AsyncMock()
 
-        data = ModelUpdate(provider_ids=[2])
-        await service.update_model(1, data)
+        data = ModelUpdate(provider_ids=[PID2])
+        await service.update_model(MID1, data)
         assert model.providers == [new_provider]
 
     async def test_update_provider_not_found(self, service, session):
@@ -287,9 +304,9 @@ class TestUpdateModel:
             _mock_execute_result(scalar_value=None),
         ]
 
-        data = ModelUpdate(provider_ids=[999])
+        data = ModelUpdate(provider_ids=[PID_MISSING])
         with pytest.raises(NotFoundException, match="Provider"):
-            await service.update_model(1, data)
+            await service.update_model(MID1, data)
 
 
 class TestDeleteModel:
@@ -297,7 +314,7 @@ class TestDeleteModel:
         model = _mock_model()
         session.execute.return_value = _mock_execute_result(scalar_value=model)
 
-        await service.delete_model(1)
+        await service.delete_model(MID1)
         session.delete.assert_called_once_with(model)
         session.commit.assert_called_once()
 
@@ -305,4 +322,4 @@ class TestDeleteModel:
         session.execute.return_value = _mock_execute_result(scalar_value=None)
 
         with pytest.raises(NotFoundException):
-            await service.delete_model(999)
+            await service.delete_model(PID_MISSING)

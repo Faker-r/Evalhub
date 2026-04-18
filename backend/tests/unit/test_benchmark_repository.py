@@ -148,7 +148,9 @@ class TestGetAll:
         assert total == 1
 
     @patch("api.benchmarks.repository.normalize_language_code", return_value="en")
-    async def test_search_with_language_normalization(self, mock_normalize, repo, session):
+    async def test_search_with_language_normalization(
+        self, mock_normalize, repo, session
+    ):
         session.execute.side_effect = [
             _mock_result(scalar_val=1),
             _mock_result(scalars_value=[MagicMock()]),
@@ -191,7 +193,9 @@ class TestGetTaskDetails:
         registry_instance = MockRegistry.return_value
         registry_instance.load_tasks.return_value = {"task1": mock_task}
 
-        with patch.object(repo, "_generate_task_details_dict", return_value={"name": "task1"}):
+        with patch.object(
+            repo, "_generate_task_details_dict", return_value={"name": "task1"}
+        ):
             result = await repo.get_task_details("task1")
         assert result == {"name": "task1"}
 
@@ -209,7 +213,9 @@ class TestGetTaskDetails:
         registry_instance = MockRegistry.return_value
         registry_instance.load_tasks.return_value = {"task1|0": mock_task}
 
-        with patch.object(repo, "_generate_task_details_dict", return_value={"name": "task1|0"}):
+        with patch.object(
+            repo, "_generate_task_details_dict", return_value={"name": "task1|0"}
+        ):
             result = await repo.get_task_details("task1")
         assert result is not None
 

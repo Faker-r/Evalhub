@@ -31,9 +31,7 @@ def storage(mock_s3_client):
 
 
 def _client_error(code="InternalError"):
-    return ClientError(
-        {"Error": {"Code": code, "Message": "test"}}, "operation"
-    )
+    return ClientError({"Error": {"Code": code, "Message": "test"}}, "operation")
 
 
 # ==================== Dataset Methods ====================

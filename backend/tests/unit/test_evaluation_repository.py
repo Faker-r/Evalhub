@@ -41,8 +41,16 @@ class TestCreateTrace:
             user_id="user-123",
             dataset_name="ds",
             guideline_names=["g1"],
-            completion_model_config={"api_source": "standard", "api_name": "gpt-4o", "provider_slug": "openai"},
-            judge_model_config={"api_source": "standard", "api_name": "gpt-4o", "provider_slug": "openai"},
+            completion_model_config={
+                "api_source": "standard",
+                "api_name": "gpt-4o",
+                "provider_slug": "openai",
+            },
+            judge_model_config={
+                "api_source": "standard",
+                "api_name": "gpt-4o",
+                "provider_slug": "openai",
+            },
         )
         session.add.assert_called_once()
         session.commit.assert_called_once()
@@ -92,8 +100,10 @@ class TestGetTracesByUser:
         traces = [MagicMock(id=1), MagicMock(id=2)]
         session.execute.return_value = _mock_execute_result(scalars_value=traces)
 
-        result = await repo.get_traces_by_user("user-123")
-        assert len(result) == 2
+        traces, total, status_counts = await repo.get_traces_by_user("user-123")
+        assert len(traces) == 2
+        assert total is not None
+        assert isinstance(status_counts, dict)
 
 
 class TestCreateEvent:

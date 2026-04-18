@@ -77,9 +77,7 @@ class TestRunTaskEvaluation:
             ),
             patch.object(service, "_get_model_pricing", return_value=None),
             patch.object(service, "_build_task_name", return_value="gsm8k|0"),
-            patch(
-                "api.evaluations.service.run_task_evaluation_task"
-            ) as mock_task,
+            patch("api.evaluations.service.run_task_evaluation_task") as mock_task,
         ):
             mock_task.delay = MagicMock()
             resp = await service.run_task_evaluation(req)
@@ -106,17 +104,19 @@ class TestRunFlexibleEvaluation:
         )
 
         with (
-            patch.object(service, "_create_flexible_trace", AsyncMock(return_value=trace)),
-            patch.object(service, "_load_dataset_content", return_value='{"question":"hi"}\n'),
+            patch.object(
+                service, "_create_flexible_trace", AsyncMock(return_value=trace)
+            ),
+            patch.object(
+                service, "_load_dataset_content", return_value='{"question":"hi"}\n'
+            ),
             patch.object(
                 service,
                 "_get_serializable_model_config",
                 AsyncMock(return_value={"model_name": "gpt-4o"}),
             ),
             patch.object(service, "_get_model_pricing", return_value=None),
-            patch(
-                "api.evaluations.service.run_flexible_evaluation_task"
-            ) as mock_task,
+            patch("api.evaluations.service.run_flexible_evaluation_task") as mock_task,
         ):
             mock_task.delay = MagicMock()
             resp = await service.run_flexible_evaluation(req)

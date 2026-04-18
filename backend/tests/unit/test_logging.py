@@ -9,8 +9,13 @@ class TestJSONFormatter:
     def test_output_is_valid_json(self):
         formatter = JSONFormatter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg="hello", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="hello",
+            args=(),
+            exc_info=None,
         )
         output = formatter.format(record)
         parsed = json.loads(output)
@@ -23,8 +28,13 @@ class TestJSONFormatter:
         token = trace_id_var.set("test-trace-123")
         try:
             record = logging.LogRecord(
-                name="test", level=logging.INFO, pathname="", lineno=0,
-                msg="with trace", args=(), exc_info=None,
+                name="test",
+                level=logging.INFO,
+                pathname="",
+                lineno=0,
+                msg="with trace",
+                args=(),
+                exc_info=None,
             )
             output = formatter.format(record)
             parsed = json.loads(output)
@@ -35,8 +45,13 @@ class TestJSONFormatter:
     def test_trace_id_empty_when_no_context(self):
         formatter = JSONFormatter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg="no trace", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="no trace",
+            args=(),
+            exc_info=None,
         )
         output = formatter.format(record)
         parsed = json.loads(output)
@@ -45,16 +60,26 @@ class TestJSONFormatter:
     def test_has_all_required_fields(self):
         formatter = JSONFormatter()
         record = logging.LogRecord(
-            name="api.core.test", level=logging.WARNING, pathname="test.py",
-            lineno=42, msg="check fields", args=(), exc_info=None,
+            name="api.core.test",
+            level=logging.WARNING,
+            pathname="test.py",
+            lineno=42,
+            msg="check fields",
+            args=(),
+            exc_info=None,
         )
         record.module = "test"
         record.funcName = "test_func"
         output = formatter.format(record)
         parsed = json.loads(output)
         assert set(parsed.keys()) == {
-            "timestamp", "level", "logger", "message",
-            "trace_id", "module", "func",
+            "timestamp",
+            "level",
+            "logger",
+            "message",
+            "trace_id",
+            "module",
+            "func",
         }
 
 
@@ -68,17 +93,13 @@ class TestSetupLogging:
     def teardown_method(self):
         root = logging.getLogger()
         root.handlers = [
-            h for h in root.handlers
-            if not isinstance(h.formatter, JSONFormatter)
+            h for h in root.handlers if not isinstance(h.formatter, JSONFormatter)
         ]
 
     def test_root_logger_has_json_formatter(self):
         setup_logging()
         root = logging.getLogger()
-        has_json = any(
-            isinstance(h.formatter, JSONFormatter)
-            for h in root.handlers
-        )
+        has_json = any(isinstance(h.formatter, JSONFormatter) for h in root.handlers)
         assert has_json
 
     def test_setup_logging_is_idempotent(self):

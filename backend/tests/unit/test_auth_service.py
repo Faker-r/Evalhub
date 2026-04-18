@@ -30,7 +30,9 @@ def _mock_user(user_id="user-uuid", email="test@test.com"):
     return user
 
 
-def _mock_session(access_token="access-tok", refresh_token="refresh-tok", expires_in=3600):
+def _mock_session(
+    access_token="access-tok", refresh_token="refresh-tok", expires_in=3600
+):
     session = MagicMock()
     session.access_token = access_token
     session.refresh_token = refresh_token
@@ -61,9 +63,7 @@ class TestRegister:
         mock_supabase.auth.sign_up.return_value = response
 
         with pytest.raises(BadRequestException, match="Registration failed"):
-            await service.register(
-                UserCreate(email="test@test.com", password="pw123")
-            )
+            await service.register(UserCreate(email="test@test.com", password="pw123"))
 
     async def test_email_confirmation_required(self, service, mock_supabase):
         user = _mock_user()
@@ -73,9 +73,7 @@ class TestRegister:
         mock_supabase.auth.sign_up.return_value = response
 
         with pytest.raises(BadRequestException, match="check your email"):
-            await service.register(
-                UserCreate(email="test@test.com", password="pw123")
-            )
+            await service.register(UserCreate(email="test@test.com", password="pw123"))
 
     async def test_auth_api_error(self, service, mock_supabase):
         from api.auth.service import AuthApiError
@@ -83,9 +81,7 @@ class TestRegister:
         mock_supabase.auth.sign_up.side_effect = AuthApiError("User already exists")
 
         with pytest.raises(BadRequestException):
-            await service.register(
-                UserCreate(email="test@test.com", password="pw123")
-            )
+            await service.register(UserCreate(email="test@test.com", password="pw123"))
 
     async def test_expires_in_default(self, service, mock_supabase):
         user = _mock_user()
@@ -111,9 +107,7 @@ class TestLogin:
         response.session = session
         mock_supabase.auth.sign_in_with_password.return_value = response
 
-        result = await service.login(
-            LoginData(email="test@test.com", password="pw123")
-        )
+        result = await service.login(LoginData(email="test@test.com", password="pw123"))
         assert isinstance(result, AuthResponse)
         assert result.access_token == "access-tok"
 
@@ -124,9 +118,7 @@ class TestLogin:
         mock_supabase.auth.sign_in_with_password.return_value = response
 
         with pytest.raises(UnauthorizedException):
-            await service.login(
-                LoginData(email="test@test.com", password="wrong")
-            )
+            await service.login(LoginData(email="test@test.com", password="wrong"))
 
     async def test_session_none_raises(self, service, mock_supabase):
         response = MagicMock()
@@ -135,9 +127,7 @@ class TestLogin:
         mock_supabase.auth.sign_in_with_password.return_value = response
 
         with pytest.raises(UnauthorizedException):
-            await service.login(
-                LoginData(email="test@test.com", password="pw123")
-            )
+            await service.login(LoginData(email="test@test.com", password="pw123"))
 
     async def test_auth_api_error(self, service, mock_supabase):
         from api.auth.service import AuthApiError
@@ -147,9 +137,7 @@ class TestLogin:
         )
 
         with pytest.raises(UnauthorizedException):
-            await service.login(
-                LoginData(email="test@test.com", password="wrong")
-            )
+            await service.login(LoginData(email="test@test.com", password="wrong"))
 
 
 class TestRefreshToken:
@@ -174,9 +162,7 @@ class TestRefreshToken:
         mock_supabase.auth.refresh_session.return_value = response
 
         with pytest.raises(UnauthorizedException):
-            await service.refresh_token(
-                RefreshTokenRequest(refresh_token="bad-token")
-            )
+            await service.refresh_token(RefreshTokenRequest(refresh_token="bad-token"))
 
     async def test_auth_api_error(self, service, mock_supabase):
         from api.auth.service import AuthApiError
@@ -184,9 +170,7 @@ class TestRefreshToken:
         mock_supabase.auth.refresh_session.side_effect = AuthApiError("Expired")
 
         with pytest.raises(UnauthorizedException):
-            await service.refresh_token(
-                RefreshTokenRequest(refresh_token="expired")
-            )
+            await service.refresh_token(RefreshTokenRequest(refresh_token="expired"))
 
 
 class TestLogout:

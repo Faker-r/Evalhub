@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 class TestTraceProperties:
     def _make_trace(self, completion_config=None, judge_config=None):
         from api.evaluations.models import Trace
+
         trace = MagicMock(spec=Trace)
         trace.completion_model_config = completion_config
         trace.judge_model_config = judge_config

@@ -35,7 +35,9 @@ class TestCreateFromFile:
 
         session.refresh = fake_refresh
 
-        dataset = await repo.create_from_file("ds1", "general", 10)
+        dataset = await repo.create_from_file(
+            "ds1", "general", 10, visibility="public", user_id="user-uuid"
+        )
         session.add.assert_called_once()
         session.commit.assert_called_once()
         assert dataset.name == "ds1"

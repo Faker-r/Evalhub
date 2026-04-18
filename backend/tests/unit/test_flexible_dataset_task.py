@@ -35,7 +35,9 @@ def mc_task():
         input_field="q",
         output_type=OutputType.MULTIPLE_CHOICE,
         judge_type=JudgeType.EXACT_MATCH,
-        mc_config=MultipleChoiceConfig(choices_field="choices", gold_answer_field="answer"),
+        mc_config=MultipleChoiceConfig(
+            choices_field="choices", gold_answer_field="answer"
+        ),
     )
 
 
@@ -110,7 +112,11 @@ class TestCreatePromptFunction:
 
     def test_mc_prompt_with_integer_gold(self, mc_task):
         fn = mc_task._create_prompt_function()
-        line = {"q": "Capital of France?", "choices": ["Berlin", "Paris", "London"], "answer": 1}
+        line = {
+            "q": "Capital of France?",
+            "choices": ["Berlin", "Paris", "London"],
+            "answer": 1,
+        }
         doc = fn(line, None)
         assert "multiple choice" in doc.query.lower()
         assert doc.gold_index == 1
@@ -118,7 +124,11 @@ class TestCreatePromptFunction:
 
     def test_mc_prompt_with_string_gold(self, mc_task):
         fn = mc_task._create_prompt_function()
-        line = {"q": "Capital of France?", "choices": ["Berlin", "Paris", "London"], "answer": "Paris"}
+        line = {
+            "q": "Capital of France?",
+            "choices": ["Berlin", "Paris", "London"],
+            "answer": "Paris",
+        }
         doc = fn(line, None)
         assert doc.gold_index == 1
 
@@ -178,6 +188,7 @@ class TestBuildLightevalTask:
 class TestCleanup:
     def test_cleanup_removes_file(self, text_task):
         import tempfile
+
         text_task.temp_file = MagicMock()
         with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
             f.write(b"test")

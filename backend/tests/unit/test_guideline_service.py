@@ -32,9 +32,9 @@ class TestCreateGuideline:
         guideline_data = MagicMock()
         guideline_data.name = "new_guideline"
 
-        result = await service.create_guideline(guideline_data)
+        result = await service.create_guideline(guideline_data, "user-uuid")
         assert result == expected
-        service.repository.create.assert_called_once_with(guideline_data)
+        service.repository.create.assert_called_once_with(guideline_data, "user-uuid")
 
     async def test_duplicate_name_raises_409(self, service):
         service.repository.get_by_name.return_value = _mock_guideline()
@@ -43,7 +43,7 @@ class TestCreateGuideline:
         guideline_data.name = "test_guideline"
 
         with pytest.raises(HTTPException) as exc_info:
-            await service.create_guideline(guideline_data)
+            await service.create_guideline(guideline_data, "user-uuid")
         assert exc_info.value.status_code == 409
         assert "already exists" in exc_info.value.detail
 

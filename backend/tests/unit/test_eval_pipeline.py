@@ -104,7 +104,10 @@ class TestComputeMetrics:
 
     def test_with_compute_metric(self, mock_task, mock_tracker, mock_model):
         metric_with_compute = MagicMock()
-        metric_with_compute.compute.return_value = [{"custom_score": 0.9}, {"custom_score": 0.8}]
+        metric_with_compute.compute.return_value = [
+            {"custom_score": 0.9},
+            {"custom_score": 0.8},
+        ]
         mock_task.metrics = [metric_with_compute]
         pipeline = CustomTaskEvaluationPipeline(mock_task, mock_tracker, mock_model)
 
@@ -116,7 +119,9 @@ class TestComputeMetrics:
         assert result[1]["custom_score"] == 0.8
 
     @patch("api.evaluations.eval_pipeline.eval_pipeline.apply_metric")
-    def test_with_standard_metric(self, mock_apply, mock_task, mock_tracker, mock_model):
+    def test_with_standard_metric(
+        self, mock_apply, mock_task, mock_tracker, mock_model
+    ):
         metric = MagicMock(spec=["category", "metric_name"])
         del metric.compute
         mock_task.metrics = [metric]

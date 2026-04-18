@@ -43,11 +43,20 @@ addopts = "-v --cov=api --cov-report=term-missing"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_test_loop_scope = "session"
+# Not a pytest module: global monkey-patches S3/EvaluationService on import.
+collect_ignore = ["test_all_benchmarks.py"]
 
 [tool.black]
 line-length = 88
 target-version = ["py312"]
 include = '\.pyi?$'
+# Vendor / generated trees — keep isort/black scoped to application code like [tool.isort].skip.
+extend-exclude = '''
+(
+  ^/lighteval/
+  | ^/experiments/
+)
+'''
 
 [tool.isort]
 profile = "black"
@@ -59,6 +68,7 @@ ensure_newline_before_comments = true
 line_length = 88
 known_third_party = ["lighteval"]
 known_first_party = ["api", "scripts"]
+skip = [".venv", "lighteval", "experiments"]
 
 [tool.bandit]
 exclude_dirs = ["tests"]

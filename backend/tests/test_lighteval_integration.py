@@ -8,9 +8,19 @@ import tempfile
 
 import pytest
 from dotenv import load_dotenv
-from lighteval.logging.evaluation_tracker import EvaluationTracker
-from lighteval.models.endpoints.litellm_model import LiteLLMClient, LiteLLMModelConfig
-from lighteval.tasks.registry import Registry
+
+try:
+    from lighteval.logging.evaluation_tracker import EvaluationTracker
+    from lighteval.models.endpoints.litellm_model import (
+        LiteLLMClient,
+        LiteLLMModelConfig,
+    )
+    from lighteval.tasks.registry import Registry
+except ImportError as exc:
+    pytest.skip(
+        f"Lighteval / LiteLLM dependencies not available: {exc}",
+        allow_module_level=True,
+    )
 
 from api.evaluations.eval_pipeline.dataset_task import DatasetTask
 from api.evaluations.eval_pipeline.eval_pipeline import (

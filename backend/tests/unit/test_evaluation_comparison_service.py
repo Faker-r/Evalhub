@@ -61,9 +61,7 @@ class TestGenerateSideBySideReport:
         trace.created_at = datetime(2025, 1, 1)
         trace.summary = {"scores": {"accuracy": {"mean": 0.85}}}
 
-        by_dataset_pair = {
-            "ds1": {("gpt-4o", "openai"): trace}
-        }
+        by_dataset_pair = {"ds1": {("gpt-4o", "openai"): trace}}
 
         spec_event = MagicMock()
         spec_event.id = 10
@@ -91,9 +89,7 @@ class TestGenerateSideBySideReport:
         trace.created_at = datetime(2025, 1, 1)
         trace.summary = {}
 
-        by_dataset_pair = {
-            "ds1": {("gpt-4o", "openai"): trace}
-        }
+        by_dataset_pair = {"ds1": {("gpt-4o", "openai"): trace}}
 
         service._fetch_overlapping_data = AsyncMock(
             return_value=(["ds1"], by_dataset_pair, {1: None})

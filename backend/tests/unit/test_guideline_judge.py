@@ -18,7 +18,6 @@ from api.evaluations.eval_pipeline.guideline_judge import (
 )
 from api.guidelines.schemas import GuidelineScoringScale
 
-
 # ==================== Response Models ====================
 
 
@@ -209,9 +208,7 @@ class TestGuidelineJudgeMetricInit:
         )
         assert metric.metric_name == "helpfulness"
         assert metric.higher_is_better is False
-        assert isinstance(
-            metric.guideline_scoring_scale, BooleanGuidelineScoringScale
-        )
+        assert isinstance(metric.guideline_scoring_scale, BooleanGuidelineScoringScale)
 
     def test_numeric_scale_init(self):
         guideline = {
