@@ -1,0 +1,36 @@
+backend/api/evaluations/eval_pipeline/eval_pipeline.py
+  0b7c5820c03f7d2e 68-72
+---
+{
+  "schema_version": "authorship/4.0.0",
+  "git_ai_version": "development:1.3.1",
+  "base_commit_sha": "5f826e449e3f790c5e4ffb147f835fc097b41821",
+  "prompts": {
+    "0b7c5820c03f7d2e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "991c08a7-a3eb-4b55-9aea-26427ca9b023",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Andrew Wang",
+      "messages": [],
+      "total_additions": 79,
+      "total_deletions": 4,
+      "accepted_lines": 79,
+      "overriden_lines": 0
+    },
+    "d0918ba3d28b1d20": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "53a73f92-893a-43ff-bf42-6eed1aff61e2",
+        "model": "gpt-5.4-medium"
+      },
+      "human_author": "Andrew Wang",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
